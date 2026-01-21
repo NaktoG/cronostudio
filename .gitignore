@@ -1,0 +1,25 @@
+# Node
+node_modules/
+.next/
+dist/
+out/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+
+# Docker data
+infra/docker/docker-data/
+
+# n8n local data (contiene credenciales)
+infra/docker/docker-data/n8n/
+n8n/credentials/
+
+# Logs
+*.log
+logs/
+
