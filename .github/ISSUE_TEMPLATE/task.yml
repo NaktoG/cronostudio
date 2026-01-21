@@ -1,0 +1,41 @@
+name: "🛠 Task"
+description: "Tarea técnica o de mantenimiento"
+title: "[Task]: "
+labels: ["task"]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción
+      description: "Qué hay que hacer y por qué"
+      placeholder: "Implementar..., configurar..., documentar..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos / subtareas
+      description: "Checklist de ejecución"
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: impacto
+    attributes:
+      label: Impacto
+      description: "Qué afecta (frontend, backend, infra, docs)"
+      placeholder: "frontend / infra / docs"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas
+      description: "Detalles adicionales"
+    validations:
+      required: false

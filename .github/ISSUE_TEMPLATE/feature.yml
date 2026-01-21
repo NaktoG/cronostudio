@@ -1,0 +1,46 @@
+name: "🚀 Feature"
+description: "Proponer una funcionalidad nueva"
+title: "[Feature]: "
+labels: ["feature"]
+body:
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: "¿Qué querés lograr y por qué?"
+      placeholder: "Como creador de contenido, quiero..., para..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alcance
+    attributes:
+      label: Alcance
+      description: "Qué incluye / qué NO incluye"
+      placeholder: |
+        Incluye:
+        - ...
+        No incluye:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: criterios
+    attributes:
+      label: Criterios de aceptación
+      description: "Checklist verificable para darlo por terminado"
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas / referencias
+      description: "Links, capturas, inspiración"
+      placeholder: "URLs o notas"
+    validations:
+      required: false

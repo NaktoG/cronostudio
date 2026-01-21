@@ -1,0 +1,50 @@
+name: "🐞 Bug"
+description: "Reportar un error"
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción del bug
+      description: "Qué pasa y qué debería pasar"
+      placeholder: "Cuando hago X, ocurre Y, pero debería pasar Z"
+    validations:
+      required: true
+
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducir
+      description: "Lista clara para reproducir el problema"
+      placeholder: |
+        1. Ir a...
+        2. Click en...
+        3. Ver error
+    validations:
+      required: true
+
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Comportamiento esperado
+      placeholder: "Qué debería suceder"
+    validations:
+      required: true
+
+  - type: textarea
+    id: entorno
+    attributes:
+      label: Entorno
+      description: "OS, navegador, versión, etc."
+      placeholder: "macOS, Chrome, branch develop"
+    validations:
+      required: false
+
+  - type: textarea
+    id: notas
+    attributes:
+      label: Notas / capturas
+      description: "Logs, screenshots, contexto"
+    validations:
+      required: false
