@@ -6,16 +6,87 @@ Base URL para desarrollo: `http://localhost:3000/api`
 
 ## 🔐 Autenticación
 
-**Estado actual**: Las APIs están públicas. JWT está preparado pero no implementado.
-
-**Futuro**: Todas las rutas (excepto `/health`) requerirán autenticación JWT:
+Las rutas protegidas requieren autenticación JWT:
 ```
 Authorization: Bearer <token>
 ```
 
+**Rutas públicas:** `/health`, `GET /channels`, `GET /videos`  
+**Rutas protegidas:** `POST /channels`, `POST/PUT/DELETE /videos`
+
 ---
 
 ## 📡 Endpoints
+
+### Auth
+
+#### POST `/auth/register`
+
+Registra un nuevo usuario.
+
+**Request Body:**
+```json
+{
+  "email": "usuario@ejemplo.com",
+  "password": "Password123",
+  "name": "Juan Pérez"
+}
+```
+
+**Validación:**
+- `email`: email válido, máx 255 caracteres
+- `password`: 8+ caracteres, al menos 1 mayúscula y 1 número
+- `name`: 2-100 caracteres
+
+**Response:** `201 Created`
+```json
+{
+  "message": "Usuario registrado exitosamente",
+  "user": {
+    "id": "uuid",
+    "email": "usuario@ejemplo.com",
+    "name": "Juan Pérez",
+    "createdAt": "2026-01-23T09:00:00.000Z"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+---
+
+#### POST `/auth/login`
+
+Autentica un usuario existente.
+
+**Request Body:**
+```json
+{
+  "email": "usuario@ejemplo.com",
+  "password": "Password123"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "message": "Login exitoso",
+  "user": {
+    "id": "uuid",
+    "email": "usuario@ejemplo.com",
+    "name": "Juan Pérez"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+**Response:** `401 Unauthorized`
+```json
+{
+  "error": "Credenciales inválidas"
+}
+```
+
+---
 
 ### Health Check
 
@@ -35,23 +106,6 @@ Verifica el estado de los servicios backend.
 }
 ```
 
-**Response:** `503 Service Unavailable` (si algún servicio está caído)
-```json
-{
-  "status": "degraded",
-  "timestamp": "2026-01-23T09:00:00.000Z",
-  "services": {
-    "database": "up",
-    "n8n": "down"
-  }
-}
-```
-
-**Ejemplo:**
-```bash
-curl http://localhost:3000/api/health
-```
-
 ---
 
 ### Channels
@@ -64,26 +118,20 @@ Lista todos los canales de YouTube conectados.
 ```json
 [
   {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "name": "Mi Canal de YouTube",
+    "id": "uuid",
+    "name": "Mi Canal",
     "youtube_channel_id": "UCxxxxxxxxxxxxx",
     "subscribers": 1000,
-    "created_at": "2026-01-23T09:00:00.000Z",
-    "updated_at": "2026-01-23T09:00:00.000Z"
+    "created_at": "2026-01-23T09:00:00.000Z"
   }
 ]
 ```
 
-**Ejemplo:**
-```bash
-curl http://localhost:3000/api/channels
-```
-
 ---
 
-#### POST `/channels`
+#### POST `/channels` 🔒
 
-Crea un nuevo canal de YouTube.
+Crea un nuevo canal. **Requiere autenticación.**
 
 **Request Body:**
 ```json
@@ -94,100 +142,120 @@ Crea un nuevo canal de YouTube.
 }
 ```
 
-**Validación:**
-- `name`: string, 1-255 caracteres, requerido
-- `youtubeChannelId`: string, 1-100 caracteres, formato alfanumérico con guiones, requerido
-- `refreshToken`: string, opcional
-
 **Response:** `201 Created`
+
+---
+
+### Videos
+
+#### GET `/videos`
+
+Lista videos con paginación.
+
+**Query Params:**
+- `channelId` (opcional): Filtrar por canal
+- `limit` (opcional): Máximo 100, default 50
+- `offset` (opcional): Para paginación
+
+**Response:** `200 OK`
 ```json
 {
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "Mi Canal",
-  "youtube_channel_id": "UCxxxxxxxxxxxxx",
-  "subscribers": 0,
-  "created_at": "2026-01-23T09:00:00.000Z",
-  "updated_at": "2026-01-23T09:00:00.000Z"
+  "data": [
+    {
+      "id": "uuid",
+      "channel_id": "uuid",
+      "youtube_video_id": "dQw4w9WgXcQ",
+      "title": "Mi Video",
+      "views": 1000,
+      "likes": 50,
+      "channel_name": "Mi Canal"
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "offset": 0,
+    "count": 1
+  }
 }
 ```
 
-**Ejemplo:**
-```bash
-curl -X POST http://localhost:3000/api/channels \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Test Channel",
-    "youtubeChannelId": "UCtest123456"
-  }'
+---
+
+#### POST `/videos` 🔒
+
+Crea un nuevo video. **Requiere autenticación.**
+
+**Request Body:**
+```json
+{
+  "channelId": "uuid",
+  "youtubeVideoId": "dQw4w9WgXcQ",
+  "title": "Mi Video",
+  "description": "Descripción opcional",
+  "publishedAt": "2026-01-23T09:00:00.000Z"
+}
 ```
+
+**Response:** `201 Created`
+
+---
+
+#### GET `/videos/:id`
+
+Obtiene un video específico.
+
+**Response:** `200 OK` o `404 Not Found`
+
+---
+
+#### PUT `/videos/:id` 🔒
+
+Actualiza un video. **Requiere autenticación.**
+
+**Request Body (todos opcionales):**
+```json
+{
+  "title": "Nuevo título",
+  "description": "Nueva descripción",
+  "views": 5000,
+  "likes": 100,
+  "comments": 25
+}
+```
+
+**Response:** `200 OK`
+
+---
+
+#### DELETE `/videos/:id` 🔒
+
+Elimina un video. **Requiere autenticación.**
+
+**Response:** `204 No Content`
 
 ---
 
 ## ❌ Error Responses
 
-### 400 Bad Request
-Validación fallida o datos inválidos.
-
-```json
-{
-  "error": "Validation error: youtubeChannelId: Channel ID con formato inválido"
-}
-```
-
-### 409 Conflict
-El recurso ya existe.
-
-```json
-{
-  "error": "Channel with this YouTube ID already exists"
-}
-```
-
-### 429 Too Many Requests
-Rate limit excedido (100 requests por 15 minutos).
-
-```json
-{
-  "error": "Too Many Requests",
-  "message": "Rate limit exceeded. Try again later."
-}
-```
-
-**Headers:**
-```
-Retry-After: 300
-```
-
-### 500 Internal Server Error
-Error del servidor.
-
-```json
-{
-  "error": "Failed to fetch channels"
-}
-```
-
-### 503 Service Unavailable
-Servicio no disponible (solo en `/health`).
-
-```json
-{
-  "status": "unhealthy",
-  "timestamp": "2026-01-23T09:00:00.000Z",
-  "error": "Service check failed"
-}
-```
+| Código | Descripción |
+|--------|-------------|
+| 400 | Validación fallida |
+| 401 | No autorizado / Token inválido |
+| 404 | Recurso no encontrado |
+| 409 | Conflicto (recurso duplicado) |
+| 429 | Rate limit excedido |
+| 500 | Error del servidor |
 
 ---
 
 ## 🔒 Security Headers
 
-Todas las respuestas incluyen headers de seguridad:
-
+Todas las respuestas incluyen:
 ```
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 X-XSS-Protection: 1; mode=block
+Strict-Transport-Security: max-age=31536000
 Cache-Control: no-store
 ```
 
@@ -195,31 +263,16 @@ Cache-Control: no-store
 
 ## 🚦 Rate Limiting
 
-**Límites actuales:**
-- API general: 100 requests por 15 minutos por IP
-- Login (futuro): 5 requests por 15 minutos por IP
-- File upload (futuro): 10 requests por hora por IP
-
-**Implementación:** In-memory (desarrollo). Usar Redis en producción.
+| Endpoint | Límite |
+|----------|--------|
+| API general | 100 req / 15 min |
+| Login/Register | 5 req / 15 min |
 
 ---
 
-## 🔮 Endpoints Futuros
-
-### Autenticación
-- `POST /auth/register` - Registrar usuario
-- `POST /auth/login` - Login con email/password
-- `POST /auth/logout` - Cerrar sesión
-- `POST /auth/refresh` - Renovar token JWT
-
-### Videos
-- `GET /videos` - Listar videos
-- `GET /videos/:id` - Obtener video específico
-- `POST /videos` - Crear video
-- `PUT /videos/:id` - Actualizar video
-- `DELETE /videos/:id` - Eliminar video
+## 🔮 Endpoints Pendientes
 
 ### Analytics
 - `GET /analytics/:videoId` - Métricas de un video
 - `GET /analytics/channel/:channelId` - Métricas de un canal
-- `GET /analytics/summary` - Resumen general
+- `POST /analytics` - Registrar métricas

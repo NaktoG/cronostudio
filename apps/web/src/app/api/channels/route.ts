@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateInput, CreateChannelSchema } from '@/lib/validation';
+import { validateInput, CreateChannelSchema, CreateChannelInput } from '@/lib/validation';
 import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { withCORS } from '@/middleware/cors';
@@ -45,7 +45,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         const body = await request.json();
 
         // Validar con Zod
-        const validatedData = validateInput(CreateChannelSchema, body);
+        const validatedData = validateInput<CreateChannelInput>(CreateChannelSchema, body);
 
         // Obtener el primer usuario (demo) - TODO: usar usuario autenticado
         const userResult = await query('SELECT id FROM app_users LIMIT 1');
