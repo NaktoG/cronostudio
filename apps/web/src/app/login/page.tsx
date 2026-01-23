@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '../contexts/AuthContext';
+import { GuestRoute } from '../components/ProtectedRoute';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -42,115 +43,117 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center px-4">
-            <motion.div
-                className="w-full max-w-md"
-                initial="hidden"
-                animate="visible"
-                variants={containerVariants}
-            >
-                {/* Logo */}
-                <div className="text-center mb-8">
-                    <motion.div
-                        className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-4"
-                        whileHover={{ scale: 1.05, rotate: 5 }}
-                    >
-                        <span className="text-white font-bold text-2xl">C</span>
-                    </motion.div>
-                    <h1 className="text-3xl font-bold text-white">CronoStudio</h1>
-                    <p className="text-gray-400 mt-2">Inicia sesión en tu cuenta</p>
-                </div>
-
-                {/* Formulario */}
-                <motion.form
-                    onSubmit={handleSubmit}
-                    className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-2xl p-8 space-y-6"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.2 }}
-                >
-                    {(error || localError) && (
-                        <motion.div
-                            className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 text-red-400 text-sm"
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                        >
-                            {error || localError}
-                        </motion.div>
-                    )}
-
-                    <div className="space-y-4">
-                        <div>
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                                Email
-                            </label>
-                            <input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                placeholder="tu@email.com"
-                                disabled={isLoading}
-                            />
-                        </div>
-
-                        <div>
-                            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                                Contraseña
-                            </label>
-                            <input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                                placeholder="••••••••"
-                                disabled={isLoading}
-                            />
-                        </div>
-                    </div>
-
-                    <motion.button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                        whileHover={{ scale: isLoading ? 1 : 1.02 }}
-                        whileTap={{ scale: isLoading ? 1 : 0.98 }}
-                    >
-                        {isLoading ? (
-                            <span className="flex items-center justify-center gap-2">
-                                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                                Iniciando sesión...
-                            </span>
-                        ) : (
-                            'Iniciar Sesión'
-                        )}
-                    </motion.button>
-
-                    <div className="text-center text-gray-400 text-sm">
-                        ¿No tienes cuenta?{' '}
-                        <Link href="/register" className="text-blue-400 hover:text-blue-300 transition-colors">
-                            Regístrate
-                        </Link>
-                    </div>
-                </motion.form>
-
-                {/* Demo credentials */}
+        <GuestRoute>
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center px-4">
                 <motion.div
-                    className="mt-6 p-4 bg-gray-800/30 rounded-lg border border-gray-700/50"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
+                    className="w-full max-w-md"
+                    initial="hidden"
+                    animate="visible"
+                    variants={containerVariants}
                 >
-                    <p className="text-gray-400 text-xs text-center">
-                        Demo: <span className="text-gray-300">demo@cronostudio.com</span> / <span className="text-gray-300">demo123</span>
-                    </p>
+                    {/* Logo */}
+                    <div className="text-center mb-8">
+                        <motion.div
+                            className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-4"
+                            whileHover={{ scale: 1.05, rotate: 5 }}
+                        >
+                            <span className="text-white font-bold text-2xl">C</span>
+                        </motion.div>
+                        <h1 className="text-3xl font-bold text-white">CronoStudio</h1>
+                        <p className="text-gray-400 mt-2">Inicia sesión en tu cuenta</p>
+                    </div>
+
+                    {/* Formulario */}
+                    <motion.form
+                        onSubmit={handleSubmit}
+                        className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-2xl p-8 space-y-6"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2 }}
+                    >
+                        {(error || localError) && (
+                            <motion.div
+                                className="bg-red-500/10 border border-red-500/50 rounded-lg p-3 text-red-400 text-sm"
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                            >
+                                {error || localError}
+                            </motion.div>
+                        )}
+
+                        <div className="space-y-4">
+                            <div>
+                                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+                                    Email
+                                </label>
+                                <input
+                                    id="email"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                    placeholder="tu@email.com"
+                                    disabled={isLoading}
+                                />
+                            </div>
+
+                            <div>
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+                                    Contraseña
+                                </label>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                    placeholder="••••••••"
+                                    disabled={isLoading}
+                                />
+                            </div>
+                        </div>
+
+                        <motion.button
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            whileHover={{ scale: isLoading ? 1 : 1.02 }}
+                            whileTap={{ scale: isLoading ? 1 : 0.98 }}
+                        >
+                            {isLoading ? (
+                                <span className="flex items-center justify-center gap-2">
+                                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Iniciando sesión...
+                                </span>
+                            ) : (
+                                'Iniciar Sesión'
+                            )}
+                        </motion.button>
+
+                        <div className="text-center text-gray-400 text-sm">
+                            ¿No tienes cuenta?{' '}
+                            <Link href="/register" className="text-blue-400 hover:text-blue-300 transition-colors">
+                                Regístrate
+                            </Link>
+                        </div>
+                    </motion.form>
+
+                    {/* Demo credentials */}
+                    <motion.div
+                        className="mt-6 p-4 bg-gray-800/30 rounded-lg border border-gray-700/50"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                    >
+                        <p className="text-gray-400 text-xs text-center">
+                            Demo: <span className="text-gray-300">demo@cronostudio.com</span> / <span className="text-gray-300">demo123</span>
+                        </p>
+                    </motion.div>
                 </motion.div>
-            </motion.div>
-        </div>
+            </div>
+        </GuestRoute>
     );
 }
