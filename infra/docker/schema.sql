@@ -1,0 +1,70 @@
+-- CronoStudio Database Schema
+-- Tablas personalizadas para la aplicación
+
+-- Tabla de usuarios de la aplicación
+CREATE TABLE IF NOT EXISTS app_users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  name VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabla de canales de YouTube
+CREATE TABLE IF NOT EXISTS channels (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES app_users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  youtube_channel_id VARCHAR(100) UNIQUE NOT NULL,
+  refresh_token TEXT,
+  subscribers INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabla de videos
+CREATE TABLE IF NOT EXISTS videos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_id UUID REFERENCES channels(id) ON DELETE CASCADE,
+  youtube_video_id VARCHAR(100) UNIQUE NOT NULL,
+  title VARCHAR(500) NOT NULL,
+  description TEXT,
+  published_at TIMESTAMP,
+  views INTEGER DEFAULT 0,
+  likes INTEGER DEFAULT 0,
+  comments INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabla de analytics
+CREATE TABLE IF NOT EXISTS analytics (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  video_id UUID REFERENCES videos(id) ON DELETE CASCADE,
+  date DATE NOT NULL,
+  views INTEGER DEFAULT 0,
+  watch_time_minutes INTEGER DEFAULT 0,
+  avg_view_duration_seconds INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(video_id, date)
+);
+
+-- Índices para mejorar performance
+CREATE INDEX IF NOT EXISTS idx_channels_user_id ON channels(user_id);
+CREATE INDEX IF NOT EXISTS idx_videos_channel_id ON videos(channel_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_video_id ON analytics(video_id);
+CREATE INDEX IF NOT EXISTS idx_analytics_date ON analytics(date);
+
+-- Insertar usuario de prueba (password: "demo123")
+-- Hash bcrypt de "demo123": $2b$10$rKZLvVZqGqNvQqYqYqYqYuO7kZqGqNvQqYqYqYqYuO7kZqGqNvQqY
+INSERT INTO app_users (email, password_hash, name)
+VALUES ('demo@cronostudio.com', '$2b$10$rKZLvVZqGqNvQqYqYqYqYuO7kZqGqNvQqYqYqYqYuO7kZqGqNvQqY', 'Usuario Demo')
+ON CONFLICT (email) DO NOTHING;
+
+-- Insertar canal de prueba
+INSERT INTO channels (user_id, name, youtube_channel_id, subscribers)
+SELECT id, 'Canal Demo', 'UCdemo123456', 1000
+FROM app_users
+WHERE email = 'demo@cronostudio.com'
+ON CONFLICT (youtube_channel_id) DO NOTHING;
