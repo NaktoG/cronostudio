@@ -33,11 +33,11 @@ export const ChannelQuerySchema = z.object({
 export type ChannelQueryInput = z.infer<typeof ChannelQuerySchema>;
 
 // Función helper para validar
-export function validateInput<T>(schema: z.ZodSchema, data: unknown): T {
+export function validateInput<T>(schema: z.ZodType<T>, data: unknown): T {
   const result = schema.safeParse(data);
   if (!result.success) {
     const errors = result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
     throw new Error(`Validation error: ${errors.join(', ')}`);
   }
-  return result.data as T;
+  return result.data;
 }
