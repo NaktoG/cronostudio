@@ -276,3 +276,62 @@ Cache-Control: no-store
 - `GET /analytics/:videoId` - Métricas de un video
 - `GET /analytics/channel/:channelId` - Métricas de un canal
 - `POST /analytics` - Registrar métricas
+
+---
+
+## 📊 Analytics (Implementado)
+
+### GET `/analytics`
+
+Obtiene analytics con filtros y agregación.
+
+**Query Params:**
+- `videoId` (opcional): Filtrar por video
+- `channelId` (opcional): Filtrar por canal
+- `startDate` (opcional): Fecha inicio (ISO 8601)
+- `endDate` (opcional): Fecha fin (ISO 8601)
+- `groupBy` (opcional): `day` | `week` | `month`
+
+**Response:** `200 OK`
+```json
+{
+  "data": [
+    {
+      "period": "2026-01-23T00:00:00.000Z",
+      "total_views": 5000,
+      "total_watch_time": 1200,
+      "avg_duration": 180
+    }
+  ],
+  "query": { "groupBy": "day" }
+}
+```
+
+---
+
+### POST `/analytics` 🔒
+
+Registra métricas. **Requiere autenticación.**
+
+**Request Body:**
+```json
+{
+  "videoId": "uuid",
+  "date": "2026-01-23",
+  "views": 100,
+  "watchTimeMinutes": 50,
+  "avgViewDurationSeconds": 180
+}
+```
+
+---
+
+### GET `/analytics/video/:videoId`
+
+Analytics detallados de un video.
+
+---
+
+### GET `/analytics/channel/:channelId`
+
+Analytics agregados del canal con top videos.
