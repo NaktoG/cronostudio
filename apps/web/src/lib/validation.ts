@@ -105,6 +105,30 @@ export const UpdateVideoSchema = z.object({
 
 export type UpdateVideoInput = z.infer<typeof UpdateVideoSchema>;
 
+// ==========================================
+// Analytics Schemas
+// ==========================================
+
+export const CreateAnalyticsSchema = z.object({
+  videoId: z.string().uuid('ID de video inválido'),
+  date: z.coerce.date(),
+  views: z.number().int().min(0).default(0),
+  watchTimeMinutes: z.number().int().min(0).default(0),
+  avgViewDurationSeconds: z.number().int().min(0).default(0),
+});
+
+export type CreateAnalyticsInput = z.infer<typeof CreateAnalyticsSchema>;
+
+export const AnalyticsQuerySchema = z.object({
+  videoId: z.string().uuid().optional(),
+  channelId: z.string().uuid().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+  groupBy: z.enum(['day', 'week', 'month']).optional().default('day'),
+});
+
+export type AnalyticsQueryInput = z.infer<typeof AnalyticsQuerySchema>;
+
 // Función helper para validar
 export function validateInput<T>(schema: z.ZodType<T>, data: unknown): T {
   const result = schema.safeParse(data);
@@ -114,4 +138,5 @@ export function validateInput<T>(schema: z.ZodType<T>, data: unknown): T {
   }
   return result.data;
 }
+
 
