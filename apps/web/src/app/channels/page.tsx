@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 
 interface Channel {
@@ -56,7 +57,7 @@ export default function ChannelsPage() {
         setError(null);
 
         try {
-            const token = localStorage.getItem('auth_token');
+            const token = localStorage.getItem('cronostudio_token');
             const response = await fetch('/api/channels', {
                 method: 'POST',
                 headers: {
@@ -99,10 +100,10 @@ export default function ChannelsPage() {
 
     return (
         <ProtectedRoute>
-            <div className="min-h-screen bg-black">
+            <div className="min-h-screen bg-black flex flex-col">
                 <Header />
 
-                <main className="max-w-7xl mx-auto px-6 py-12">
+                <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
                     {/* Header de sección */}
                     <motion.div
                         className="flex items-center justify-between mb-8"
@@ -118,7 +119,7 @@ export default function ChannelsPage() {
 
                         <motion.button
                             onClick={() => setShowModal(true)}
-                            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-blue-500/25 transition-all flex items-center gap-2"
+                            className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 hover:shadow-lg hover:shadow-yellow-400/25 transition-all flex items-center gap-2"
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                         >
@@ -157,7 +158,10 @@ export default function ChannelsPage() {
                     {/* Loading */}
                     {loading && (
                         <div className="flex items-center justify-center py-20">
-                            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                                <p className="text-gray-400">Cargando canales...</p>
+                            </div>
                         </div>
                     )}
 
@@ -169,7 +173,7 @@ export default function ChannelsPage() {
                             animate={{ opacity: 1 }}
                         >
                             <div className="w-20 h-20 mx-auto mb-6 bg-gray-800 rounded-full flex items-center justify-center">
-                                <svg className="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-10 h-10 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
                             </div>
@@ -179,7 +183,7 @@ export default function ChannelsPage() {
                             </p>
                             <motion.button
                                 onClick={() => setShowModal(true)}
-                                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg"
+                                className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 transition-all"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                             >
@@ -199,7 +203,7 @@ export default function ChannelsPage() {
                                 <motion.div
                                     key={channel.id}
                                     variants={itemVariants}
-                                    className="bg-gray-900/50 backdrop-blur-xl border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all group"
+                                    className="bg-gray-900/50 backdrop-blur-xl border border-yellow-500/10 rounded-xl p-6 hover:border-yellow-500/30 transition-all group"
                                     whileHover={{ y: -4 }}
                                 >
                                     <div className="flex items-start justify-between mb-4">
@@ -213,7 +217,7 @@ export default function ChannelsPage() {
                                         </span>
                                     </div>
 
-                                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-blue-400 transition-colors">
+                                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">
                                         {channel.name}
                                     </h3>
 
@@ -232,7 +236,7 @@ export default function ChannelsPage() {
                                         </span>
                                         <Link
                                             href={`/analytics?channelId=${channel.id}`}
-                                            className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                                            className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors"
                                         >
                                             Ver Analytics →
                                         </Link>
@@ -242,6 +246,8 @@ export default function ChannelsPage() {
                         </motion.div>
                     )}
                 </main>
+
+                <Footer />
 
                 {/* Modal para añadir canal */}
                 <AnimatePresence>
@@ -254,7 +260,7 @@ export default function ChannelsPage() {
                             onClick={() => setShowModal(false)}
                         >
                             <motion.div
-                                className="bg-gray-900 border border-gray-800 rounded-2xl p-8 w-full max-w-md"
+                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-8 w-full max-w-md"
                                 initial={{ scale: 0.9, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0.9, opacity: 0 }}
@@ -272,7 +278,7 @@ export default function ChannelsPage() {
                                             type="text"
                                             value={formData.name}
                                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
                                             placeholder="Mi Canal de YouTube"
                                             required
                                         />
@@ -287,7 +293,7 @@ export default function ChannelsPage() {
                                             type="text"
                                             value={formData.youtubeChannelId}
                                             onChange={(e) => setFormData({ ...formData, youtubeChannelId: e.target.value })}
-                                            className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                            className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
                                             placeholder="UCxxxxxxxxxxxxx"
                                             required
                                         />
@@ -307,7 +313,7 @@ export default function ChannelsPage() {
                                         <motion.button
                                             type="submit"
                                             disabled={submitting}
-                                            className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                            className="flex-1 py-3 px-4 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 hover:shadow-lg hover:shadow-yellow-400/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                                             whileHover={{ scale: submitting ? 1 : 1.02 }}
                                             whileTap={{ scale: submitting ? 1 : 0.98 }}
                                         >

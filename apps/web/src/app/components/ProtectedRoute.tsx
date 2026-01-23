@@ -27,7 +27,7 @@ export default function ProtectedRoute({ children, fallback }: ProtectedRoutePro
         return fallback || (
             <div className="min-h-screen bg-black flex items-center justify-center">
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
                     <p className="text-gray-400">Verificando sesión...</p>
                 </div>
             </div>
@@ -58,7 +58,7 @@ export function GuestRoute({ children, fallback }: ProtectedRouteProps) {
     if (isLoading) {
         return fallback || (
             <div className="min-h-screen bg-black flex items-center justify-center">
-                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
