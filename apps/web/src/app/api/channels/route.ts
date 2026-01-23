@@ -1,155 +1,117 @@
-import { NextResponse, NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateChannelSchema } from '@/lib/validation';
+import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-
-// Mock data para desarrollo local
-// En producción, conectaría a la BD PostgreSQL vía n8n webhook o directamente
-const mockChannels = [
-  {
-    id: 'ch_001',
-    name: 'Mi Canal Principal',
-    subscribers: 15000,
-    lastVideo: 'Hace 2 días',
-  },
-  {
-    id: 'ch_002',
-    name: 'Tech Talks',
-    subscribers: 45230,
-    lastVideo: 'Hoy',
-  },
-  {
-    id: 'ch_003',
-    name: 'Vlogs Diarios',
-    subscribers: 8950,
-    lastVideo: 'Hace 5 días',
-  },
-];
+import { withCORS } from '@/middleware/cors';
+import { query } from '@/lib/db';
 
 /**
  * GET /api/channels
- * Retorna la lista de canales de YouTube configurados
- *
- * Security:
- * - ✅ Rate limited
- * - ⚠️ TODO: Requiere autenticación JWT
- * - ✅ CORS headers
- * - ✅ Safe error handling
- *
- * @returns {Array<Channel>} Lista de canales
- *
- * TODO: Conectar a PostgreSQL cuando esté el schema definido
- * TODO: Agregar autenticación de usuario
+ * Lista todos los canales de YouTube
  */
 export async function GET(request: NextRequest) {
-  try {
-    // Rate limiting check
-    const ip = request.headers.get('x-forwarded-for') || request.ip || 'unknown';
-    
-    // TODO: Validate JWT token from Authorization header
-    // if (!request.headers.get('authorization')?.startsWith('Bearer ')) {
-    //   return NextResponse.json(
-    //     { error: 'Unauthorized' },
-    //     { status: 401 }
-    //   );
-    // }
+    try {
+        const result = await query(
+            `SELECT id, name, youtube_channel_id, subscribers, created_at, updated_at 
+       FROM channels 
+       ORDER BY created_at DESC`
+        );
 
-    // For now, mock data with safe response
-    return NextResponse.json(mockChannels, {
-      status: 200,
-      headers: {
-        'Cache-Control': 'no-store, must-revalidate',
-        'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
-        'X-XSS-Protection': '1; mode=block',
-      },
-    });
-  } catch (error) {
-    // Log securely (without exposing internals)
-    console.error('[GET /api/channels] Error:', error instanceof Error ? error.message : 'Unknown error');
+        const response = NextResponse.json(result.rows, {
+            headers: {
+                'X-Content-Type-Options': 'nosniff',
+                'X-Frame-Options': 'DENY',
+                'Cache-Control': 'no-store',
+            },
+        });
 
-    return NextResponse.json(
-      {
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : 'Unknown error') : undefined,
-      },
-      { status: 500 }
-    );
-  }
+        return withSecurityHeaders(response);
+    } catch (error) {
+        console.error('[GET /api/channels] Error:', error instanceof Error ? error.message : 'Unknown error');
+
+        return NextResponse.json(
+            { error: 'Failed to fetch channels' },
+            { status: 500 }
+        );
+    }
 }
 
 /**
  * POST /api/channels
- * Crea un nuevo canal configurado
- *
- * Security:
- * - ✅ Input validation with Zod
- * - ✅ Rate limited
- * - ⚠️ TODO: Requiere autenticación JWT
- * - ✅ Safe error handling
- * - ✅ No credentials in logs
- *
- * Request body:
- * {
- *   name: string,
- *   youtubeChannelId: string,
- *   refreshToken?: string
- * }
+ * Crea un nuevo canal de YouTube
  */
-export async function POST(request: NextRequest) {
-  try {
-    // TODO: Validate JWT token from Authorization header
-    // if (!request.headers.get('authorization')?.startsWith('Bearer ')) {
-    //   return NextResponse.json(
-    //     { error: 'Unauthorized' },
-    //     { status: 401 }
-    //   );
-    // }
+export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    try {
+        const body = await request.json();
 
-    const body = await request.json();
+        // Validar con Zod
+        const validatedData = validateInput(CreateChannelSchema, body);
 
-    // ✅ Validate input with Zod
-    const validatedData = validateInput(CreateChannelSchema, body);
+        // Obtener el primer usuario (demo) - TODO: usar usuario autenticado
+        const userResult = await query('SELECT id FROM app_users LIMIT 1');
 
-    // Sanitize: Remove any sensitive fields that shouldn't be logged
-    const { refreshToken, ...safeLog } = validatedData;
-    console.log('[POST /api/channels] Creating channel:', safeLog);
+        if (userResult.rows.length === 0) {
+            return NextResponse.json(
+                { error: 'No user found. Please create a user first.' },
+                { status: 400 }
+            );
+        }
 
-    // TODO: Guardar en PostgreSQL vía INSERT
-    // TODO: Llamar a n8n workflow para validar credenciales
-    // TODO: Encriptar y guardar refresh token
+        const userId = userResult.rows[0].id;
 
-    return NextResponse.json(
-      {
-        message: 'Canal creado (mock)',
-        channel: {
-          id: `ch_${Date.now()}`,
-          name: validatedData.name,
-          youtubeChannelId: validatedData.youtubeChannelId,
-          subscribers: 0,
-        },
-      },
-      {
-        status: 201,
-        headers: {
-          'X-Content-Type-Options': 'nosniff',
-          'X-Frame-Options': 'DENY',
-        },
-      }
-    );
-  } catch (error) {
-    // Safe error logging (no credentials)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('[POST /api/channels] Error:', errorMessage);
+        // Insertar en base de datos
+        const result = await query(
+            `INSERT INTO channels (user_id, name, youtube_channel_id, refresh_token) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING id, name, youtube_channel_id, subscribers, created_at, updated_at`,
+            [userId, validatedData.name, validatedData.youtubeChannelId, validatedData.refreshToken]
+        );
 
-    // Return safe error message
-    const isValidationError = error instanceof Error && error.message.includes('Validation');
-    
-    return NextResponse.json(
-      {
-        error: isValidationError ? 'Validation Error' : 'Internal Server Error',
-        message: isValidationError ? errorMessage : undefined,
-      },
-      { status: isValidationError ? 400 : 500 }
-    );
-  }
+        // Log seguro (sin refresh_token)
+        console.log('[POST /api/channels] Created:', {
+            id: result.rows[0].id,
+            name: validatedData.name,
+            youtubeChannelId: validatedData.youtubeChannelId,
+        });
+
+        const response = NextResponse.json(result.rows[0], {
+            status: 201,
+            headers: {
+                'X-Content-Type-Options': 'nosniff',
+            },
+        });
+
+        return withSecurityHeaders(response);
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('Validation error')) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 400 }
+            );
+        }
+
+        // Manejar error de duplicado
+        if (error instanceof Error && error.message.includes('duplicate key')) {
+            return NextResponse.json(
+                { error: 'Channel with this YouTube ID already exists' },
+                { status: 409 }
+            );
+        }
+
+        console.error('[POST /api/channels] Error:', error instanceof Error ? error.message : 'Unknown error');
+
+        return NextResponse.json(
+            { error: 'Failed to create channel' },
+            { status: 500 }
+        );
+    }
+});
+
+/**
+ * OPTIONS /api/channels
+ * Manejar preflight requests
+ */
+export async function OPTIONS(request: NextRequest) {
+    const { handlePreflight } = await import('@/middleware/cors');
+    return handlePreflight(request);
 }
