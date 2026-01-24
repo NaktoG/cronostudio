@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { withSecurityHeaders } from '@/lib/security';
-import { withAuth, rateLimit, API_RATE_LIMIT } from '@/lib/auth';
+import { withSecurityHeaders } from '@/middleware/auth';
+import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { z } from 'zod';
 import { validateInput } from '@/lib/validation';
+import jwt from 'jsonwebtoken';
 
-// Schemas
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+
+function getUserIdFromRequest(request: NextRequest): string | null {
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    try {
+        const token = authHeader.slice(7);
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+        return decoded.userId;
+    } catch {
+        return null;
+    }
+}
+
 const CreateThumbnailSchema = z.object({
     title: z.string().min(1).max(200),
     scriptId: z.string().uuid().optional(),
@@ -21,105 +35,66 @@ const UpdateThumbnailSchema = z.object({
     status: z.enum(['pending', 'designing', 'designed', 'approved']).optional(),
 });
 
-// GET - Lista todas las miniaturas del usuario
 export async function GET(request: NextRequest) {
     try {
-        const authResult = await withAuth(request);
-        if (authResult instanceof NextResponse) return authResult;
-        const userId = authResult.userId;
+        const userId = getUserIdFromRequest(request);
+        if (!userId) {
+            return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+        }
 
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
-        const scriptId = searchParams.get('scriptId');
 
-        let queryText = `
-            SELECT t.*, s.title as script_title, v.title as video_title 
-            FROM thumbnails t 
-            LEFT JOIN scripts s ON t.script_id = s.id 
-            LEFT JOIN videos v ON t.video_id = v.id 
-            WHERE t.user_id = $1
-        `;
+        let queryText = `SELECT t.*, s.title as script_title FROM thumbnails t LEFT JOIN scripts s ON t.script_id = s.id WHERE t.user_id = $1`;
         const params: (string | null)[] = [userId];
-        let paramIndex = 2;
 
-        if (status) {
-            queryText += ` AND t.status = $${paramIndex}`;
-            params.push(status);
-            paramIndex++;
-        }
-
-        if (scriptId) {
-            queryText += ` AND t.script_id = $${paramIndex}`;
-            params.push(scriptId);
-        }
-
+        if (status) { queryText += ` AND t.status = $2`; params.push(status); }
         queryText += ' ORDER BY t.created_at DESC';
 
         const result = await query(queryText, params);
-
-        const response = NextResponse.json(result.rows);
-        return withSecurityHeaders(response);
+        return withSecurityHeaders(NextResponse.json(result.rows));
     } catch (error) {
         console.error('Error fetching thumbnails:', error);
-        return withSecurityHeaders(
-            NextResponse.json({ error: 'Error al obtener miniaturas' }, { status: 500 })
-        );
+        return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener miniaturas' }, { status: 500 }));
     }
 }
 
-// POST - Crear nueva miniatura
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const authResult = await withAuth(request);
-        if (authResult instanceof NextResponse) return authResult;
-        const userId = authResult.userId;
+        const userId = getUserIdFromRequest(request);
+        if (!userId) {
+            return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+        }
 
         const body = await request.json();
         const data = validateInput(CreateThumbnailSchema, body);
 
         const result = await query(
-            `INSERT INTO thumbnails (user_id, script_id, video_id, title, notes, image_url)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             RETURNING *`,
-            [
-                userId,
-                data.scriptId || null,
-                data.videoId || null,
-                data.title,
-                data.notes || null,
-                data.imageUrl || null,
-            ]
+            `INSERT INTO thumbnails (user_id, script_id, video_id, title, notes, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [userId, data.scriptId || null, data.videoId || null, data.title, data.notes || null, data.imageUrl || null]
         );
 
-        const response = NextResponse.json(result.rows[0], { status: 201 });
-        return withSecurityHeaders(response);
+        return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
     } catch (error) {
         console.error('Error creating thumbnail:', error);
         if (error instanceof z.ZodError) {
-            return withSecurityHeaders(
-                NextResponse.json({ error: 'Datos inválidos', details: error.errors }, { status: 400 })
-            );
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
-        return withSecurityHeaders(
-            NextResponse.json({ error: 'Error al crear miniatura' }, { status: 500 })
-        );
+        return withSecurityHeaders(NextResponse.json({ error: 'Error al crear miniatura' }, { status: 500 }));
     }
 });
 
-// PUT - Actualizar miniatura
 export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const authResult = await withAuth(request);
-        if (authResult instanceof NextResponse) return authResult;
-        const userId = authResult.userId;
+        const userId = getUserIdFromRequest(request);
+        if (!userId) {
+            return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+        }
 
         const { searchParams } = new URL(request.url);
         const thumbnailId = searchParams.get('id');
-
         if (!thumbnailId) {
-            return withSecurityHeaders(
-                NextResponse.json({ error: 'ID de miniatura requerido' }, { status: 400 })
-            );
+            return withSecurityHeaders(NextResponse.json({ error: 'ID requerido' }, { status: 400 }));
         }
 
         const body = await request.json();
@@ -129,87 +104,50 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         const params: (string | null)[] = [];
         let paramIndex = 1;
 
-        if (data.title !== undefined) {
-            updates.push(`title = $${paramIndex++}`);
-            params.push(data.title);
-        }
-        if (data.notes !== undefined) {
-            updates.push(`notes = $${paramIndex++}`);
-            params.push(data.notes);
-        }
-        if (data.imageUrl !== undefined) {
-            updates.push(`image_url = $${paramIndex++}`);
-            params.push(data.imageUrl);
-        }
-        if (data.status !== undefined) {
-            updates.push(`status = $${paramIndex++}`);
-            params.push(data.status);
-        }
+        if (data.title !== undefined) { updates.push(`title = $${paramIndex++}`); params.push(data.title); }
+        if (data.notes !== undefined) { updates.push(`notes = $${paramIndex++}`); params.push(data.notes); }
+        if (data.imageUrl !== undefined) { updates.push(`image_url = $${paramIndex++}`); params.push(data.imageUrl); }
+        if (data.status !== undefined) { updates.push(`status = $${paramIndex++}`); params.push(data.status); }
 
         if (updates.length === 0) {
-            return withSecurityHeaders(
-                NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 })
-            );
+            return withSecurityHeaders(NextResponse.json({ error: 'No hay campos' }, { status: 400 }));
         }
 
         params.push(thumbnailId, userId);
-
-        const result = await query(
-            `UPDATE thumbnails SET ${updates.join(', ')} 
-             WHERE id = $${paramIndex++} AND user_id = $${paramIndex}
-             RETURNING *`,
-            params
-        );
+        const result = await query(`UPDATE thumbnails SET ${updates.join(', ')} WHERE id = $${paramIndex++} AND user_id = $${paramIndex} RETURNING *`, params);
 
         if (result.rows.length === 0) {
-            return withSecurityHeaders(
-                NextResponse.json({ error: 'Miniatura no encontrada' }, { status: 404 })
-            );
+            return withSecurityHeaders(NextResponse.json({ error: 'Miniatura no encontrada' }, { status: 404 }));
         }
 
-        const response = NextResponse.json(result.rows[0]);
-        return withSecurityHeaders(response);
+        return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
         console.error('Error updating thumbnail:', error);
-        return withSecurityHeaders(
-            NextResponse.json({ error: 'Error al actualizar miniatura' }, { status: 500 })
-        );
+        return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar miniatura' }, { status: 500 }));
     }
 });
 
-// DELETE
 export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const authResult = await withAuth(request);
-        if (authResult instanceof NextResponse) return authResult;
-        const userId = authResult.userId;
+        const userId = getUserIdFromRequest(request);
+        if (!userId) {
+            return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+        }
 
         const { searchParams } = new URL(request.url);
         const thumbnailId = searchParams.get('id');
-
         if (!thumbnailId) {
-            return withSecurityHeaders(
-                NextResponse.json({ error: 'ID de miniatura requerido' }, { status: 400 })
-            );
+            return withSecurityHeaders(NextResponse.json({ error: 'ID requerido' }, { status: 400 }));
         }
 
-        const result = await query(
-            'DELETE FROM thumbnails WHERE id = $1 AND user_id = $2 RETURNING id',
-            [thumbnailId, userId]
-        );
-
+        const result = await query('DELETE FROM thumbnails WHERE id = $1 AND user_id = $2 RETURNING id', [thumbnailId, userId]);
         if (result.rows.length === 0) {
-            return withSecurityHeaders(
-                NextResponse.json({ error: 'Miniatura no encontrada' }, { status: 404 })
-            );
+            return withSecurityHeaders(NextResponse.json({ error: 'Miniatura no encontrada' }, { status: 404 }));
         }
 
-        const response = NextResponse.json({ message: 'Miniatura eliminada' });
-        return withSecurityHeaders(response);
+        return withSecurityHeaders(NextResponse.json({ message: 'Miniatura eliminada' }));
     } catch (error) {
         console.error('Error deleting thumbnail:', error);
-        return withSecurityHeaders(
-            NextResponse.json({ error: 'Error al eliminar miniatura' }, { status: 500 })
-        );
+        return withSecurityHeaders(NextResponse.json({ error: 'Error al eliminar miniatura' }, { status: 500 }));
     }
 });
