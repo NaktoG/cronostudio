@@ -45,6 +45,60 @@ export class PostgresProductionRepository implements ProductionRepository {
         return result.rows.map(row => this.toDomain(row));
     }
 
+    /**
+     * Find productions with all related data (scripts, thumbnails, seo, shorts stats)
+     */
+    async findByUserWithDetails(userId: string, filters?: ProductionFilters): Promise<Production[]> {
+        let queryText = `
+            SELECT 
+                p.*,
+                c.name as channel_name,
+                i.title as idea_title,
+                s.title as script_title,
+                s.status as script_status,
+                t.status as thumbnail_status,
+                seo.score as seo_score,
+                (SELECT COUNT(*) FROM shorts sh WHERE sh.production_id = p.id) as shorts_count,
+                (SELECT COUNT(*) FROM shorts sh WHERE sh.production_id = p.id AND sh.status = 'published') as shorts_published,
+                (SELECT COUNT(*) FROM social_posts sp WHERE sp.production_id = p.id) as posts_count,
+                (SELECT COUNT(*) FROM social_posts sp WHERE sp.production_id = p.id AND sp.status = 'published') as posts_published
+            FROM productions p
+            LEFT JOIN channels c ON p.channel_id = c.id
+            LEFT JOIN ideas i ON p.idea_id = i.id
+            LEFT JOIN scripts s ON p.script_id = s.id
+            LEFT JOIN thumbnails t ON p.thumbnail_id = t.id
+            LEFT JOIN seo_data seo ON p.seo_id = seo.id
+            WHERE p.user_id = $1
+        `;
+        const params: (string | null)[] = [userId];
+        let paramIndex = 2;
+
+        if (filters?.status) {
+            queryText += ` AND p.status = $${paramIndex}`;
+            params.push(filters.status);
+            paramIndex++;
+        }
+
+        if (filters?.channelId) {
+            queryText += ` AND p.channel_id = $${paramIndex}`;
+            params.push(filters.channelId);
+        }
+
+        queryText += ' ORDER BY p.priority DESC, p.updated_at DESC';
+
+        try {
+            const result = await query(queryText, params);
+            return result.rows.map(row => this.toDomain(row));
+        } catch (error) {
+            // If related tables don't exist, fall back to simple query
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (errorMessage.includes('does not exist') || errorMessage.includes('relation')) {
+                return this.findByUser(userId, filters);
+            }
+            throw error;
+        }
+    }
+
     async create(input: CreateProductionInput): Promise<Production> {
         const result = await query(
             `INSERT INTO productions (user_id, channel_id, idea_id, title, description, priority, target_date)

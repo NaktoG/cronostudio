@@ -1,95 +1,59 @@
+// app/api/auth/login/route.ts
+// Refactored to use AuthService from Clean Architecture
+
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, LoginSchema } from '@/lib/validation';
 import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, LOGIN_RATE_LIMIT } from '@/middleware/rateLimit';
-import { query } from '@/lib/db';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import { logger } from '@/lib/logger';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
-const JWT_EXPIRES_IN = '7d';
+// Clean Architecture services
+import { AuthService, AuthError } from '@/application/services/AuthService';
+import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+
+// Dependency injection
+const userRepository = new PostgresUserRepository();
+const authService = new AuthService(userRepository);
 
 /**
  * POST /api/auth/login
- * Autentica un usuario existente
+ * Authenticate an existing user
  */
 export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const body = await request.json();
-
-        // Validar input
         const validatedData = validateInput(LoginSchema, body);
 
-        // Buscar usuario por email
-        const result = await query(
-            'SELECT id, email, password_hash, name FROM app_users WHERE email = $1',
-            [validatedData.email]
-        );
+        // Use AuthService for login
+        const result = await authService.login(validatedData.email, validatedData.password);
 
-        if (result.rows.length === 0) {
-            return NextResponse.json(
-                { error: 'Credenciales inválidas' },
-                { status: 401 }
-            );
-        }
+        logger.info('User logged in', { userId: result.user.id, email: result.user.email });
 
-        const user = result.rows[0];
-
-        // Verificar password
-        const isValidPassword = await bcrypt.compare(
-            validatedData.password,
-            user.password_hash
-        );
-
-        if (!isValidPassword) {
-            return NextResponse.json(
-                { error: 'Credenciales inválidas' },
-                { status: 401 }
-            );
-        }
-
-        // Generar JWT
-        const token = jwt.sign(
-            {
-                userId: user.id,
-                email: user.email,
+        const response = NextResponse.json({
+            message: 'Login exitoso',
+            user: {
+                id: result.user.id,
+                email: result.user.email,
+                name: result.user.name,
             },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRES_IN }
-        );
-
-        console.log('[POST /api/auth/login] Usuario autenticado:', {
-            id: user.id,
-            email: user.email,
+            token: result.token,
         });
-
-        const response = NextResponse.json(
-            {
-                message: 'Login exitoso',
-                user: {
-                    id: user.id,
-                    email: user.email,
-                    name: user.name,
-                },
-                token,
-            },
-            { status: 200 }
-        );
 
         return withSecurityHeaders(response);
     } catch (error) {
-        if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json(
-                { error: error.message },
-                { status: 400 }
-            );
+        // Handle AuthError
+        if (error instanceof AuthError) {
+            if (error.code === 'INVALID_CREDENTIALS') {
+                return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
+            }
         }
 
-        console.error('[POST /api/auth/login] Error:', error instanceof Error ? error.message : 'Unknown error');
+        // Handle validation errors
+        if (error instanceof Error && error.message.includes('Validation error')) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
 
-        return NextResponse.json(
-            { error: 'Error al iniciar sesión' },
-            { status: 500 }
-        );
+        logger.error('Login error', { error: String(error) });
+        return NextResponse.json({ error: 'Error al iniciar sesión' }, { status: 500 });
     }
 });
