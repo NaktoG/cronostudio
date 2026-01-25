@@ -58,9 +58,9 @@ export default function ProductionPipeline({ stats, onStageClick }: ProductionPi
                 <span className="text-sm text-gray-500">{total} contenidos</span>
             </div>
 
-            {/* Horizontal pipeline */}
+            {/* Pipeline Container - Responsive Grid/Flex */}
             <motion.div
-                className="flex items-stretch gap-2"
+                className="grid grid-cols-2 sm:grid-cols-3 md:flex md:items-stretch gap-2"
                 variants={containerVariants}
                 initial="hidden"
                 animate="visible"
@@ -73,9 +73,13 @@ export default function ProductionPipeline({ stats, onStageClick }: ProductionPi
                         <motion.button
                             key={stage.key}
                             onClick={() => hasItems && onStageClick?.(stage.key)}
-                            className={`flex-1 flex flex-col items-center justify-center py-4 px-2 rounded-xl transition-all ${hasItems
-                                    ? 'bg-gray-800/70 hover:bg-gray-800 cursor-pointer shadow-lg'
-                                    : 'bg-gray-900/40 cursor-default'
+                            className={`flex flex-col items-center justify-center py-4 px-2 rounded-xl transition-all ${hasItems
+                                ? 'bg-gray-800/70 hover:bg-gray-800 cursor-pointer shadow-lg'
+                                : 'bg-gray-900/40 cursor-default'
+                                } ${
+                                // Make last item span full width on odd grid counts if needed, 
+                                // but specifically for 7 items on 2-col grid, the last one is alone.
+                                index === STAGES.length - 1 ? 'col-span-2 sm:col-span-1 md:flex-1' : 'md:flex-1'
                                 }`}
                             variants={itemVariants}
                             whileHover={hasItems ? { scale: 1.03, y: -2 } : {}}
@@ -102,8 +106,8 @@ export default function ProductionPipeline({ stats, onStageClick }: ProductionPi
                 })}
             </motion.div>
 
-            {/* Flow indicator */}
-            <div className="flex items-center justify-center gap-1 mt-4 text-gray-600">
+            {/* Flow indicator - Only visible on desktop */}
+            <div className="hidden md:flex items-center justify-center gap-1 mt-4 text-gray-600">
                 {STAGES.map((stage, i) => (
                     <span key={stage.key} className="flex items-center">
                         <span className="text-base">{stage.icon}</span>
