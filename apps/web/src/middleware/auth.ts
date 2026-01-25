@@ -3,8 +3,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
+import { config } from '@/lib/config';
+import { logger } from '@/lib/logger';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const JWT_SECRET = config.jwt.secret;
+
 
 export interface JWTPayload {
   userId: string;
@@ -68,7 +71,7 @@ export function withAuth(handler: Function) {
         );
       }
 
-      console.error('[Auth Middleware] Error:', error);
+      logger.error('[Auth Middleware] Token verification failed', { error: String(error) });
       return NextResponse.json(
         {
           error: 'Error de autenticación',
