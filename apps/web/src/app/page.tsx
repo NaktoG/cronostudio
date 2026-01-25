@@ -1,190 +1,256 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
-import { PageTransition, StaggerContainer, StaggerItem, staggerItem } from './components/Animations';
+import { PageTransition } from './components/Animations';
+import PriorityActions from './components/PriorityActions';
+import ProductionPipeline from './components/ProductionPipeline';
+import ProductionsList, { Production } from './components/ProductionsList';
+import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
+import { useAuth } from './contexts/AuthContext';
 
-interface Channel {
-  id: string;
-  name: string;
-  youtube_channel_id: string;
+interface PipelineStats {
+  idea: number;
+  scripting: number;
+  recording: number;
+  editing: number;
+  shorts: number;
+  publishing: number;
+  published: number;
 }
 
-const MODULES = [
-  { href: '/ideas', icon: '💡', title: 'Ideas', description: 'Apunta ideas para tus próximos videos', color: 'from-yellow-500/20 to-yellow-600/5' },
-  { href: '/scripts', icon: '📝', title: 'Guiones', description: 'Escribe y organiza tus guiones', color: 'from-blue-500/20 to-blue-600/5' },
-  { href: '/thumbnails', icon: '🖼️', title: 'Miniaturas', description: 'Gestiona tus thumbnails', color: 'from-purple-500/20 to-purple-600/5' },
-  { href: '/seo', icon: '🔍', title: 'SEO', description: 'Optimiza títulos, tags y descripciones', color: 'from-green-500/20 to-green-600/5' },
-  { href: '/channels', icon: '📺', title: 'Canales', description: 'Administra tus canales de YouTube', color: 'from-red-500/20 to-red-600/5' },
-  { href: '/analytics', icon: '📊', title: 'Analytics', description: 'Visualiza métricas y rendimiento', color: 'from-cyan-500/20 to-cyan-600/5' },
-];
+interface PriorityAction {
+  id: string;
+  type: 'script' | 'seo' | 'thumbnail' | 'short' | 'publish';
+  title: string;
+  productionTitle: string;
+  productionId: string;
+  urgency: 'high' | 'medium' | 'low';
+}
+
+function generatePriorityActions(productions: Production[]): PriorityAction[] {
+  const actions: PriorityAction[] = [];
+  for (const prod of productions) {
+    if (prod.status === 'scripting' && (!prod.script_status || prod.script_status === 'draft')) {
+      actions.push({ id: prod.id, type: 'script', title: 'Continuar guión', productionTitle: prod.title, productionId: prod.id, urgency: 'high' });
+    }
+    if ((prod.status === 'editing' || prod.status === 'shorts') && (!prod.thumbnail_status || prod.thumbnail_status === 'pending')) {
+      actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: 'Subir miniatura', productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
+    }
+    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < 60)) {
+      actions.push({ id: `${prod.id}-seo`, type: 'seo', title: 'Optimizar SEO', productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
+    }
+    if (prod.status === 'shorts' && prod.shorts_count === 0) {
+      actions.push({ id: `${prod.id}-short`, type: 'short', title: 'Crear shorts', productionTitle: prod.title, productionId: prod.id, urgency: 'low' });
+    }
+  }
+  const urgencyOrder = { high: 0, medium: 1, low: 2 };
+  return actions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]).slice(0, 5);
+}
 
 export default function Dashboard() {
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const { token, isAuthenticated } = useAuth();
+  const [productions, setProductions] = useState<Production[]>([]);
+  const [pipelineStats, setPipelineStats] = useState<PipelineStats>({
+    idea: 0, scripting: 0, recording: 0, editing: 0, shorts: 0, publishing: 0, published: 0
+  });
+  const [runs, setRuns] = useState<AutomationRun[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+
+  const authFetch = useCallback(async (url: string, options: RequestInit = {}) => {
+    const headers = new Headers(options.headers);
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    headers.set('Content-Type', 'application/json');
+    return fetch(url, { ...options, headers });
+  }, [token]);
+
+  const fetchData = useCallback(async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const res = await authFetch('/api/productions?stats=true');
+      if (res.ok) {
+        const data = await res.json();
+        setProductions(data.productions || []);
+        if (data.pipeline) {
+          setPipelineStats({
+            idea: data.pipeline.idea || 0,
+            scripting: data.pipeline.scripting || 0,
+            recording: data.pipeline.recording || 0,
+            editing: data.pipeline.editing || 0,
+            shorts: data.pipeline.shorts || 0,
+            publishing: data.pipeline.publishing || 0,
+            published: data.pipeline.published || 0,
+          });
+        }
+      }
+      setRuns([]);
+    } catch (e) {
+      console.error('Error:', e);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, authFetch]);
 
   useEffect(() => {
-    const fetchChannels = async () => {
-      try {
-        const response = await fetch('/api/channels');
-        if (response.ok) {
-          const data = await response.json();
-          setChannels(data);
-        }
-      } catch (error) {
-        console.error('Error fetching channels:', error);
-      } finally {
-        setLoading(false);
+    if (isAuthenticated) fetchData();
+    else setLoading(false);
+  }, [isAuthenticated, fetchData]);
+
+  const handleCreate = async () => {
+    if (!newTitle.trim()) return;
+    try {
+      const res = await authFetch('/api/productions', {
+        method: 'POST',
+        body: JSON.stringify({ title: newTitle }),
+      });
+      if (res.ok) {
+        setNewTitle('');
+        setShowModal(false);
+        fetchData();
       }
-    };
-    fetchChannels();
-  }, []);
+    } catch (e) {
+      console.error('Error:', e);
+    }
+  };
+
+  const priorityActions = generatePriorityActions(productions);
+  const activeProductions = productions.filter(p => p.status !== 'published');
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-black flex flex-col">
         <Header />
         <PageTransition className="flex-1">
-          <main className="max-w-7xl mx-auto px-6 py-12 w-full">
-            {/* Welcome Section */}
+          <main className="w-full px-4 md:px-8 lg:px-12 py-8">
+            {/* Header */}
             <motion.div
-              className="mb-10"
-              initial={{ opacity: 0, y: -30 }}
+              className="mb-8"
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
+              transition={{ duration: 0.3 }}
             >
-              <h2 className="text-4xl font-bold text-white mb-2">Dashboard</h2>
-              <p className="text-gray-400">Gestiona tu contenido de YouTube desde un solo lugar</p>
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Hoy en tu producción</h1>
+              <p className="text-lg text-gray-400">Tu centro de control de contenido</p>
             </motion.div>
 
-            {/* Module Cards with Stagger Animation */}
-            <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-              {MODULES.map((module) => (
-                <StaggerItem key={module.href}>
-                  <Link href={module.href}>
-                    <motion.div
-                      className={`bg-gradient-to-br ${module.color} border border-yellow-500/10 rounded-xl p-6 hover:border-yellow-500/40 transition-colors cursor-pointer group h-full`}
-                      whileHover={{ y: -6, scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                    >
-                      <motion.div
-                        className="text-4xl mb-4"
-                        whileHover={{ scale: 1.2, rotate: [0, -10, 10, 0] }}
-                        transition={{ duration: 0.3 }}
-                      >
-                        {module.icon}
-                      </motion.div>
-                      <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">
-                        {module.title}
-                      </h3>
-                      <p className="text-gray-400 text-sm">{module.description}</p>
-                    </motion.div>
-                  </Link>
-                </StaggerItem>
-              ))}
-            </StaggerContainer>
-
-            {/* Recent Channels Section */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-white">Tus Canales</h3>
-                <Link
-                  href="/channels"
-                  className="text-yellow-400 hover:text-yellow-300 text-sm flex items-center gap-1 group"
-                >
-                  Ver todos
-                  <motion.svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    whileHover={{ x: 4 }}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </motion.svg>
-                </Link>
+            {loading ? (
+              <div className="flex justify-center py-20">
+                <motion.div
+                  className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                />
               </div>
+            ) : (
+              <div className="space-y-8">
+                {/* Pipeline */}
+                <ProductionPipeline stats={pipelineStats} />
 
-              {loading ? (
-                <div className="flex justify-center py-10">
-                  <motion.div
-                    className="w-10 h-10 border-4 border-yellow-400 border-t-transparent rounded-full"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                {/* Main grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  <PriorityActions
+                    actions={priorityActions}
+                    onCreateNew={() => setShowModal(true)}
                   />
-                </div>
-              ) : channels.length === 0 ? (
-                <motion.div
-                  className="bg-gray-900/50 border border-yellow-500/10 rounded-xl p-8 text-center"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.6 }}
-                >
-                  <motion.div
-                    className="text-4xl mb-4"
-                    animate={{ y: [0, -10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    📺
-                  </motion.div>
-                  <h4 className="text-lg font-semibold text-white mb-2">No hay canales todavía</h4>
-                  <p className="text-gray-400 mb-4">Añade tu primer canal de YouTube para empezar</p>
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Link
-                      href="/channels"
-                      className="inline-block px-6 py-2 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 transition-all"
-                    >
-                      Añadir Canal
-                    </Link>
-                  </motion.div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                  variants={{
-                    animate: { transition: { staggerChildren: 0.1, delayChildren: 0.6 } }
-                  }}
-                  initial="initial"
-                  animate="animate"
-                >
-                  {channels.slice(0, 3).map((channel) => (
+
+                  <ProductionsList
+                    productions={activeProductions}
+                    onCreateNew={() => setShowModal(true)}
+                  />
+
+                  <div className="space-y-6">
+                    <AutomationRuns runs={runs} />
+
+                    {/* Stats */}
                     <motion.div
-                      key={channel.id}
-                      className="bg-gray-900/50 border border-yellow-500/10 rounded-xl p-5 hover:border-yellow-500/30 transition-all cursor-pointer"
-                      variants={staggerItem}
-                      whileHover={{ x: 6, borderColor: 'rgba(250, 204, 21, 0.4)' }}
-                      transition={{ type: 'spring', stiffness: 300 }}
+                      className="bg-gray-900/50 border border-gray-800 rounded-xl p-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">📈 Resumen</div>
+                      <div className="grid grid-cols-3 gap-6 text-center">
                         <motion.div
-                          className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center text-2xl"
-                          whileHover={{ rotate: 360 }}
-                          transition={{ duration: 0.5 }}
+                          whileHover={{ scale: 1.05 }}
                         >
-                          📺
+                          <div className="text-4xl font-bold text-white">{productions.length}</div>
+                          <div className="text-base text-gray-500">Total</div>
                         </motion.div>
-                        <div>
-                          <h4 className="font-semibold text-white">{channel.name}</h4>
-                          <p className="text-xs text-gray-500 font-mono">{channel.youtube_channel_id}</p>
-                        </div>
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                        >
+                          <div className="text-4xl font-bold text-yellow-400">{activeProductions.length}</div>
+                          <div className="text-base text-gray-500">Activos</div>
+                        </motion.div>
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                        >
+                          <div className="text-4xl font-bold text-green-400">{pipelineStats.published}</div>
+                          <div className="text-base text-gray-500">Publicados</div>
+                        </motion.div>
                       </div>
                     </motion.div>
-                  ))}
-                </motion.div>
-              )}
-            </motion.div>
+                  </div>
+                </div>
+              </div>
+            )}
           </main>
         </PageTransition>
         <Footer />
+
+        {/* Modal */}
+        {showModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onClick={() => setShowModal(false)}
+          >
+            <motion.div
+              className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-2xl font-bold text-white mb-5">🎬 Nuevo contenido</h3>
+              <input
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Título del contenido..."
+                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-lg text-white placeholder-gray-500 focus:border-yellow-500 focus:outline-none mb-5"
+                autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+              />
+              <div className="flex gap-4">
+                <motion.button
+                  onClick={() => setShowModal(false)}
+                  className="flex-1 px-5 py-3 text-base border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Cancelar
+                </motion.button>
+                <motion.button
+                  onClick={handleCreate}
+                  className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  Crear contenido
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </div>
     </ProtectedRoute>
   );
