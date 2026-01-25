@@ -2,209 +2,227 @@
   <img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js" alt="Next.js 14">
   <img src="https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript" alt="TypeScript 5">
   <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/Clean_Architecture-Enabled-success?style=for-the-badge&logo=structure" alt="Clean Architecture">
   <img src="https://img.shields.io/badge/n8n-Automation-EA4B71?style=for-the-badge&logo=n8n" alt="n8n">
-  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
 </p>
 
 <h1 align="center">🎬 CronoStudio</h1>
 
 <p align="center">
-  <strong>Production Management System for YouTube Creators</strong><br>
+  <strong>Sistema de Gestión de Producción para Creadores de Contenido</strong><br>
   Local-first SaaS • Dashboard • Automation • Analytics
 </p>
 
 <p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-stack">Stack</a> •
-  <a href="#-documentation">Docs</a>
+  <a href="#-sobre-el-proyecto">Proyecto</a> •
+  <a href="#-características">Características</a> •
+  <a href="#-arquitectura">Arquitectura</a> •
+  <a href="#-instalación">Instalación</a> •
+  <a href="#-documentación">Docs</a>
 </p>
 
 ---
 
-## 🎯 Overview
+## 📋 Tabla de Contenidos
 
-**CronoStudio** is a complete production management system designed for YouTube content creators. It provides a unified dashboard to track your content pipeline from idea to publication, with integrated automation via n8n.
-
-### Why CronoStudio?
-
-- **100% Local**: No cloud dependencies, your data stays on your machine
-- **Production Pipeline**: Visual tracking from idea → script → recording → editing → publication
-- **Automation Ready**: n8n integration for SEO, thumbnails, scheduling, and more
-- **Multi-Channel**: Manage multiple YouTube channels from one dashboard
+- [Sobre el Proyecto](#-sobre-el-proyecto)
+- [Características Principales](#-características-principales)
+- [Tecnologías Utilizadas](#-tecnologías-utilizadas)
+- [Arquitectura](#-arquitectura)
+- [Seguridad](#-seguridad)
+- [Requisitos Previos](#-requisitos-previos)
+- [Instalación](#-instalación)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Mejores Prácticas](#-mejores-prácticas)
+- [Contribuir](#-contribuir)
+- [Licencia](#-licencia)
 
 ---
 
-## ✨ Features
+## 🎯 Sobre el Proyecto
 
-| Module | Description | Status |
+**CronoStudio** es un sistema integral de gestión de producción diseñado específicamente para creadores de contenido en YouTube. Proporciona un dashboard unificado para rastrear el flujo de contenido desde la idea inicial hasta la publicación, con automatización integrada vía n8n.
+
+### ¿Por qué este proyecto?
+
+- **100% Local**: Sin dependencias de nube, tus datos permanecen en tu máquina.
+- **Pipeline Visual**: Seguimiento visual desde idea → guion → grabación → edición → publicación.
+- **Automatización**: Integración nativa con n8n para SEO, miniaturas y scheduling.
+- **Multi-Canal**: Gestión centralizada de múltiples canales de YouTube.
+
+---
+
+## 🚀 Características Principales
+
+| Módulo | Descripción | Estado |
 |--------|-------------|--------|
-| 🏠 **Dashboard** | Production pipeline, priority actions, automations | ✅ Ready |
-| 💡 **Ideas** | Idea bank with AI evaluation and categorization | ✅ Ready |
-| 📝 **Scripts** | Script editor with structure templates | ✅ Ready |
-| 🖼️ **Thumbnails** | Thumbnail management and A/B testing | 🔄 In Progress |
-| 🔍 **SEO** | Title, description, tags optimization | 🔄 In Progress |
-| 📺 **Channels** | Multi-channel management and analytics | ✅ Ready |
-| 📊 **Analytics** | YouTube API integration for metrics | ✅ Ready |
-| ⚡ **Automations** | n8n workflows for content pipeline | 🔄 In Progress |
+| 🏠 **Dashboard** | Vista general del pipeline, acciones prioritarias | ✅ Ready |
+| 💡 **Ideas** | Banco de ideas con evaluación IA y categorización | ✅ Ready |
+| 📝 **Producción** | Pipeline completo (Scripting, Recording, Editing) | ✅ Ready |
+| 📺 **Canales** | Gestión multi-canal y métricas | ✅ Ready |
+| 🔐 **Seguridad** | Autenticación JWT, Rate Limiting, Validación Zod | ✅ Ready |
+| 🤖 **Automatización** | Workflows de n8n integrados | 🔄 In Progress |
 
 ---
 
-## 🚀 Quick Start
+## 🛠 Tecnologías Utilizadas
 
-### Prerequisites
+### Frontend
+- **Next.js 14** (App Router)
+- **TypeScript** (Strict Mode)
+- **Tailwind CSS** (Styling)
+- **Framer Motion** (Animations)
+- **Lucide React** (Icons)
+
+### Backend
+- **Next.js API Routes**
+- **PostgreSQL 16**
+- **JWT** (Stateless Auth)
+- **Zod** (Validation)
+
+### Infraestructura
+- **Docker Compose**
+- **n8n** (Workflow Automation)
+- **Vitest** (Unit Testing)
+
+---
+
+## 🏗 Arquitectura
+
+El proyecto sigue una **Clean Architecture** estricta para garantizar mantenibilidad y escalabilidad.
+
+```mermaid
+graph TD
+    subgraph "Infrastructure Layer (DB, External APIs)"
+        DB[(PostgreSQL)]
+        YouTube[YouTube API]
+        RepoImpl[PostgresRepositories]
+    end
+
+    subgraph "Application Layer (Business Rules)"
+        AuthService[AuthService]
+        UseCases[Use Cases<br/>(CreateIdea, ListProduction...)]
+    end
+
+    subgraph "Domain Layer (Enterprise Rules)"
+        Entities[Entities<br/>(User, Idea, Production)]
+        Repos[Repository Interfaces]
+        ValueObjects[Value Objects]
+    end
+
+    subgraph "Presentation Layer (Web)"
+        Pages[Next.js Pages]
+        API[API Routes]
+    end
+
+    API --> UseCases
+    UseCases --> Repos
+    UseCases --> Entities
+    RepoImpl -.-> Repos
+    RepoImpl --> DB
+```
+
+Ver [ARCHITECTURE.md](docs/ARCHITECTURE.md) para más detalles.
+
+---
+
+## 🔒 Seguridad
+
+- **Autenticación**: JWT con rotación y almacenamiento seguro.
+- **Validación**: Zod schemas para todos los inputs.
+- **Protección**: Rate Limiting (Redis/Memory), Headers de seguridad (Helmet).
+- **Base de Datos**: Queries parametrizadas para evitar SQL Injection.
+
+---
+
+## 📦 Requisitos Previos
 
 - [Docker Desktop](https://docker.com/products/docker-desktop) v24+
 - [Node.js](https://nodejs.org) v20+ (LTS)
-- [pnpm](https://pnpm.io) v8+
-- External SSD (recommended for assets)
-
-### Installation
-
-```bash
-# 1. Clone the repository
-git clone https://github.com/NaktoG/cronostudio.git
-cd cronostudio
-
-# 2. Start infrastructure (PostgreSQL, n8n)
-docker compose -f infra/docker/compose.yml up -d
-
-# 3. Install dependencies
-pnpm install
-
-# 4. Configure environment
-cp apps/web/.env.example apps/web/.env.local
-# Edit .env.local with your settings
-
-# 5. Run database migrations
-docker exec -i cronostudio-postgres psql -U crono -d cronostudio < infra/docker/init.sql
-
-# 6. Start development server
-pnpm dev
-```
-
-**Access:**
-| Service | URL |
-|---------|-----|
-| Dashboard | http://localhost:3001 |
-| n8n | http://localhost:5678 |
-| PostgreSQL | localhost:5432 |
+- [npm](https://npmjs.com) v10+
 
 ---
 
-## 🏗️ Architecture
+## 🚀 Instalación
+
+1. **Clonar el repositorio**
+   ```bash
+   git clone https://github.com/NaktoG/cronostudio.git
+   cd cronostudio
+   ```
+
+2. **Iniciar infraestructura**
+   ```bash
+   docker compose -f infra/docker/compose.yml up -d
+   ```
+
+3. **Instalar dependencias**
+   ```bash
+   cd apps/web
+   npm install
+   ```
+
+4. **Configurar entorno**
+   ```bash
+   cp .env.example .env.local
+   # Editar variables de entorno
+   ```
+
+5. **Iniciar desarrollo**
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## 📁 Estructura del Proyecto
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        CRONOSTUDIO                          │
-├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
-│  │   Dashboard     │  │   n8n Agents    │  │  YouTube    │ │
-│  │   (Next.js)     │◄─┤   (Automation)  │◄─┤  API        │ │
-│  │   Port: 3001    │  │   Port: 5678    │  │             │ │
-│  └────────┬────────┘  └────────┬────────┘  └─────────────┘ │
-│           │                    │                            │
-│           ▼                    ▼                            │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │              PostgreSQL Database                        ││
-│  │              Port: 5432                                 ││
-│  │  [users] [channels] [productions] [ideas] [scripts]... ││
-│  └─────────────────────────────────────────────────────────┘│
-│           │                                                 │
-│           ▼                                                 │
-│  ┌─────────────────────────────────────────────────────────┐│
-│  │              External SSD Storage                       ││
-│  │  /Volumes/SSD-QVO/cronostudio/assets                   ││
-│  │  [videos] [thumbnails] [exports] [backups]             ││
-│  └─────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────┘
+apps/web/src/
+├── app/                    # Next.js App Router
+│   ├── api/                # API Routes (Presentation Layer)
+│   └── (routes)/           # Pages & Layouts
+├── application/            # Application Layer
+│   ├── usecases/           # Casos de uso de negocio
+│   └── services/           # Servicios de aplicación (Auth)
+├── domain/                 # Domain Layer (Core)
+│   ├── entities/           # Definiciones de entidades
+│   ├── repositories/       # Interfaces de repositorios
+│   └── value-objects/      # Objetos de valor inmutables
+├── infrastructure/         # Infrastructure Layer
+│   └── repositories/       # Implementaciones PostgreSQL
+├── middleware/             # Middleware de Next.js (Auth, RateLimit)
+└── lib/                    # Utilidades compartidas
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## ✅ Mejores Prácticas
 
-### Frontend
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Utility-first styling
-- **Framer Motion** - Smooth animations
-
-### Backend
-- **Next.js API Routes** - REST endpoints
-- **PostgreSQL 16** - Relational database
-- **JWT** - Authentication tokens
-
-### Infrastructure
-- **Docker Compose** - Local containerization
-- **n8n** - Workflow automation
-- **External SSD** - Fast asset storage
+- **Clean Architecture**: Separación estricta de responsabilidades.
+- **FDD (Feature Driven Development)**: Desarrollo guiado por features y tests.
+- **SOLID**: Principios de diseño aplicados en el backend.
+- **Conventional Commits**: Historial de git estandarizado.
 
 ---
 
-## 📁 Project Structure
+## 🤝 Contribuir
 
-```
-cronostudio/
-├── apps/
-│   └── web/                    # Next.js application
-│       ├── src/app/
-│       │   ├── api/            # API routes
-│       │   ├── components/     # React components
-│       │   ├── contexts/       # React contexts
-│       │   └── [pages]/        # Page routes
-│       └── public/             # Static assets
-├── infra/
-│   └── docker/
-│       ├── compose.yml         # Docker Compose config
-│       ├── init.sql            # Database schema
-│       └── migration_*.sql     # Migrations
-├── docs/
-│   ├── SETUP.md                # Installation guide
-│   └── RUNBOOK.md              # Operations manual
-└── assets/                     # Media files (on SSD)
-```
+1. Fork el proyecto
+2. Crea tu rama de feature (`git checkout -b feat/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'feat: Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feat/AmazingFeature`)
+5. Abre un Pull Request
 
 ---
 
-## 📖 Documentation
+## 📄 Licencia
 
-| Document | Description |
-|----------|-------------|
-| [SETUP.md](docs/SETUP.md) | Complete installation guide |
-| [RUNBOOK.md](docs/RUNBOOK.md) | Daily operations, backups, troubleshooting |
-| [API.md](docs/API.md) | API endpoints reference |
-
----
-
-## 🔐 Security
-
-- JWT-based authentication with httpOnly cookies
-- Password hashing with bcrypt (12 rounds)
-- CORS protection enabled
-- Rate limiting on API endpoints
-- Input validation with Zod schemas
-
----
-
-## 🗺️ Roadmap
-
-- [ ] YouTube Data API integration
-- [ ] AI-powered SEO suggestions
-- [ ] Thumbnail A/B testing automation
-- [ ] Multi-language support
-- [ ] Mobile companion app
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
 
 ---
 
 <p align="center">
-  Made with ❤️ for YouTube Creators<br>
+  Made with ❤️ for Creators<br>
   <strong>CronoStudio</strong> © 2025
 </p>
