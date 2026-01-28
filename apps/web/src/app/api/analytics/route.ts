@@ -3,13 +3,32 @@ import { validateInput, CreateAnalyticsSchema, AnalyticsQuerySchema } from '@/li
 import { withSecurityHeaders, withAuth, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { query } from '@/lib/db';
+import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+import { AuthService } from '@/application/services/AuthService';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/analytics
  * Obtiene analytics con filtros y agregación
  */
+/**
+ * GET /api/analytics
+ * Obtiene analytics con filtros y agregación, limitado a los recursos del usuario autenticado
+ */
 export async function GET(request: NextRequest) {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
+        // Autenticación requerida
+        const authHeader = request.headers.get('Authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(request.url);
 
         // Parsear y validar query params
@@ -27,7 +46,7 @@ export async function GET(request: NextRequest) {
         const groupBy = queryParams.groupBy ?? 'day';
 
         if (queryParams.channelId) {
-            // Analytics por canal (agregado de todos los videos del canal)
+            // Analytics por canal -> Verificar pertenencia
             queryText = `
                 SELECT 
                     DATE_TRUNC($1, a.date) as period,
@@ -37,10 +56,11 @@ export async function GET(request: NextRequest) {
                     COUNT(DISTINCT a.video_id) as videos_count
                 FROM analytics a
                 JOIN videos v ON a.video_id = v.id
-                WHERE v.channel_id = $2
+                JOIN channels c ON v.channel_id = c.id
+                WHERE c.id = $2 AND c.user_id = $3
             `;
-            params.push(groupBy, queryParams.channelId);
-            paramIndex = 3;
+            params.push(groupBy, queryParams.channelId, userId);
+            paramIndex = 4;
 
             if (queryParams.startDate) {
                 queryText += ` AND a.date >= $${paramIndex++}`;
@@ -54,7 +74,7 @@ export async function GET(request: NextRequest) {
             queryText += ` GROUP BY period ORDER BY period DESC LIMIT 100`;
 
         } else if (queryParams.videoId) {
-            // Analytics por video específico
+            // Analytics por video -> Verificar pertenencia del canal del video
             queryText = `
                 SELECT 
                     DATE_TRUNC($1, a.date) as period,
@@ -62,10 +82,12 @@ export async function GET(request: NextRequest) {
                     SUM(a.watch_time_minutes) as total_watch_time,
                     AVG(a.avg_view_duration_seconds)::int as avg_duration
                 FROM analytics a
-                WHERE a.video_id = $2
+                JOIN videos v ON a.video_id = v.id
+                JOIN channels c ON v.channel_id = c.id
+                WHERE a.video_id = $2 AND c.user_id = $3
             `;
-            params.push(groupBy, queryParams.videoId);
-            paramIndex = 3;
+            params.push(groupBy, queryParams.videoId, userId);
+            paramIndex = 4;
 
             if (queryParams.startDate) {
                 queryText += ` AND a.date >= $${paramIndex++}`;
@@ -79,7 +101,7 @@ export async function GET(request: NextRequest) {
             queryText += ` GROUP BY period ORDER BY period DESC LIMIT 100`;
 
         } else {
-            // Summary general (todos los canales)
+            // Summary general -> Todos los canales del usuario
             queryText = `
                 SELECT 
                     DATE_TRUNC($1, a.date) as period,
@@ -90,10 +112,11 @@ export async function GET(request: NextRequest) {
                     COUNT(DISTINCT v.channel_id) as channels_count
                 FROM analytics a
                 JOIN videos v ON a.video_id = v.id
-                WHERE 1=1
+                JOIN channels c ON v.channel_id = c.id
+                WHERE c.user_id = $2
             `;
-            params.push(groupBy);
-            paramIndex = 2;
+            params.push(groupBy, userId);
+            paramIndex = 3;
 
             if (queryParams.startDate) {
                 queryText += ` AND a.date >= $${paramIndex++}`;
@@ -142,30 +165,41 @@ export async function GET(request: NextRequest) {
  * POST /api/analytics
  * Registra métricas de analytics (requiere autenticación)
  */
-export const POST = rateLimit(API_RATE_LIMIT)(
-    withAuth(async (request: NextRequest) => {
-        try {
-            const body = await request.json();
+export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
 
-            // Validar input
-            const validatedData = validateInput(CreateAnalyticsSchema, body);
+    try {
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
 
-            // Verificar que el video existe
-            const videoCheck = await query(
-                'SELECT id FROM videos WHERE id = $1',
-                [validatedData.videoId]
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await request.json();
+
+        // Validar input
+        const validatedData = validateInput(CreateAnalyticsSchema, body);
+
+        // Verificar que el video existe Y pertenece al usuario
+        const videoCheck = await query(
+            `SELECT v.id FROM videos v 
+             JOIN channels c ON v.channel_id = c.id
+             WHERE v.id = $1 AND c.user_id = $2`,
+            [validatedData.videoId, userId]
+        );
+
+        if (videoCheck.rows.length === 0) {
+            return NextResponse.json(
+                { error: 'Video no encontrado o no autorizado' },
+                { status: 404 }
             );
+        }
 
-            if (videoCheck.rows.length === 0) {
-                return NextResponse.json(
-                    { error: 'Video no encontrado' },
-                    { status: 404 }
-                );
-            }
-
-            // Upsert: insertar o actualizar si ya existe para esa fecha
-            const result = await query(
-                `INSERT INTO analytics (video_id, date, views, watch_time_minutes, avg_view_duration_seconds) 
+        // Upsert: insertar o actualizar si ya existe para esa fecha
+        const result = await query(
+            `INSERT INTO analytics (video_id, date, views, watch_time_minutes, avg_view_duration_seconds) 
                  VALUES ($1, $2, $3, $4, $5)
                  ON CONFLICT (video_id, date) 
                  DO UPDATE SET 
@@ -173,42 +207,40 @@ export const POST = rateLimit(API_RATE_LIMIT)(
                     watch_time_minutes = $4,
                     avg_view_duration_seconds = $5
                  RETURNING id, video_id, date, views, watch_time_minutes, avg_view_duration_seconds, created_at`,
-                [
-                    validatedData.videoId,
-                    validatedData.date,
-                    validatedData.views,
-                    validatedData.watchTimeMinutes,
-                    validatedData.avgViewDurationSeconds,
-                ]
-            );
+            [
+                validatedData.videoId,
+                validatedData.date,
+                validatedData.views,
+                validatedData.watchTimeMinutes,
+                validatedData.avgViewDurationSeconds,
+            ]
+        );
 
-            const user = getAuthUser(request);
-            console.log('[POST /api/analytics] Analytics registrado:', {
-                id: result.rows[0].id,
-                videoId: validatedData.videoId,
-                date: validatedData.date,
-                by: user?.email,
-            });
+        console.log('[POST /api/analytics] Analytics registrado:', {
+            id: result.rows[0].id,
+            videoId: validatedData.videoId,
+            date: validatedData.date,
+            userId: userId,
+        });
 
-            const response = NextResponse.json(result.rows[0], { status: 201 });
-            return withSecurityHeaders(response);
-        } catch (error) {
-            if (error instanceof Error && error.message.includes('Validation error')) {
-                return NextResponse.json(
-                    { error: error.message },
-                    { status: 400 }
-                );
-            }
-
-            console.error('[POST /api/analytics] Error:', error instanceof Error ? error.message : 'Unknown error');
-
+        const response = NextResponse.json(result.rows[0], { status: 201 });
+        return withSecurityHeaders(response);
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('Validation error')) {
             return NextResponse.json(
-                { error: 'Error al registrar analytics' },
-                { status: 500 }
+                { error: error.message },
+                { status: 400 }
             );
         }
-    })
-);
+
+        console.error('[POST /api/analytics] Error:', error instanceof Error ? error.message : 'Unknown error');
+
+        return NextResponse.json(
+            { error: 'Error al registrar analytics' },
+            { status: 500 }
+        );
+    }
+});
 
 /**
  * OPTIONS /api/analytics

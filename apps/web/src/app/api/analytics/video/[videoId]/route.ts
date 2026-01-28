@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withSecurityHeaders } from '@/middleware/auth';
 import { query } from '@/lib/db';
+import { AuthService } from '@/application/services/AuthService';
+import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+
+export const dynamic = 'force-dynamic';
+
+
 
 interface RouteParams {
     params: Promise<{ videoId: string }>;
@@ -8,25 +14,35 @@ interface RouteParams {
 
 /**
  * GET /api/analytics/video/[videoId]
- * Obtiene analytics detallados de un video específico
+ * Obtiene analytics detallados de un video específico (requiere autenticación)
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { videoId } = await params;
         const { searchParams } = new URL(request.url);
 
         const startDate = searchParams.get('startDate');
         const endDate = searchParams.get('endDate');
 
-        // Verificar que el video existe y obtener info
+        // Verificar que el video existe y PERTENECE al usuario (via channel)
         const videoResult = await query(
             `SELECT v.id, v.title, v.youtube_video_id, v.views as current_views, 
                     v.likes as current_likes, v.comments as current_comments,
                     c.name as channel_name
              FROM videos v
              JOIN channels c ON v.channel_id = c.id
-             WHERE v.id = $1`,
-            [videoId]
+             WHERE v.id = $1 AND c.user_id = $2`,
+            [videoId, userId]
         );
 
         if (videoResult.rows.length === 0) {

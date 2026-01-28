@@ -8,6 +8,8 @@ import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { validateInput } from '@/lib/validation';
 import { logger } from '@/lib/logger';
 
+export const dynamic = 'force-dynamic';
+
 // UseCases & Infrastructure
 import { CreateProductionUseCase } from '@/application/usecases/production/CreateProductionUseCase';
 import { ListProductionsUseCase } from '@/application/usecases/production/ListProductionsUseCase';
@@ -37,13 +39,11 @@ const UpdateProductionSchema = z.object({
     targetDate: z.string().optional().nullable(),
 });
 
-// Dependency injection
-const productionRepository = new PostgresProductionRepository();
-const userRepository = new PostgresUserRepository();
-const authService = new AuthService(userRepository);
-
 // Helper to extract userId
 function getUserId(request: NextRequest): string | null {
+    // Instantiate dependencies locally as top-level instantiations were removed
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
     const authHeader = request.headers.get('authorization');
     return authService.extractUserIdFromHeader(authHeader);
 }
@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
         const channelId = searchParams.get('channelId');
         const includeStats = searchParams.get('stats') === 'true';
 
+        const productionRepository = new PostgresProductionRepository();
         const useCase = new ListProductionsUseCase(productionRepository);
         const result = await useCase.execute({
             userId,
@@ -99,8 +100,12 @@ export async function GET(request: NextRequest) {
  * Create a new production
  */
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
-        const userId = getUserId(request);
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }
@@ -108,6 +113,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         const body = await request.json();
         const data = validateInput(CreateProductionSchema, body);
 
+        const productionRepository = new PostgresProductionRepository(); // Instantiate here
         const useCase = new CreateProductionUseCase(productionRepository);
         const production = await useCase.execute({
             userId,
@@ -153,6 +159,7 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             return withSecurityHeaders(NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 }));
         }
 
+        const productionRepository = new PostgresProductionRepository();
         const useCase = new UpdateProductionUseCase(productionRepository);
         const production = await useCase.execute({
             productionId,
@@ -195,6 +202,7 @@ export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => 
             return withSecurityHeaders(NextResponse.json({ error: 'ID de producción requerido' }, { status: 400 }));
         }
 
+        const productionRepository = new PostgresProductionRepository();
         const deleted = await productionRepository.delete(productionId, userId);
 
         if (!deleted) {

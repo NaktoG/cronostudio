@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withSecurityHeaders } from '@/middleware/auth';
 import { query } from '@/lib/db';
+import { AuthService } from '@/application/services/AuthService';
+import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+
+export const dynamic = 'force-dynamic';
+
+
 
 interface RouteParams {
     params: Promise<{ channelId: string }>;
@@ -8,10 +14,20 @@ interface RouteParams {
 
 /**
  * GET /api/analytics/channel/[channelId]
- * Obtiene analytics agregados de un canal
+ * Obtiene analytics agregados de un canal (requiere autenticación)
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { channelId } = await params;
         const { searchParams } = new URL(request.url);
 
@@ -19,11 +35,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         const endDate = searchParams.get('endDate');
         const groupBy = searchParams.get('groupBy') || 'day';
 
-        // Verificar que el canal existe y obtener info
+        // Verificar que el canal existe y pertenece al usuario
         const channelResult = await query(
             `SELECT id, name, youtube_channel_id, subscribers
-             FROM channels WHERE id = $1`,
-            [channelId]
+             FROM channels WHERE id = $1 AND user_id = $2`,
+            [channelId, userId]
         );
 
         if (channelResult.rows.length === 0) {

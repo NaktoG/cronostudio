@@ -4,21 +4,12 @@ import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { z } from 'zod';
 import { validateInput } from '@/lib/validation';
-import jwt from 'jsonwebtoken';
+import { AuthService } from '@/application/services/AuthService';
+import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+export const dynamic = 'force-dynamic';
 
-function getUserIdFromRequest(request: NextRequest): string | null {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
-    try {
-        const token = authHeader.slice(7);
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-        return decoded.userId;
-    } catch {
-        return null;
-    }
-}
+
 
 const CreateThumbnailSchema = z.object({
     title: z.string().min(1).max(200),
@@ -36,10 +27,15 @@ const UpdateThumbnailSchema = z.object({
 });
 
 export async function GET(request: NextRequest) {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
-        const userId = getUserIdFromRequest(request);
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
         if (!userId) {
-            return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { searchParams } = new URL(request.url);
@@ -60,10 +56,15 @@ export async function GET(request: NextRequest) {
 }
 
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
-        const userId = getUserIdFromRequest(request);
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
         if (!userId) {
-            return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const body = await request.json();
@@ -85,10 +86,15 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 });
 
 export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
-        const userId = getUserIdFromRequest(request);
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
         if (!userId) {
-            return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { searchParams } = new URL(request.url);
@@ -128,10 +134,15 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 });
 
 export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
-        const userId = getUserIdFromRequest(request);
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
         if (!userId) {
-            return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { searchParams } = new URL(request.url);

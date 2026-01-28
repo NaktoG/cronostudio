@@ -1,15 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateVideoSchema } from '@/lib/validation';
-import { withSecurityHeaders, withAuth, getAuthUser } from '@/middleware/auth';
+import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { query } from '@/lib/db';
+import { AuthService } from '@/application/services/AuthService';
+import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+
+export const dynamic = 'force-dynamic';
+
+
 
 /**
  * GET /api/videos
- * Lista videos (opcional: filtrar por channelId)
+ * Lista videos del usuario (opcional: filtrar por channelId)
  */
 export async function GET(request: NextRequest) {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { searchParams } = new URL(request.url);
         const channelId = searchParams.get('channelId');
         const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
@@ -21,11 +37,13 @@ export async function GET(request: NextRequest) {
                    c.name as channel_name
             FROM videos v
             JOIN channels c ON v.channel_id = c.id
+            WHERE c.user_id = $1
         `;
-        const params: (string | number)[] = [];
+        const params: (string | number)[] = [userId];
 
         if (channelId) {
-            queryText += ' WHERE v.channel_id = $1';
+            // Verify channel belongs to user implicitly via the JOIN and WHERE clause
+            queryText += ' AND v.channel_id = $2';
             params.push(channelId);
         }
 
@@ -34,7 +52,7 @@ export async function GET(request: NextRequest) {
 
         const result = await query(queryText, params);
 
-        const response = NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             {
                 data: result.rows,
                 pagination: {
@@ -49,9 +67,7 @@ export async function GET(request: NextRequest) {
                     'Cache-Control': 'no-store',
                 },
             }
-        );
-
-        return withSecurityHeaders(response);
+        ));
     } catch (error) {
         console.error('[GET /api/videos] Error:', error instanceof Error ? error.message : 'Unknown error');
 
@@ -64,76 +80,83 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/videos
- * Crea un nuevo video (requiere autenticación)
+ * Crea un nuevo video (requiere autenticación y propiedad del canal)
  */
-export const POST = rateLimit(API_RATE_LIMIT)(
-    withAuth(async (request: NextRequest) => {
-        try {
-            const body = await request.json();
+export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
 
-            // Validar input
-            const validatedData = validateInput(CreateVideoSchema, body);
+    try {
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
 
-            // Verificar que el canal existe
-            const channelCheck = await query(
-                'SELECT id FROM channels WHERE id = $1',
-                [validatedData.channelId]
-            );
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-            if (channelCheck.rows.length === 0) {
-                return NextResponse.json(
-                    { error: 'Canal no encontrado' },
-                    { status: 404 }
-                );
-            }
+        const body = await request.json();
 
-            // Insertar video
-            const result = await query(
-                `INSERT INTO videos (channel_id, youtube_video_id, title, description, published_at) 
-                 VALUES ($1, $2, $3, $4, $5) 
-                 RETURNING id, channel_id, youtube_video_id, title, description, published_at, views, likes, comments, created_at, updated_at`,
-                [
-                    validatedData.channelId,
-                    validatedData.youtubeVideoId,
-                    validatedData.title,
-                    validatedData.description || null,
-                    validatedData.publishedAt || null,
-                ]
-            );
+        // Validar input
+        const validatedData = validateInput(CreateVideoSchema, body);
 
-            const user = getAuthUser(request);
-            console.log('[POST /api/videos] Video creado:', {
-                id: result.rows[0].id,
-                title: validatedData.title,
-                by: user?.email,
-            });
+        // Verificar que el canal existe Y pertenece al usuario
+        const channelCheck = await query(
+            'SELECT id FROM channels WHERE id = $1 AND user_id = $2',
+            [validatedData.channelId, userId]
+        );
 
-            const response = NextResponse.json(result.rows[0], { status: 201 });
-            return withSecurityHeaders(response);
-        } catch (error) {
-            if (error instanceof Error && error.message.includes('Validation error')) {
-                return NextResponse.json(
-                    { error: error.message },
-                    { status: 400 }
-                );
-            }
-
-            if (error instanceof Error && error.message.includes('duplicate key')) {
-                return NextResponse.json(
-                    { error: 'Video con este YouTube ID ya existe' },
-                    { status: 409 }
-                );
-            }
-
-            console.error('[POST /api/videos] Error:', error instanceof Error ? error.message : 'Unknown error');
-
+        if (channelCheck.rows.length === 0) {
             return NextResponse.json(
-                { error: 'Error al crear video' },
-                { status: 500 }
+                { error: 'Canal no encontrado o no autorizado' },
+                { status: 404 }
             );
         }
-    })
-);
+
+        // Insertar video
+        const result = await query(
+            `INSERT INTO videos (channel_id, youtube_video_id, title, description, published_at) 
+                 VALUES ($1, $2, $3, $4, $5) 
+                 RETURNING id, channel_id, youtube_video_id, title, description, published_at, views, likes, comments, created_at, updated_at`,
+            [
+                validatedData.channelId,
+                validatedData.youtubeVideoId,
+                validatedData.title,
+                validatedData.description || null,
+                validatedData.publishedAt || null,
+            ]
+        );
+
+        console.log('[POST /api/videos] Video creado:', {
+            id: result.rows[0].id,
+            title: validatedData.title,
+            userId: userId,
+        });
+
+        const response = NextResponse.json(result.rows[0], { status: 201 });
+        return withSecurityHeaders(response);
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('Validation error')) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 400 }
+            );
+        }
+
+        if (error instanceof Error && error.message.includes('duplicate key')) {
+            return NextResponse.json(
+                { error: 'Video con este YouTube ID ya existe' },
+                { status: 409 }
+            );
+        }
+
+        console.error('[POST /api/videos] Error:', error instanceof Error ? error.message : 'Unknown error');
+
+        return NextResponse.json(
+            { error: 'Error al crear video' },
+            { status: 500 }
+        );
+    }
+});
 
 /**
  * OPTIONS /api/videos

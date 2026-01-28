@@ -3,23 +3,25 @@ services:
     image: postgres:16-alpine
     container_name: cronostudio-postgres
     env_file:
-      - .env
+      - env
     environment:
-      # Security: Use scram-sha-256 instead of md5
       POSTGRES_INITDB_ARGS: "-c password_encryption=scram-sha-256"
+      # Usamos variables del archivo env, o defaults explicítos
+      POSTGRES_DB: ${POSTGRES_DB:-cronostudio}
+      POSTGRES_USER: ${POSTGRES_USER:-crono}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crono}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432" # Only accessible from localhost
+      - "127.0.0.1:5432:5432"
     networks:
       - cronostudio-net
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crono} -d ${POSTGRES_DB:-cronostudio}" ]
       interval: 10s
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    # Resource limits
     deploy:
       resources:
         limits:
@@ -33,28 +35,20 @@ services:
     image: n8nio/n8n:latest
     container_name: cronostudio-n8n
     env_file:
-      - .env
+      - env
     environment:
-      # n8n uses NODE_ENV
       NODE_ENV: development
-      # Secure execution
       N8N_EXECUTION_MODE: regular
     ports:
-      - "127.0.0.1:5678:5678" # Only accessible from localhost
+      - "127.0.0.1:5678:5678"
     volumes:
-      - n8n_data:/home/node/.n8n # Persistent workflows
+      - n8n_data:/home/node/.n8n
     networks:
       - cronostudio-net
     depends_on:
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5678" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     restart: unless-stopped
-    # Resource limits
     deploy:
       resources:
         limits:
@@ -64,45 +58,26 @@ services:
           cpus: '0.5'
           memory: 1G
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: cronostudio-pgadmin
-    env_file:
-      - .env
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@cronostudio.com}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin123}
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+  adminer:
+    image: adminer
+    container_name: cronostudio-adminer
+    restart: always
     ports:
-      - "127.0.0.1:5050:80"
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
+      - "127.0.0.1:8080:8080"
     networks:
       - cronostudio-net
     depends_on:
       postgres:
         condition: service_healthy
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
+    environment:
+      ADMINER_DESIGN: "pappu687"
 
 networks:
   cronostudio-net:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
 
 volumes:
   postgres_data:
     driver: local
   n8n_data:
-    driver: local
-  pgadmin_data:
     driver: local

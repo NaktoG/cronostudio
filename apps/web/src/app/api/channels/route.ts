@@ -5,16 +5,42 @@ import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { withCORS } from '@/middleware/cors';
 import { query } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/channels
  * Lista todos los canales de YouTube
  */
+// Services Initialization
+import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+import { AuthService } from '@/application/services/AuthService';
+
+
+
+/**
+ * GET /api/channels
+ * Lista los canales del usuario autenticado
+ */
 export async function GET(request: NextRequest) {
+    // Services Initialization
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
+        // Autenticación: Extraer usuario del header
+        const authHeader = request.headers.get('Authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const result = await query(
             `SELECT id, name, youtube_channel_id, subscribers, created_at, updated_at 
        FROM channels 
-       ORDER BY created_at DESC`
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+            [userId]
         );
 
         const response = NextResponse.json(result.rows, {
@@ -38,28 +64,28 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/channels
- * Crea un nuevo canal de YouTube
+ * Crea un nuevo canal de YouTube vinculado al usuario
  */
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    // Services Initialization
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository); // Moved inside to prevent build issues
+
     try {
+        // Autenticación
+        const authHeader = request.headers.get('Authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const body = await request.json();
 
         // Validar con Zod
         const validatedData = validateInput<CreateChannelInput>(CreateChannelSchema, body);
 
-        // Obtener el primer usuario (demo) - TODO: usar usuario autenticado
-        const userResult = await query('SELECT id FROM app_users LIMIT 1');
-
-        if (userResult.rows.length === 0) {
-            return NextResponse.json(
-                { error: 'No user found. Please create a user first.' },
-                { status: 400 }
-            );
-        }
-
-        const userId = userResult.rows[0].id;
-
-        // Insertar en base de datos
+        // Insertar en base de datos vinculado al usuario autenticado
         const result = await query(
             `INSERT INTO channels (user_id, name, youtube_channel_id, refresh_token) 
        VALUES ($1, $2, $3, $4) 
@@ -70,6 +96,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         // Log seguro (sin refresh_token)
         console.log('[POST /api/channels] Created:', {
             id: result.rows[0].id,
+            userId: userId, // Logueamos quien lo creó
             name: validatedData.name,
             youtubeChannelId: validatedData.youtubeChannelId,
         });
@@ -92,6 +119,8 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 
         // Manejar error de duplicado
         if (error instanceof Error && error.message.includes('duplicate key')) {
+            // Verificar si es duplicado del mismo usuario o colisión global
+            // Pero por privacidad, simplemente decimos que ya existe
             return NextResponse.json(
                 { error: 'Channel with this YouTube ID already exists' },
                 { status: 409 }

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, UpdateVideoSchema } from '@/lib/validation';
-import { withSecurityHeaders, withAuth, getAuthUser } from '@/middleware/auth';
+import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { query } from '@/lib/db';
+import { AuthService } from '@/application/services/AuthService';
+import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+
+export const dynamic = "force-dynamic";
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -13,7 +17,12 @@ interface RouteParams {
  * Obtiene un video específico
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
         const { id } = await params;
 
         const result = await query(
@@ -33,8 +42,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             );
         }
 
-        const response = NextResponse.json(result.rows[0]);
-        return withSecurityHeaders(response);
+        return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
         console.error('[GET /api/videos/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
 
@@ -49,135 +57,151 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * PUT /api/videos/[id]
  * Actualiza un video (requiere autenticación)
  */
-export const PUT = rateLimit(API_RATE_LIMIT)(
-    withAuth(async (request: NextRequest, { params }: RouteParams) => {
-        try {
-            const { id } = await params;
-            const body = await request.json();
+export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { params }: RouteParams) => {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
 
-            // Validar input
-            const validatedData = validateInput(UpdateVideoSchema, body);
+    try {
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
 
-            // Verificar que el video existe
-            const existingVideo = await query(
-                'SELECT id FROM videos WHERE id = $1',
-                [id]
-            );
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-            if (existingVideo.rows.length === 0) {
-                return NextResponse.json(
-                    { error: 'Video no encontrado' },
-                    { status: 404 }
-                );
-            }
+        const { id } = await params;
+        const body = await request.json();
 
-            // Construir query dinámica para actualización
-            const updates: string[] = [];
-            const values: unknown[] = [];
-            let paramIndex = 1;
+        // Validar input
+        const validatedData = validateInput(UpdateVideoSchema, body);
 
-            if (validatedData.title !== undefined) {
-                updates.push(`title = $${paramIndex++}`);
-                values.push(validatedData.title);
-            }
-            if (validatedData.description !== undefined) {
-                updates.push(`description = $${paramIndex++}`);
-                values.push(validatedData.description);
-            }
-            if (validatedData.views !== undefined) {
-                updates.push(`views = $${paramIndex++}`);
-                values.push(validatedData.views);
-            }
-            if (validatedData.likes !== undefined) {
-                updates.push(`likes = $${paramIndex++}`);
-                values.push(validatedData.likes);
-            }
-            if (validatedData.comments !== undefined) {
-                updates.push(`comments = $${paramIndex++}`);
-                values.push(validatedData.comments);
-            }
+        // Verificar que el video existe
+        const existingVideo = await query(
+            'SELECT id FROM videos WHERE id = $1',
+            [id]
+        );
 
-            if (updates.length === 0) {
-                return NextResponse.json(
-                    { error: 'No hay campos para actualizar' },
-                    { status: 400 }
-                );
-            }
-
-            updates.push(`updated_at = NOW()`);
-            values.push(id);
-
-            const result = await query(
-                `UPDATE videos SET ${updates.join(', ')} WHERE id = $${paramIndex}
-                 RETURNING id, channel_id, youtube_video_id, title, description, published_at, views, likes, comments, created_at, updated_at`,
-                values
-            );
-
-            const user = getAuthUser(request);
-            console.log('[PUT /api/videos/:id] Video actualizado:', {
-                id,
-                by: user?.email,
-            });
-
-            const response = NextResponse.json(result.rows[0]);
-            return withSecurityHeaders(response);
-        } catch (error) {
-            if (error instanceof Error && error.message.includes('Validation error')) {
-                return NextResponse.json(
-                    { error: error.message },
-                    { status: 400 }
-                );
-            }
-
-            console.error('[PUT /api/videos/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
-
+        if (existingVideo.rows.length === 0) {
             return NextResponse.json(
-                { error: 'Error al actualizar video' },
-                { status: 500 }
+                { error: 'Video no encontrado' },
+                { status: 404 }
             );
         }
-    })
-);
+
+        // Construir query dinámica para actualización
+        const updates: string[] = [];
+        const values: unknown[] = [];
+        let paramIndex = 1;
+
+        if (validatedData.title !== undefined) {
+            updates.push(`title = $${paramIndex++}`);
+            values.push(validatedData.title);
+        }
+        if (validatedData.description !== undefined) {
+            updates.push(`description = $${paramIndex++}`);
+            values.push(validatedData.description);
+        }
+        if (validatedData.views !== undefined) {
+            updates.push(`views = $${paramIndex++}`);
+            values.push(validatedData.views);
+        }
+        if (validatedData.likes !== undefined) {
+            updates.push(`likes = $${paramIndex++}`);
+            values.push(validatedData.likes);
+        }
+        if (validatedData.comments !== undefined) {
+            updates.push(`comments = $${paramIndex++}`);
+            values.push(validatedData.comments);
+        }
+
+        if (updates.length === 0) {
+            return NextResponse.json(
+                { error: 'No hay campos para actualizar' },
+                { status: 400 }
+            );
+        }
+
+        updates.push(`updated_at = NOW()`);
+        values.push(id);
+
+        const result = await query(
+            `UPDATE videos SET ${updates.join(', ')} WHERE id = $${paramIndex}
+                 RETURNING id, channel_id, youtube_video_id, title, description, published_at, views, likes, comments, created_at, updated_at`,
+            values
+        );
+
+        const user = getAuthUser(request);
+        console.log('[PUT /api/videos/:id] Video actualizado:', {
+            id,
+            by: user?.email,
+        });
+
+        const response = NextResponse.json(result.rows[0]);
+        return withSecurityHeaders(response);
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('Validation error')) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 400 }
+            );
+        }
+
+        console.error('[PUT /api/videos/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
+
+        return NextResponse.json(
+            { error: 'Error al actualizar video' },
+            { status: 500 }
+        );
+    }
+});
 
 /**
  * DELETE /api/videos/[id]
  * Elimina un video (requiere autenticación)
  */
-export const DELETE = rateLimit(API_RATE_LIMIT)(
-    withAuth(async (request: NextRequest, { params }: RouteParams) => {
-        try {
-            const { id } = await params;
+export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { params }: RouteParams) => {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
 
-            const result = await query(
-                'DELETE FROM videos WHERE id = $1 RETURNING id, title',
-                [id]
-            );
+    try {
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
 
-            if (result.rows.length === 0) {
-                return NextResponse.json(
-                    { error: 'Video no encontrado' },
-                    { status: 404 }
-                );
-            }
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
-            const user = getAuthUser(request);
-            console.log('[DELETE /api/videos/:id] Video eliminado:', {
-                id,
-                title: result.rows[0].title,
-                by: user?.email,
-            });
+        const { id } = await params;
 
-            return new NextResponse(null, { status: 204 });
-        } catch (error) {
-            console.error('[DELETE /api/videos/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
+        const result = await query(
+            'DELETE FROM videos WHERE id = $1 RETURNING id, title',
+            [id]
+        );
 
+        if (result.rows.length === 0) {
             return NextResponse.json(
-                { error: 'Error al eliminar video' },
-                { status: 500 }
+                { error: 'Video no encontrado' },
+                { status: 404 }
             );
         }
-    })
-);
+
+        const user = getAuthUser(request);
+        console.log('[DELETE /api/videos/:id] Video eliminado:', {
+            id,
+            title: result.rows[0].title,
+            by: user?.email,
+        });
+
+        return new NextResponse(null, { status: 204 });
+    } catch (error) {
+        console.error('[DELETE /api/videos/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
+
+        return NextResponse.json(
+            { error: 'Error al eliminar video' },
+            { status: 500 }
+        );
+    }
+});
 
 /**
  * OPTIONS /api/videos/[id]

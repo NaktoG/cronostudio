@@ -28,7 +28,7 @@ export class UpdateProductionUseCase {
         }
 
         // Validate SEO score
-        if (updates.seoScore !== undefined && (updates.seoScore < 0 || updates.seoScore > 100)) {
+        if (updates.seoScore !== undefined && updates.seoScore !== null && (updates.seoScore < 0 || updates.seoScore > 100)) {
             throw new Error('SEO score must be between 0 and 100');
         }
 

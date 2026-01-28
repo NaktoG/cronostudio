@@ -7,9 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test": "mkdir -p .tmp && TMPDIR=$(pwd)/.tmp vitest",
+    "test:run": "mkdir -p .tmp && TMPDIR=$(pwd)/.tmp vitest run",
+    "test:coverage": "mkdir -p .tmp && TMPDIR=$(pwd)/.tmp vitest run --coverage",
     "prepare": "husky"
   },
   "dependencies": {

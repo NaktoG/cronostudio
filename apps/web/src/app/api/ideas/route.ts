@@ -8,6 +8,8 @@ import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { validateInput } from '@/lib/validation';
 import { logger } from '@/lib/logger';
 
+export const dynamic = 'force-dynamic';
+
 // UseCases & Infrastructure
 import { CreateIdeaUseCase } from '@/application/usecases/idea/CreateIdeaUseCase';
 import { ListIdeasUseCase } from '@/application/usecases/idea/ListIdeasUseCase';
@@ -35,14 +37,12 @@ const UpdateIdeaSchema = z.object({
     tags: z.array(z.string()).optional(),
 });
 
-// Dependency injection - instantiate once
-const ideaRepository = new PostgresIdeaRepository();
-const userRepository = new PostgresUserRepository();
-const authService = new AuthService(userRepository);
-
 // Helper to extract userId from request
 function getUserId(request: NextRequest): string | null {
     const authHeader = request.headers.get('authorization');
+    // These services would typically be instantiated per request or via a DI container
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
     return authService.extractUserIdFromHeader(authHeader);
 }
 
@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         const status = searchParams.get('status') as IdeaStatus | null;
         const channelId = searchParams.get('channelId');
 
+        const ideaRepository = new PostgresIdeaRepository();
         const useCase = new ListIdeasUseCase(ideaRepository);
         const result = await useCase.execute({
             userId,
@@ -82,8 +83,12 @@ export async function GET(request: NextRequest) {
  * Create a new idea
  */
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    const userRepository = new PostgresUserRepository();
+    const authService = new AuthService(userRepository);
+
     try {
-        const userId = getUserId(request);
+        const authHeader = request.headers.get('authorization');
+        const userId = authService.extractUserIdFromHeader(authHeader);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }
@@ -91,6 +96,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         const body = await request.json();
         const data = validateInput(CreateIdeaSchema, body);
 
+        const ideaRepository = new PostgresIdeaRepository(); // Instantiate repository here
         const useCase = new CreateIdeaUseCase(ideaRepository);
         const idea = await useCase.execute({
             userId,
@@ -135,6 +141,7 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             return withSecurityHeaders(NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 }));
         }
 
+        const ideaRepository = new PostgresIdeaRepository();
         const useCase = new UpdateIdeaUseCase(ideaRepository);
         const idea = await useCase.execute({
             ideaId,
@@ -177,6 +184,7 @@ export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => 
             return withSecurityHeaders(NextResponse.json({ error: 'ID de idea requerido' }, { status: 400 }));
         }
 
+        const ideaRepository = new PostgresIdeaRepository();
         const useCase = new DeleteIdeaUseCase(ideaRepository);
         await useCase.execute({ ideaId, userId });
 
