@@ -190,6 +190,10 @@ export default function RegisterPage() {
                                 )}
                             </motion.button>
 
+                            <div className="text-center text-gray-500 text-xs">
+                                Te enviaremos un email para verificar tu cuenta
+                            </div>
+
                             <div className="text-center text-gray-400 text-sm">
                                 ¿Ya tienes cuenta?{' '}
                                 <Link href="/login" className="text-yellow-400 hover:text-yellow-300 transition-colors">

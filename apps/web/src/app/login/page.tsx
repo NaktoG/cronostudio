@@ -136,6 +136,12 @@ export default function LoginPage() {
                             </motion.button>
 
                             <div className="text-center text-gray-400 text-sm">
+                                <Link href="/forgot-password" className="text-yellow-400 hover:text-yellow-300 transition-colors">
+                                    ¿Olvidaste tu contraseña?
+                                </Link>
+                            </div>
+
+                            <div className="text-center text-gray-400 text-sm">
                                 ¿No tienes cuenta?{' '}
                                 <Link href="/register" className="text-yellow-400 hover:text-yellow-300 transition-colors">
                                     Regístrate
