@@ -32,6 +32,12 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 ## Tracking de ejecuciones
 Los workflows registran ejecuciones en `automation_runs` para mostrarlas en el dashboard.
 
+## Debug local de mapeos
+Para probar los mapeos sin n8n:
+```bash
+node scripts/n8n_mapping_test.mjs
+```
+
 ## Importar workflows
 1. Abrir n8n: `http://localhost:5678`
 2. Importar JSON desde esta carpeta.
