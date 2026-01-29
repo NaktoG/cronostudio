@@ -3,8 +3,10 @@
 
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { config } from '@/lib/config';
 import { UserRepository } from '@/domain/repositories/UserRepository';
+import { SessionRepository } from '@/domain/repositories/SessionRepository';
 import { User, CreateUserInput } from '@/domain/entities/User';
 
 const BCRYPT_ROUNDS = 12;
@@ -17,10 +19,14 @@ export interface AuthTokenPayload {
 export interface AuthResult {
     user: User;
     token: string;
+    refreshToken: string;
 }
 
 export class AuthService {
-    constructor(private userRepository: UserRepository) { }
+    constructor(
+        private userRepository: UserRepository,
+        private sessionRepository?: SessionRepository
+    ) { }
 
     /**
      * Register a new user
@@ -39,9 +45,10 @@ export class AuthService {
         const user = await this.userRepository.create(input, passwordHash);
 
         // Generate token
-        const token = this.generateToken(user);
+        const token = this.generateAccessToken(user);
+        const refreshToken = await this.createRefreshSession(user.id);
 
-        return { user, token };
+        return { user, token, refreshToken };
     }
 
     /**
@@ -68,9 +75,36 @@ export class AuthService {
             createdAt: userWithPassword.createdAt,
             updatedAt: userWithPassword.updatedAt,
         };
-        const token = this.generateToken(user);
+        const token = this.generateAccessToken(user);
+        const refreshToken = await this.createRefreshSession(user.id);
 
-        return { user, token };
+        return { user, token, refreshToken };
+    }
+
+    async refresh(refreshToken: string): Promise<AuthResult> {
+        const refreshTokenHash = this.hashToken(refreshToken);
+        const sessionRepository = this.requireSessionRepository();
+        const session = await sessionRepository.findValidByTokenHash(refreshTokenHash);
+        if (!session) {
+            throw new AuthError('Invalid refresh token', 'INVALID_REFRESH_TOKEN');
+        }
+
+        const user = await this.userRepository.findById(session.userId);
+        if (!user) {
+            throw new AuthError('User not found', 'USER_NOT_FOUND');
+        }
+
+        await sessionRepository.revokeById(session.id);
+        const newRefreshToken = await this.createRefreshSession(user.id);
+        const token = this.generateAccessToken(user);
+
+        return { user, token, refreshToken: newRefreshToken };
+    }
+
+    async logout(refreshToken: string): Promise<void> {
+        const refreshTokenHash = this.hashToken(refreshToken);
+        const sessionRepository = this.requireSessionRepository();
+        await sessionRepository.revokeByTokenHash(refreshTokenHash);
     }
 
     /**
@@ -104,12 +138,47 @@ export class AuthService {
         }
     }
 
-    private generateToken(user: User): string {
+    private generateAccessToken(user: User): string {
         return jwt.sign(
             { userId: user.id, email: user.email },
             config.jwt.secret,
             { expiresIn: config.jwt.expiresIn as any }
         );
+    }
+
+    private async createRefreshSession(userId: string): Promise<string> {
+        const refreshToken = crypto.randomBytes(32).toString('hex');
+        const refreshTokenHash = this.hashToken(refreshToken);
+        const expiresAt = new Date(Date.now() + this.getRefreshTtlMs());
+        const sessionRepository = this.requireSessionRepository();
+        await sessionRepository.create(userId, refreshTokenHash, expiresAt);
+        return refreshToken;
+    }
+
+    private requireSessionRepository(): SessionRepository {
+        if (!this.sessionRepository) {
+            throw new AuthError('Session repository not configured', 'SESSION_REPO_MISSING');
+        }
+        return this.sessionRepository;
+    }
+
+    private hashToken(token: string): string {
+        return crypto.createHash('sha256').update(token).digest('hex');
+    }
+
+    private getRefreshTtlMs(): number {
+        const value = config.jwt.refreshExpiresIn;
+        const match = /^([0-9]+)([smhd])$/.exec(value);
+        if (!match) return 30 * 24 * 60 * 60 * 1000;
+        const amount = parseInt(match[1], 10);
+        const unit = match[2];
+        const multipliers: Record<string, number> = {
+            s: 1000,
+            m: 60 * 1000,
+            h: 60 * 60 * 1000,
+            d: 24 * 60 * 60 * 1000,
+        };
+        return amount * (multipliers[unit] || 24 * 60 * 60 * 1000);
     }
 }
 

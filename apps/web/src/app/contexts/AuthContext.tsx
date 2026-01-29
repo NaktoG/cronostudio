@@ -23,6 +23,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = 'cronostudio_token';
+const REFRESH_TOKEN_KEY = 'cronostudio_refresh_token';
 const USER_KEY = 'cronostudio_user';
 
 interface AuthProviderProps {
@@ -36,8 +37,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [error, setError] = useState<string | null>(null);
 
     // Cargar sesión desde localStorage al iniciar
+    const saveSession = useCallback((newToken: string, newUser: User, newRefreshToken: string) => {
+        localStorage.setItem(TOKEN_KEY, newToken);
+        localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+        localStorage.setItem(USER_KEY, JSON.stringify(newUser));
+        setToken(newToken);
+        setUser(newUser);
+    }, []);
+
+    const clearSession = useCallback(() => {
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
+        setToken(null);
+        setUser(null);
+    }, []);
+
     useEffect(() => {
         const storedToken = localStorage.getItem(TOKEN_KEY);
+        const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
         const storedUser = localStorage.getItem(USER_KEY);
 
         if (storedToken && storedUser) {
@@ -45,27 +63,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 setToken(storedToken);
                 setUser(JSON.parse(storedUser));
             } catch {
-                // Si hay error, limpiar storage
                 localStorage.removeItem(TOKEN_KEY);
+                localStorage.removeItem(REFRESH_TOKEN_KEY);
                 localStorage.removeItem(USER_KEY);
             }
+            setIsLoading(false);
+            return;
         }
-        setIsLoading(false);
-    }, []);
 
-    const saveSession = (newToken: string, newUser: User) => {
-        localStorage.setItem(TOKEN_KEY, newToken);
-        localStorage.setItem(USER_KEY, JSON.stringify(newUser));
-        setToken(newToken);
-        setUser(newUser);
-    };
-
-    const clearSession = () => {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-        setToken(null);
-        setUser(null);
-    };
+        if (storedRefreshToken) {
+            fetch('/api/auth/refresh', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken: storedRefreshToken }),
+            })
+                .then(async (res) => {
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Error al refrescar sesion');
+                    saveSession(data.token, data.user, data.refreshToken);
+                })
+                .catch(() => {
+                    clearSession();
+                })
+                .finally(() => {
+                    setIsLoading(false);
+                });
+        } else {
+            setIsLoading(false);
+        }
+    }, [saveSession, clearSession]);
 
     const login = useCallback(async (email: string, password: string) => {
         setIsLoading(true);
@@ -86,7 +112,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 throw new Error(data.error || 'Error al iniciar sesión');
             }
 
-            saveSession(data.token, data.user);
+            saveSession(data.token, data.user, data.refreshToken);
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Error desconocido';
             setError(message);
@@ -115,7 +141,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 throw new Error(data.error || 'Error al registrar usuario');
             }
 
-            saveSession(data.token, data.user);
+            saveSession(data.token, data.user, data.refreshToken);
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Error desconocido';
             setError(message);
@@ -126,7 +152,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, []);
 
     const logout = useCallback(() => {
-        clearSession();
+        const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+        if (refreshToken) {
+            fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ refreshToken }),
+            }).finally(() => {
+                clearSession();
+            });
+        } else {
+            clearSession();
+        }
     }, []);
 
     const clearError = useCallback(() => {

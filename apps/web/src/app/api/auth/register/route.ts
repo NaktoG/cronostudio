@@ -10,10 +10,12 @@ import { logger } from '@/lib/logger';
 // Clean Architecture services
 import { AuthService, AuthError } from '@/application/services/AuthService';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+import { PostgresSessionRepository } from '@/infrastructure/repositories/PostgresSessionRepository';
 
 // Dependency injection
 const userRepository = new PostgresUserRepository();
-const authService = new AuthService(userRepository);
+const sessionRepository = new PostgresSessionRepository();
+const authService = new AuthService(userRepository, sessionRepository);
 
 /**
  * POST /api/auth/register
@@ -42,6 +44,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
                 createdAt: result.user.createdAt,
             },
             token: result.token,
+            refreshToken: result.refreshToken,
         }, { status: 201 });
 
         return withSecurityHeaders(response);

@@ -28,6 +28,7 @@ export const config = {
     jwt: {
         secret: getRequiredEnv('JWT_SECRET', 'dev-secret-change-in-production'),
         expiresIn: getOptionalEnv('JWT_EXPIRES_IN', '7d'),
+        refreshExpiresIn: getOptionalEnv('JWT_REFRESH_EXPIRES_IN', '30d'),
     },
 
     // Database

@@ -16,3 +16,4 @@ export * from './repositories/UserRepository';
 export * from './repositories/ChannelRepository';
 export * from './repositories/IdeaRepository';
 export * from './repositories/ProductionRepository';
+export * from './repositories/SessionRepository';

@@ -50,11 +50,23 @@ CREATE TABLE IF NOT EXISTS analytics (
   UNIQUE(video_id, date)
 );
 
+-- Tabla de sesiones (refresh tokens)
+CREATE TABLE IF NOT EXISTS auth_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  refresh_token_hash VARCHAR(128) UNIQUE NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  revoked_at TIMESTAMP WITH TIME ZONE
+);
+
 -- Índices para mejorar performance
 CREATE INDEX IF NOT EXISTS idx_channels_user_id ON channels(user_id);
 CREATE INDEX IF NOT EXISTS idx_videos_channel_id ON videos(channel_id);
 CREATE INDEX IF NOT EXISTS idx_analytics_video_id ON analytics(video_id);
 CREATE INDEX IF NOT EXISTS idx_analytics_date ON analytics(date);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
 
 -- Insertar usuario de prueba (password: "demo123")
 -- Hash bcrypt de "demo123": $2b$10$rKZLvVZqGqNvQqYqYqYqYuO7kZqGqNvQqYqYqYqYuO7kZqGqNvQqY

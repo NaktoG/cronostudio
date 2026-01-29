@@ -37,6 +37,9 @@ cp infra/docker/.env.example infra/docker/.env
 
 Editar `infra/docker/.env` con valores locales. Ver `.env.example` para referencias.
 
+Variables obligatorias (minimo):
+- `JWT_SECRET`
+
 **⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` a git si contiene credenciales reales.
 
 ### 3. Levantar infraestructura (n8n + Postgres)
