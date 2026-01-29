@@ -111,6 +111,24 @@
     },
     {
       "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "debug",
+              "value": "Map Channels"
+            }
+          ]
+        }
+      },
+      "id": "9",
+      "name": "Debug Map Channels",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
         "authentication": "none",
         "requestMethod": "POST",
         "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels",
@@ -215,6 +233,17 @@
       ]
     },
     "Map Channels": {
+      "main": [
+        [
+          {
+            "node": "Debug Map Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Map Channels": {
       "main": [
         [
           {

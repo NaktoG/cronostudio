@@ -165,6 +165,24 @@
     },
     {
       "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "debug",
+              "value": "Map Videos"
+            }
+          ]
+        }
+      },
+      "id": "11",
+      "name": "Debug Map Videos",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
         "authentication": "none",
         "requestMethod": "POST",
         "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/videos",
@@ -291,6 +309,17 @@
       ]
     },
     "Map Videos": {
+      "main": [
+        [
+          {
+            "node": "Debug Map Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Map Videos": {
       "main": [
         [
           {

@@ -91,6 +91,24 @@
     },
     {
       "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "debug",
+              "value": "Map Videos"
+            }
+          ]
+        }
+      },
+      "id": "12",
+      "name": "Debug Map Videos",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1040, 300]
+    },
+    {
+      "parameters": {
         "functionCode": "const now = new Date();\nconst end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));\nconst start = new Date(end);\nconst startDate = start.toISOString().slice(0, 10);\nconst endDate = end.toISOString().slice(0, 10);\nreturn [{ json: { startDate, endDate } }];"
       },
       "id": "11",
@@ -98,6 +116,24 @@
       "type": "n8n-nodes-base.function",
       "typeVersion": 2,
       "position": [1080, 140]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "debug",
+              "value": "Build Date Range"
+            }
+          ]
+        }
+      },
+      "id": "13",
+      "name": "Debug Build Date Range",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1220, 140]
     },
     {
       "parameters": {
@@ -169,6 +205,24 @@
       "type": "n8n-nodes-base.function",
       "typeVersion": 2,
       "position": [1480, 300]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": false,
+        "values": {
+          "string": [
+            {
+              "name": "debug",
+              "value": "Map Analytics"
+            }
+          ]
+        }
+      },
+      "id": "14",
+      "name": "Debug Map Analytics",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [1620, 300]
     },
     {
       "parameters": {
@@ -268,7 +322,7 @@
       "main": [
         [
           {
-            "node": "Split Videos",
+            "node": "Debug Map Videos",
             "type": "main",
             "index": 0
           },
@@ -279,6 +333,31 @@
           }
         ]
       ]
+    },
+    "Debug Map Videos": {
+      "main": [
+        [
+          {
+            "node": "Split Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Date Range": {
+      "main": [
+        [
+          {
+            "node": "Debug Build Date Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Build Date Range": {
+      "main": []
     },
     "Split Videos": {
       "main": [
@@ -303,6 +382,17 @@
       ]
     },
     "Map Analytics": {
+      "main": [
+        [
+          {
+            "node": "Debug Map Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Debug Map Analytics": {
       "main": [
         [
           {
