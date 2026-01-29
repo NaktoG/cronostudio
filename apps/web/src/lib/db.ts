@@ -8,16 +8,27 @@ let pool: Pool | null = null;
 function getPool(): Pool {
   if (pool) return pool;
 
-  pool = new Pool({
-    host: process.env.POSTGRES_HOST || 'localhost',
-    port: parseInt(process.env.POSTGRES_PORT || '5432'),
-    database: process.env.POSTGRES_DB || 'cronostudio',
-    user: process.env.POSTGRES_USER || 'cronostudio',
-    password: process.env.POSTGRES_PASSWORD || 'cronostudio',
-    max: 20, // Máximo de conexiones en el pool
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
-  });
+  const databaseUrl = process.env.DATABASE_URL;
+
+  pool = new Pool(
+    databaseUrl
+      ? {
+          connectionString: databaseUrl,
+          max: 20,
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 2000,
+        }
+      : {
+          host: process.env.POSTGRES_HOST || 'localhost',
+          port: parseInt(process.env.POSTGRES_PORT || '5432'),
+          database: process.env.POSTGRES_DB || 'cronostudio',
+          user: process.env.POSTGRES_USER || 'cronostudio',
+          password: process.env.POSTGRES_PASSWORD || 'cronostudio',
+          max: 20, // Máximo de conexiones en el pool
+          idleTimeoutMillis: 30000,
+          connectionTimeoutMillis: 2000,
+        }
+  );
 
   // Manejar errores del pool
   pool.on('error', (err) => {

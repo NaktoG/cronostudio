@@ -60,6 +60,12 @@ Verificar que ambos containers están en estado `Up`:
 ./scripts/db_migrate.sh
 ```
 
+### 3.2 Cargar datos de demo (opcional)
+
+```bash
+./scripts/db_seed.sh
+```
+
 ### 4. Instalar dependencias del frontend
 
 ```bash
