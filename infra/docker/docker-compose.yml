@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     container_name: cronostudio-postgres
     env_file:
-      - env
+      - .env
     environment:
       POSTGRES_INITDB_ARGS: "-c password_encryption=scram-sha-256"
       # Usamos variables del archivo env, o defaults explicítos
@@ -35,7 +35,7 @@ services:
     image: n8nio/n8n:latest
     container_name: cronostudio-n8n
     env_file:
-      - env
+      - .env
     environment:
       NODE_ENV: development
       N8N_EXECUTION_MODE: regular

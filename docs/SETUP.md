@@ -29,10 +29,10 @@ git checkout develop
 
 ### 2. Configurar variables de entorno
 
-Copiar template de `.env.example` a `infra/docker/.env`:
+Copiar template de `infra/docker/.env.example` a `infra/docker/.env`:
 
 ```bash
-cp .env.example infra/docker/.env
+cp infra/docker/.env.example infra/docker/.env
 ```
 
 Editar `infra/docker/.env` con valores locales. Ver `.env.example` para referencias.
