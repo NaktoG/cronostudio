@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Thumbnail {
     id: string;
@@ -25,6 +26,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ThumbnailsPage() {
+    const { token } = useAuth();
     const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -34,7 +36,10 @@ export default function ThumbnailsPage() {
     const fetchThumbnails = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('cronostudio_token');
+            if (!token) {
+                setThumbnails([]);
+                return;
+            }
             const response = await fetch('/api/thumbnails', {
                 headers: { ...(token && { Authorization: `Bearer ${token}` }) },
             });
@@ -46,13 +51,12 @@ export default function ThumbnailsPage() {
         }
     };
 
-    useEffect(() => { fetchThumbnails(); }, []);
+    useEffect(() => { fetchThumbnails(); }, [token]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            const token = localStorage.getItem('cronostudio_token');
             await fetch('/api/thumbnails', {
                 method: 'POST',
                 headers: {
@@ -72,7 +76,6 @@ export default function ThumbnailsPage() {
     };
 
     const updateStatus = async (id: string, status: string) => {
-        const token = localStorage.getItem('cronostudio_token');
         await fetch(`/api/thumbnails?id=${id}`, {
             method: 'PUT',
             headers: {
@@ -86,7 +89,6 @@ export default function ThumbnailsPage() {
 
     const deleteThumbnail = async (id: string) => {
         if (!confirm('¿Eliminar esta miniatura?')) return;
-        const token = localStorage.getItem('cronostudio_token');
         await fetch(`/api/thumbnails?id=${id}`, {
             method: 'DELETE',
             headers: { ...(token && { Authorization: `Bearer ${token}` }) },

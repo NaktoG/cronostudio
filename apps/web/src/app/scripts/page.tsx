@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Script {
     id: string;
@@ -28,6 +29,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ScriptsPage() {
+    const { token } = useAuth();
     const [scripts, setScripts] = useState<Script[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -38,7 +40,10 @@ export default function ScriptsPage() {
     const fetchScripts = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('cronostudio_token');
+            if (!token) {
+                setScripts([]);
+                return;
+            }
             const response = await fetch('/api/scripts', {
                 headers: { ...(token && { Authorization: `Bearer ${token}` }) },
             });
@@ -50,13 +55,12 @@ export default function ScriptsPage() {
         }
     };
 
-    useEffect(() => { fetchScripts(); }, []);
+    useEffect(() => { fetchScripts(); }, [token]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            const token = localStorage.getItem('cronostudio_token');
             const url = editingId ? `/api/scripts?id=${editingId}` : '/api/scripts';
             const method = editingId ? 'PUT' : 'POST';
 
@@ -93,7 +97,6 @@ export default function ScriptsPage() {
 
     const deleteScript = async (id: string) => {
         if (!confirm('¿Eliminar este guion?')) return;
-        const token = localStorage.getItem('cronostudio_token');
         await fetch(`/api/scripts?id=${id}`, {
             method: 'DELETE',
             headers: { ...(token && { Authorization: `Bearer ${token}` }) },

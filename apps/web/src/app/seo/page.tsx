@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SeoData {
     id: string;
@@ -19,13 +20,17 @@ interface SeoData {
 }
 
 export default function SeoPage() {
+    const { token } = useAuth();
     const [seoData, setSeoData] = useState<SeoData[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchSeoData = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('cronostudio_token');
+            if (!token) {
+                setSeoData([]);
+                return;
+            }
             const response = await fetch('/api/seo', {
                 headers: { ...(token && { Authorization: `Bearer ${token}` }) },
             });
@@ -37,7 +42,7 @@ export default function SeoPage() {
         }
     };
 
-    useEffect(() => { fetchSeoData(); }, []);
+    useEffect(() => { fetchSeoData(); }, [token]);
 
     const getScoreColor = (score: number) => {
         if (score >= 80) return 'text-green-400';
