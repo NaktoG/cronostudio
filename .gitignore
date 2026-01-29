@@ -3,6 +3,7 @@ node_modules/
 .next/
 dist/
 out/
+*.tsbuildinfo
 
 # Env / secrets
 .env
@@ -22,4 +23,3 @@ n8n/credentials/
 # Logs
 *.log
 logs/
-
