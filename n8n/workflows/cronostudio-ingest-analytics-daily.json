@@ -58,13 +58,24 @@
     },
     {
       "parameters": {
-        "functionCode": "const videos = items[0].json.data || [];\nreturn videos.map((video) => ({\n  json: {\n    videoId: video.id,\n    youtubeVideoId: video.youtube_video_id\n  }\n}));"
+        "functionCode": "const videos = items[0].json.data || [];\nreturn videos.map((video) => ({\n  json: {\n    videoId: video.id,\n    youtubeVideoId: video.youtube_video_id\n  }\n})).filter((item) => item.json.youtubeVideoId);"
       },
       "id": "4",
       "name": "Map Videos",
       "type": "n8n-nodes-base.function",
       "typeVersion": 2,
       "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 25,
+        "options": {}
+      },
+      "id": "8",
+      "name": "Split Videos",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [1080, 300]
     },
     {
       "parameters": {
@@ -94,7 +105,7 @@
       "name": "Fetch YouTube Stats",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [1180, 300]
+      "position": [1240, 300]
     },
     {
       "parameters": {
@@ -104,7 +115,7 @@
       "name": "Map Analytics",
       "type": "n8n-nodes-base.function",
       "typeVersion": 2,
-      "position": [1420, 300]
+      "position": [1480, 300]
     },
     {
       "parameters": {
@@ -127,7 +138,7 @@
       "name": "Create Analytics",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [1660, 300],
+      "position": [1720, 300],
       "continueOnFail": true
     }
   ],
@@ -166,6 +177,17 @@
       ]
     },
     "Map Videos": {
+      "main": [
+        [
+          {
+            "node": "Split Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Videos": {
       "main": [
         [
           {

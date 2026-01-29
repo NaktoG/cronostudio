@@ -6,7 +6,7 @@
 - YouTube Data API v3 key (para datos publicos).
 
 ## Variables de entorno (contenedor n8n)
-Configurar en `infra/docker/env` y reiniciar n8n:
+Configurar en `infra/docker/.env` y reiniciar n8n:
 
 - `CRONOSTUDIO_API_BASE_URL` (ej: `http://host.docker.internal:3000/api`)
 - `CRONOSTUDIO_EMAIL`
@@ -17,13 +17,16 @@ Configurar en `infra/docker/env` y reiniciar n8n:
 ## Workflows incluidos
 1) `cronostudio-sync-channels.json`
    - Importa canales por IDs (YouTube Data API) y los crea en CronoStudio.
+   - Evita duplicados comparando `youtube_channel_id` existentes.
 
 2) `cronostudio-sync-videos.json`
    - Toma canales de CronoStudio y crea videos recientes desde YouTube.
+   - Evita duplicados comparando `youtube_video_id` existentes.
 
 3) `cronostudio-ingest-analytics-daily.json`
    - Registra vistas diarias (views) por video.
    - `watchTimeMinutes` y `avgViewDurationSeconds` quedan en 0 (placeholder).
+   - Procesa en lotes para reducir fallas.
 
 ## Importar workflows
 1. Abrir n8n: `http://localhost:5678`

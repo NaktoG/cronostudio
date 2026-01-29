@@ -28,6 +28,28 @@
       "parameters": {
         "authentication": "none",
         "requestMethod": "GET",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels",
+        "responseFormat": "json",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "6",
+      "name": "Fetch CronoStudio Channels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [700, 160]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "GET",
         "url": "https://www.googleapis.com/youtube/v3/channels",
         "responseFormat": "json",
         "queryParametersUi": {
@@ -56,7 +78,7 @@
     },
     {
       "parameters": {
-        "functionCode": "const channels = items[0].json.items || [];\nreturn channels.map((channel) => ({\n  json: {\n    name: channel.snippet?.title || 'Canal',\n    youtubeChannelId: channel.id\n  }\n}));"
+        "functionCode": "const existing = ($node['Fetch CronoStudio Channels'].json || []).map((channel) => channel.youtube_channel_id);\nconst existingSet = new Set(existing);\nconst channels = items[0].json.items || [];\nreturn channels.map((channel) => ({\n  json: {\n    name: channel.snippet?.title || 'Canal',\n    youtubeChannelId: channel.id\n  }\n})).filter((item) => item.json.youtubeChannelId && !existingSet.has(item.json.youtubeChannelId));"
       },
       "id": "4",
       "name": "Map Channels",
@@ -102,6 +124,17 @@
       ]
     },
     "Login CronoStudio": {
+      "main": [
+        [
+          {
+            "node": "Fetch CronoStudio Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch CronoStudio Channels": {
       "main": [
         [
           {
