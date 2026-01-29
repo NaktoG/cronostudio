@@ -19,6 +19,9 @@ const requestCounts = new Map<string, { count: number; resetTime: number }>();
 export function rateLimit(config: RateLimitConfig) {
   return (handler: Function) => {
     return async (request: NextRequest, ...args: any[]) => {
+      if (process.env.NODE_ENV !== 'production') {
+        return handler(request, ...args);
+      }
       const ip = request.headers.get('x-forwarded-for') || 
                  request.headers.get('x-real-ip') || 
                  'unknown';
