@@ -198,6 +198,21 @@ export class PostgresProductionRepository implements ProductionRepository {
             }
         }
 
+        try {
+            const ideasResult = await query(
+                `SELECT COUNT(*) as count
+         FROM ideas
+         WHERE user_id = $1`,
+                [userId]
+            );
+            stats.idea = parseInt(ideasResult.rows[0]?.count ?? '0', 10);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            if (!errorMessage.includes('does not exist') && !errorMessage.includes('relation')) {
+                throw error;
+            }
+        }
+
         return stats;
     }
 
