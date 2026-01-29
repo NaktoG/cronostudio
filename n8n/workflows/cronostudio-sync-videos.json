@@ -37,6 +37,29 @@
     {
       "parameters": {
         "authentication": "none",
+        "requestMethod": "POST",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs",
+        "jsonParameters": true,
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
+            }
+          ]
+        },
+        "bodyParametersJson": "={{ { workflowName: 'CronoStudio - Sync YouTube Videos', status: 'running' } }}"
+      },
+      "id": "9",
+      "name": "Create Automation Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [520, 160]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
         "requestMethod": "GET",
         "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels",
         "responseFormat": "json",
@@ -163,6 +186,30 @@
       "typeVersion": 3,
       "position": [1900, 300],
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "PUT",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
+        "jsonParameters": true,
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
+            }
+          ]
+        },
+        "bodyParametersJson": "={{ { status: 'completed' } }}"
+      },
+      "id": "10",
+      "name": "Complete Automation Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2100, 300],
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -178,6 +225,17 @@
       ]
     },
     "Login CronoStudio": {
+      "main": [
+        [
+          {
+            "node": "Create Automation Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Automation Run": {
       "main": [
         [
           {
@@ -237,6 +295,17 @@
         [
           {
             "node": "Create Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Video": {
+      "main": [
+        [
+          {
+            "node": "Complete Automation Run",
             "type": "main",
             "index": 0
           }

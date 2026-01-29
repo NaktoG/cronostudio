@@ -37,6 +37,29 @@
     {
       "parameters": {
         "authentication": "none",
+        "requestMethod": "POST",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs",
+        "jsonParameters": true,
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
+            }
+          ]
+        },
+        "bodyParametersJson": "={{ { workflowName: 'CronoStudio - Ingest Analytics Daily', status: 'running' } }}"
+      },
+      "id": "9",
+      "name": "Create Automation Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [520, 160]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
         "requestMethod": "GET",
         "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/videos?limit=100&offset=0",
         "responseFormat": "json",
@@ -140,6 +163,30 @@
       "typeVersion": 3,
       "position": [1720, 300],
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "PUT",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
+        "jsonParameters": true,
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
+            }
+          ]
+        },
+        "bodyParametersJson": "={{ { status: 'completed' } }}"
+      },
+      "id": "10",
+      "name": "Complete Automation Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1900, 300],
+      "continueOnFail": true
     }
   ],
   "connections": {
@@ -155,6 +202,17 @@
       ]
     },
     "Login CronoStudio": {
+      "main": [
+        [
+          {
+            "node": "Create Automation Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Automation Run": {
       "main": [
         [
           {
@@ -214,6 +272,17 @@
         [
           {
             "node": "Create Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Analytics": {
+      "main": [
+        [
+          {
+            "node": "Complete Automation Run",
             "type": "main",
             "index": 0
           }

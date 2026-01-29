@@ -76,9 +76,10 @@ export default function Dashboard() {
       return;
     }
     try {
-      const [productionsRes, ideasRes] = await Promise.all([
+      const [productionsRes, ideasRes, runsRes] = await Promise.all([
         authFetch('/api/productions?stats=true'),
-        authFetch('/api/ideas')
+        authFetch('/api/ideas'),
+        authFetch('/api/automation-runs')
       ]);
 
       if (productionsRes.ok) {
@@ -101,7 +102,12 @@ export default function Dashboard() {
         const ideasData = await ideasRes.json();
         setIdeasCount(Array.isArray(ideasData) ? ideasData.length : 0);
       }
-      setRuns([]);
+      if (runsRes.ok) {
+        const runsData = await runsRes.json();
+        setRuns(Array.isArray(runsData) ? runsData : []);
+      } else {
+        setRuns([]);
+      }
     } catch (e) {
       console.error('Error:', e);
     } finally {

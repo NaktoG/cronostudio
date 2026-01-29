@@ -28,6 +28,9 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
    - `watchTimeMinutes` y `avgViewDurationSeconds` quedan en 0 (placeholder).
    - Procesa en lotes para reducir fallas.
 
+## Tracking de ejecuciones
+Los workflows registran ejecuciones en `automation_runs` para mostrarlas en el dashboard.
+
 ## Importar workflows
 1. Abrir n8n: `http://localhost:5678`
 2. Importar JSON desde esta carpeta.
