@@ -1,19 +1,22 @@
-## Qué cambia
+## Resumen
+
+## Cambios
 - 
 
-## Por qué
-- 
+## Tipo de cambio
+- [ ] feature
+- [ ] fix
+- [ ] hotfix
+- [ ] chore
+- [ ] docs
+- [ ] refactor
+
+## Tests
+- [ ] No aplica
+- [ ] No ejecutado
+- [ ] Ejecutado (detallar comando y resultado)
 
 ## Checklist
-- [ ] Cumple criterios de aceptación del Issue
-- [ ] No rompe `main` (merge siempre desde `develop`)
-- [ ] Docs actualizadas si aplica
-- [ ] Sin secretos en commits (.env, tokens)
-
-## Cómo probar
-1. 
-2. 
-3. 
-
-## Capturas (si aplica)
--
+- [ ] Seguí la política de ramas (`docs/BRANCHING.md`)
+- [ ] Cambios documentados si corresponde
+- [ ] Sin secretos en commits

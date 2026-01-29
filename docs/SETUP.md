@@ -144,6 +144,7 @@ npm run build
 ## Buenas Prácticas
 
 - **Siempre trabajar en `develop`**, nunca en `main`
+- **Seguir la política de ramas**: ver `docs/BRANCHING.md`
 - **NO commitear secretos**: `.env`, API keys, tokens
 - **Documentar cambios importantes** en `docs/`
 - **Hacer commits descriptivos** en español: `feat:`, `fix:`, `docs:`, `chore:`

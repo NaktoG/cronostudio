@@ -32,6 +32,7 @@
 - [Seguridad](#-seguridad)
 - [Requisitos Previos](#-requisitos-previos)
 - [Instalación](#-instalación)
+- [Documentación](#-documentación)
 - [Estructura del Proyecto](#-estructura-del-proyecto)
 - [Mejores Prácticas](#-mejores-prácticas)
 - [Contribuir](#-contribuir)
@@ -162,10 +163,9 @@ Ver [ARCHITECTURE.md](docs/ARCHITECTURE.md) para más detalles.
    npm install
    ```
 
-4. **Configurar entorno**
+4. **Configurar entorno (Docker)**
    ```bash
-   cp .env.example .env.local
-   # Editar variables de entorno
+   cp infra/docker/.env.example infra/docker/.env
    ```
 
 5. **Iniciar desarrollo**
@@ -197,6 +197,15 @@ apps/web/src/
 
 ---
 
+## 📚 Documentación
+
+- [Setup](docs/SETUP.md)
+- [Runbook](docs/RUNBOOK.md)
+- [Arquitectura](docs/ARCHITECTURE.md)
+- [Política de ramas](docs/BRANCHING.md)
+
+---
+
 ## ✅ Mejores Prácticas
 
 - **Clean Architecture**: Separación estricta de responsabilidades.
@@ -209,9 +218,9 @@ apps/web/src/
 ## 🤝 Contribuir
 
 1. Fork el proyecto
-2. Crea tu rama de feature (`git checkout -b feat/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'feat: Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feat/AmazingFeature`)
+2. Crea tu rama (`git checkout -b feature/mi-feature`)
+3. Commit tus cambios (`git commit -m 'feat: descripcion corta'`)
+4. Push a la rama (`git push origin feature/mi-feature`)
 5. Abre un Pull Request
 
 ---
