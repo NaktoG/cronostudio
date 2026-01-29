@@ -66,7 +66,10 @@ export default function IdeasPage() {
                 },
                 body: JSON.stringify(formData),
             });
-            if (!response.ok) throw new Error('Error al crear idea');
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al crear idea');
+            }
             setShowModal(false);
             setFormData({ title: '', description: '', priority: 0 });
             await fetchIdeas();

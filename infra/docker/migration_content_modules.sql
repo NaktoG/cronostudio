@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS ideas (
     status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'approved', 'in_production', 'completed', 'archived')),
     priority INTEGER DEFAULT 0,
     tags TEXT[],
+    source VARCHAR(50) DEFAULT 'manual',
+    ai_score INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
