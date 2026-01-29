@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { testConnection } from '@/lib/db';
+import { validateConfig } from '@/lib/config';
 
 /**
  * GET /api/health
@@ -7,6 +8,7 @@ import { testConnection } from '@/lib/db';
  */
 export async function GET(request: NextRequest) {
     try {
+        validateConfig();
         // Verificar PostgreSQL
         const dbHealthy = await testConnection();
 
@@ -33,6 +35,7 @@ export async function GET(request: NextRequest) {
             status,
             timestamp: new Date().toISOString(),
             services: {
+                config: 'ok',
                 database: dbHealthy ? 'up' : 'down',
                 n8n: n8nHealthy ? 'up' : 'down',
             },
