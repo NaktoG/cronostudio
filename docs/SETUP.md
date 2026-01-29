@@ -54,6 +54,9 @@ Variables para email (opcional):
 - `SMTP_PASSWORD`
 - `SMTP_FROM`
 
+QA recomendado:
+- Ver `docs/QA_AUTH_FLOW.md`
+
 **⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` a git si contiene credenciales reales.
 
 ### 3. Levantar infraestructura (n8n + Postgres)
