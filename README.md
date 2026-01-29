@@ -203,6 +203,7 @@ apps/web/src/
 - [Runbook](docs/RUNBOOK.md)
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Política de ramas](docs/BRANCHING.md)
+- [Script de limpieza de ramas](scripts/branch_cleanup.sh)
 
 ---
 

@@ -34,6 +34,12 @@ Esta politica define el flujo de trabajo y el proposito de cada tipo de rama.
 5. Para release: crear `release/*`, estabilizar, mergear a `main` y `develop`.
 6. Para hotfix: crear `hotfix/*` desde `main`, mergear a `main` y `develop`.
 
+## Limpieza de ramas
+Usar el script en `scripts/branch_cleanup.sh`:
+- Listar: `scripts/branch_cleanup.sh list`
+- Borrar locales: `scripts/branch_cleanup.sh delete-local`
+- Borrar remotas: `scripts/branch_cleanup.sh delete-remote`
+
 ## Convenciones
 - Nombres cortos y descriptivos en minusculas y con guiones.
 - Un tema por rama y por PR.
