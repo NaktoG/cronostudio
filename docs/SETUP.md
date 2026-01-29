@@ -54,6 +54,12 @@ Verificar que ambos containers están en estado `Up`:
 - `cronostudio-postgres`
 - `cronostudio-n8n`
 
+### 3.1 Ejecutar migraciones de base de datos
+
+```bash
+./scripts/db_migrate.sh
+```
+
 ### 4. Instalar dependencias del frontend
 
 ```bash
