@@ -18,10 +18,10 @@ if ! docker ps | grep -q cronostudio-postgres; then
     exit 1
 fi
 
-# Ejecutar migraciones
-docker exec -i cronostudio-postgres psql -U cronostudio -d cronostudio < infra/docker/schema.sql
+# Ejecutar migraciones (incluye schema + migrations)
+./scripts/db_migrate.sh
 
 echo "✅ Migraciones completadas exitosamente"
 echo ""
 echo "📊 Tablas creadas:"
-docker exec cronostudio-postgres psql -U cronostudio -d cronostudio -c "\dt" | grep -E "app_users|channels|videos|analytics"
+docker exec cronostudio-postgres psql -U cronostudio -d cronostudio -c "\dt" | grep -E "app_users|channels|videos|analytics|ideas|productions|scripts|thumbnails|seo_data|auth_sessions"

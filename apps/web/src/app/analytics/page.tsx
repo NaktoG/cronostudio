@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AnalyticsData {
     period: string;
@@ -24,6 +25,7 @@ interface Channel {
 function AnalyticsContent() {
     const searchParams = useSearchParams();
     const initialChannelId = searchParams.get('channelId') || '';
+    const { token } = useAuth();
 
     const [analytics, setAnalytics] = useState<AnalyticsData[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
@@ -50,7 +52,13 @@ function AnalyticsContent() {
 
     const fetchChannels = async () => {
         try {
-            const response = await fetch('/api/channels');
+            if (!token) {
+                setChannels([]);
+                return;
+            }
+            const response = await fetch('/api/channels', {
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+            });
             if (response.ok) {
                 const data = await response.json();
                 setChannels(data);
@@ -63,6 +71,11 @@ function AnalyticsContent() {
     const fetchAnalytics = useCallback(async () => {
         try {
             setLoading(true);
+            if (!token) {
+                setAnalytics([]);
+                setError(null);
+                return;
+            }
             const params = new URLSearchParams();
 
             if (channelId) params.set('channelId', channelId);
@@ -70,7 +83,9 @@ function AnalyticsContent() {
             if (dateRange.startDate) params.set('startDate', dateRange.startDate);
             if (dateRange.endDate) params.set('endDate', dateRange.endDate);
 
-            const response = await fetch(`/api/analytics?${params.toString()}`);
+            const response = await fetch(`/api/analytics?${params.toString()}`, {
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+            });
 
             if (!response.ok) {
                 throw new Error('Error al cargar analytics');
@@ -84,11 +99,11 @@ function AnalyticsContent() {
         } finally {
             setLoading(false);
         }
-    }, [channelId, groupBy, dateRange]);
+    }, [channelId, groupBy, dateRange, token]);
 
     useEffect(() => {
         fetchChannels();
-    }, []);
+    }, [token]);
 
     useEffect(() => {
         fetchAnalytics();

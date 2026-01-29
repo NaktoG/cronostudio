@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Channel {
     id: string;
@@ -17,6 +18,7 @@ interface Channel {
 }
 
 export default function ChannelsPage() {
+    const { token } = useAuth();
     const [channels, setChannels] = useState<Channel[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -31,7 +33,13 @@ export default function ChannelsPage() {
     const fetchChannels = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/channels');
+            if (!token) {
+                setChannels([]);
+                return;
+            }
+            const response = await fetch('/api/channels', {
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+            });
 
             if (!response.ok) {
                 throw new Error('Error al cargar canales');
@@ -49,7 +57,7 @@ export default function ChannelsPage() {
 
     useEffect(() => {
         fetchChannels();
-    }, []);
+    }, [token]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -57,7 +65,6 @@ export default function ChannelsPage() {
         setError(null);
 
         try {
-            const token = localStorage.getItem('cronostudio_token');
             const response = await fetch('/api/channels', {
                 method: 'POST',
                 headers: {
