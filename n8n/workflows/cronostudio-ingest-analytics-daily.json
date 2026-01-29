@@ -81,13 +81,23 @@
     },
     {
       "parameters": {
-        "functionCode": "const videos = items[0].json.data || [];\nreturn videos.map((video) => ({\n  json: {\n    videoId: video.id,\n    youtubeVideoId: video.youtube_video_id\n  }\n})).filter((item) => item.json.youtubeVideoId);"
+        "functionCode": "const videos = items[0].json.data || [];\nreturn videos.map((video) => ({\n  json: {\n    videoId: video.id,\n    youtubeVideoId: video.youtube_video_id,\n    youtubeChannelId: video.youtube_channel_id\n  }\n})).filter((item) => item.json.youtubeVideoId && item.json.youtubeChannelId);"
       },
       "id": "4",
       "name": "Map Videos",
       "type": "n8n-nodes-base.function",
       "typeVersion": 2,
       "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const now = new Date();\nconst end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));\nconst start = new Date(end);\nconst startDate = start.toISOString().slice(0, 10);\nconst endDate = end.toISOString().slice(0, 10);\nreturn [{ json: { startDate, endDate } }];"
+      },
+      "id": "11",
+      "name": "Build Date Range",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [1080, 140]
     },
     {
       "parameters": {
@@ -104,35 +114,55 @@
       "parameters": {
         "authentication": "none",
         "requestMethod": "GET",
-        "url": "https://www.googleapis.com/youtube/v3/videos",
+        "url": "https://youtubeanalytics.googleapis.com/v2/reports",
         "responseFormat": "json",
         "queryParametersUi": {
           "parameter": [
             {
-              "name": "part",
-              "value": "statistics"
+              "name": "ids",
+              "value": "={{'channel==' + $json.youtubeChannelId}}"
             },
             {
               "name": "id",
               "value": "={{$json.youtubeVideoId}}"
             },
             {
-              "name": "key",
-              "value": "={{$env.YOUTUBE_API_KEY}}"
+              "name": "metrics",
+              "value": "views,estimatedMinutesWatched,averageViewDuration"
+            },
+            {
+              "name": "startDate",
+              "value": "={{$node['Build Date Range'].json.startDate}}"
+            },
+            {
+              "name": "endDate",
+              "value": "={{$node['Build Date Range'].json.endDate}}"
+            },
+            {
+              "name": "filters",
+              "value": "={{'video==' + $json.youtubeVideoId}}"
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$env.YOUTUBE_ANALYTICS_ACCESS_TOKEN}}"
+            }
+          ]
+        }
       },
       "id": "5",
-      "name": "Fetch YouTube Stats",
+      "name": "Fetch YouTube Analytics",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
       "position": [1240, 300]
     },
     {
       "parameters": {
-        "functionCode": "const stats = items[0].json.items?.[0]?.statistics || {};\nreturn [{\n  json: {\n    videoId: $node['Map Videos'].json.videoId,\n    date: new Date().toISOString().slice(0, 10),\n    views: parseInt(stats.viewCount || '0', 10),\n    watchTimeMinutes: 0,\n    avgViewDurationSeconds: 0\n  }\n}];"
+        "functionCode": "const rows = items[0].json.rows || [];\nconst row = rows[0] || [];\nconst views = parseInt(row[0] || '0', 10);\nconst watchTimeMinutes = parseInt(row[1] || '0', 10);\nconst avgViewDurationSeconds = parseInt(row[2] || '0', 10);\nreturn [{\n  json: {\n    videoId: $node['Map Videos'].json.videoId,\n    date: $node['Build Date Range'].json.endDate,\n    views,\n    watchTimeMinutes,\n    avgViewDurationSeconds\n  }\n}];"
       },
       "id": "6",
       "name": "Map Analytics",
@@ -241,6 +271,11 @@
             "node": "Split Videos",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Build Date Range",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -249,14 +284,14 @@
       "main": [
         [
           {
-            "node": "Fetch YouTube Stats",
+            "node": "Fetch YouTube Analytics",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Fetch YouTube Stats": {
+    "Fetch YouTube Analytics": {
       "main": [
         [
           {

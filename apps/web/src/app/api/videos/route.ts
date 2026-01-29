@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         let queryText = `
             SELECT v.id, v.channel_id, v.youtube_video_id, v.title, v.description,
                    v.published_at, v.views, v.likes, v.comments, v.created_at, v.updated_at,
-                   c.name as channel_name
+                   c.name as channel_name, c.youtube_channel_id
             FROM videos v
             JOIN channels c ON v.channel_id = c.id
             WHERE c.user_id = $1

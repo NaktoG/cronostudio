@@ -40,6 +40,9 @@ Editar `infra/docker/.env` con valores locales. Ver `.env.example` para referenc
 Variables obligatorias (minimo):
 - `JWT_SECRET`
 
+Variables para analytics (opcional):
+- `YOUTUBE_ANALYTICS_ACCESS_TOKEN`
+
 **⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` a git si contiene credenciales reales.
 
 ### 3. Levantar infraestructura (n8n + Postgres)

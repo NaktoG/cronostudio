@@ -12,6 +12,7 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 - `CRONOSTUDIO_EMAIL`
 - `CRONOSTUDIO_PASSWORD`
 - `YOUTUBE_API_KEY`
+- `YOUTUBE_ANALYTICS_ACCESS_TOKEN` (Bearer token OAuth2)
 - `YOUTUBE_CHANNEL_IDS` (IDs separados por coma)
 
 ## Workflows incluidos
@@ -25,7 +26,7 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 
 3) `cronostudio-ingest-analytics-daily.json`
    - Registra vistas diarias (views) por video.
-   - `watchTimeMinutes` y `avgViewDurationSeconds` quedan en 0 (placeholder).
+   - Usa YouTube Analytics API para `watchTimeMinutes` y `avgViewDurationSeconds`.
    - Procesa en lotes para reducir fallas.
 
 ## Tracking de ejecuciones
