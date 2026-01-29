@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js" alt="Next.js 14">
+  <img src="https://img.shields.io/badge/Next.js-16.1.4-black?style=for-the-badge&logo=next.js" alt="Next.js 16.1.4">
   <img src="https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript" alt="TypeScript 5">
   <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Clean_Architecture-Enabled-success?style=for-the-badge&logo=structure" alt="Clean Architecture">
@@ -68,7 +68,7 @@
 ## 🛠 Tecnologías Utilizadas
 
 ### Frontend
-- **Next.js 14** (App Router)
+- **Next.js 16.1.4** (App Router)
 - **TypeScript** (Strict Mode)
 - **Tailwind CSS** (Styling)
 - **Framer Motion** (Animations)
@@ -153,7 +153,7 @@ Ver [ARCHITECTURE.md](docs/ARCHITECTURE.md) para más detalles.
 
 2. **Iniciar infraestructura**
    ```bash
-   docker compose -f infra/docker/compose.yml up -d
+    docker compose -f infra/docker/docker-compose.yml up -d
    ```
 
 3. **Instalar dependencias**
