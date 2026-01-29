@@ -37,7 +37,11 @@ export default function Header() {
               whileHover={{ scale: 1.05, rotate: 2 }}
               whileTap={{ scale: 0.95 }}
             >
-              <span className="text-black font-bold text-xl">C</span>
+              <img
+                src="/logo_crono.png"
+                alt="CronoStudio"
+                className="w-8 h-8 object-contain"
+              />
             </motion.div>
             <h1 className="text-2xl font-bold text-white hidden sm:block group-hover:text-yellow-400 transition-colors">
               CronoStudio

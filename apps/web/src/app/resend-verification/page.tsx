@@ -56,7 +56,11 @@ export default function ResendVerificationPage() {
                 className="inline-flex items-center justify-center w-16 h-16 bg-yellow-400 rounded-2xl mb-4 shadow-lg shadow-yellow-400/20"
                 whileHover={{ scale: 1.05, rotate: 4 }}
               >
-                <span className="text-black font-bold text-2xl">C</span>
+                <img
+                  src="/logo_crono.png"
+                  alt="CronoStudio"
+                  className="w-10 h-10 object-contain"
+                />
               </motion.div>
               <h1 className="text-3xl font-bold text-white">Reenviar verificacion</h1>
               <p className="text-gray-400 mt-2">Te enviaremos un nuevo link de verificacion</p>
