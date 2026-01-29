@@ -141,6 +141,12 @@ export default function LoginPage() {
                                 </Link>
                             </div>
 
+                            <div className="text-center text-gray-500 text-xs">
+                                <Link href="/resend-verification" className="text-yellow-400 hover:text-yellow-300 transition-colors">
+                                    Reenviar verificacion de email
+                                </Link>
+                            </div>
+
                             <div className="text-center text-gray-400 text-sm">
                                 ¿No tienes cuenta?{' '}
                                 <Link href="/register" className="text-yellow-400 hover:text-yellow-300 transition-colors">
