@@ -34,6 +34,8 @@ export default function IdeasPage() {
     const [formData, setFormData] = useState({ title: '', description: '', priority: 0 });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
+    const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
     const fetchIdeas = async () => {
         try {
@@ -110,16 +112,34 @@ export default function IdeasPage() {
     };
 
     const deleteIdea = async (id: string) => {
-        if (!confirm('¿Eliminar esta idea?')) return;
+        const target = ideas.find((idea) => idea.id === id) || null;
+        setDeleteTarget(target);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
         if (!token) {
             setError('Sesión no válida. Inicia sesión de nuevo.');
+            setDeleteTarget(null);
             return;
         }
-        await fetch(`/api/ideas?id=${id}`, {
-            method: 'DELETE',
-            headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-        });
-        await fetchIdeas();
+        setDeleteSubmitting(true);
+        try {
+            const response = await fetch(`/api/ideas?id=${deleteTarget.id}`, {
+                method: 'DELETE',
+                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al eliminar idea');
+            }
+            setDeleteTarget(null);
+            await fetchIdeas();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Error');
+        } finally {
+            setDeleteSubmitting(false);
+        }
     };
 
     return (
@@ -268,6 +288,49 @@ export default function IdeasPage() {
                                         </button>
                                     </div>
                                 </form>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <AnimatePresence>
+                    {deleteTarget && (
+                        <motion.div
+                            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setDeleteTarget(null)}
+                        >
+                            <motion.div
+                                className="bg-gray-900 border border-red-500/20 rounded-2xl p-6 w-full max-w-md"
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.95, opacity: 0 }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <h3 className="text-xl font-bold text-white mb-2">Eliminar idea</h3>
+                                <p className="text-gray-400 text-sm mb-6">
+                                    ¿Seguro que quieres eliminar <span className="text-white font-semibold">{deleteTarget.title}</span>?
+                                    Esta acción no se puede deshacer.
+                                </p>
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDeleteTarget(null)}
+                                        className="flex-1 py-2.5 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={confirmDelete}
+                                        disabled={deleteSubmitting}
+                                        className="flex-1 py-2.5 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-400 disabled:opacity-60"
+                                    >
+                                        {deleteSubmitting ? 'Eliminando...' : 'Eliminar'}
+                                    </button>
+                                </div>
                             </motion.div>
                         </motion.div>
                     )}

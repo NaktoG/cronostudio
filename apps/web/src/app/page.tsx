@@ -61,6 +61,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
+  const [ideasCount, setIdeasCount] = useState(0);
 
   const authFetch = useCallback(async (url: string, options: RequestInit = {}) => {
     const headers = new Headers(options.headers);
@@ -75,9 +76,13 @@ export default function Dashboard() {
       return;
     }
     try {
-      const res = await authFetch('/api/productions?stats=true');
-      if (res.ok) {
-        const data = await res.json();
+      const [productionsRes, ideasRes] = await Promise.all([
+        authFetch('/api/productions?stats=true'),
+        authFetch('/api/ideas')
+      ]);
+
+      if (productionsRes.ok) {
+        const data = await productionsRes.json();
         setProductions(data.productions || []);
         if (data.pipeline) {
           setPipelineStats({
@@ -90,6 +95,11 @@ export default function Dashboard() {
             published: data.pipeline.published || 0,
           });
         }
+      }
+
+      if (ideasRes.ok) {
+        const ideasData = await ideasRes.json();
+        setIdeasCount(Array.isArray(ideasData) ? ideasData.length : 0);
       }
       setRuns([]);
     } catch (e) {
@@ -177,7 +187,7 @@ export default function Dashboard() {
                       transition={{ delay: 0.3 }}
                     >
                       <div className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">📈 Resumen</div>
-                      <div className="grid grid-cols-3 gap-6 text-center">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
                         <motion.div
                           whileHover={{ scale: 1.05 }}
                         >
@@ -189,6 +199,12 @@ export default function Dashboard() {
                         >
                           <div className="text-4xl font-bold text-yellow-400">{activeProductions.length}</div>
                           <div className="text-base text-gray-500">Activos</div>
+                        </motion.div>
+                        <motion.div
+                          whileHover={{ scale: 1.05 }}
+                        >
+                          <div className="text-4xl font-bold text-blue-400">{ideasCount}</div>
+                          <div className="text-base text-gray-500">Ideas</div>
                         </motion.div>
                         <motion.div
                           whileHover={{ scale: 1.05 }}
