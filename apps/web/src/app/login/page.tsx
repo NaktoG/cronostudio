@@ -151,7 +151,7 @@ export default function LoginPage() {
                             transition={{ delay: 0.5 }}
                         >
                             <p className="text-gray-400 text-xs text-center">
-                                Demo: <span className="text-yellow-400">demo@cronostudio.com</span> / <span className="text-yellow-400">Demo123!</span>
+                                Demo: <span className="text-yellow-400">demo@cronostudio.com</span> / <span className="text-yellow-400">demo123</span>
                             </p>
                         </motion.div>
                     </motion.div>

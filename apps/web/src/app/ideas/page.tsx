@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Idea {
     id: string;
@@ -26,6 +27,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function IdeasPage() {
+    const { token, isAuthenticated } = useAuth();
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -36,7 +38,10 @@ export default function IdeasPage() {
     const fetchIdeas = async () => {
         try {
             setLoading(true);
-            const token = localStorage.getItem('cronostudio_token');
+            if (!token) {
+                setIdeas([]);
+                return;
+            }
             const response = await fetch('/api/ideas', {
                 headers: { ...(token && { Authorization: `Bearer ${token}` }) },
             });
@@ -50,14 +55,22 @@ export default function IdeasPage() {
         }
     };
 
-    useEffect(() => { fetchIdeas(); }, []);
+    useEffect(() => {
+        if (!isAuthenticated) {
+            setLoading(false);
+            return;
+        }
+        fetchIdeas();
+    }, [isAuthenticated, token]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         setError(null);
         try {
-            const token = localStorage.getItem('cronostudio_token');
+            if (!token) {
+                throw new Error('Sesión no válida. Inicia sesión de nuevo.');
+            }
             const response = await fetch('/api/ideas', {
                 method: 'POST',
                 headers: {
@@ -81,7 +94,10 @@ export default function IdeasPage() {
     };
 
     const updateStatus = async (id: string, status: string) => {
-        const token = localStorage.getItem('cronostudio_token');
+        if (!token) {
+            setError('Sesión no válida. Inicia sesión de nuevo.');
+            return;
+        }
         await fetch(`/api/ideas?id=${id}`, {
             method: 'PUT',
             headers: {
@@ -95,7 +111,10 @@ export default function IdeasPage() {
 
     const deleteIdea = async (id: string) => {
         if (!confirm('¿Eliminar esta idea?')) return;
-        const token = localStorage.getItem('cronostudio_token');
+        if (!token) {
+            setError('Sesión no válida. Inicia sesión de nuevo.');
+            return;
+        }
         await fetch(`/api/ideas?id=${id}`, {
             method: 'DELETE',
             headers: { ...(token && { Authorization: `Bearer ${token}` }) },
