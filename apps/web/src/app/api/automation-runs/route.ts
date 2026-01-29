@@ -5,6 +5,7 @@ import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { AuthService } from '@/application/services/AuthService';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,7 @@ export async function GET(request: NextRequest) {
 
     return withSecurityHeaders(NextResponse.json(result.rows));
   } catch (error) {
+    logger.error('automation_runs.list.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener ejecuciones' }, { status: 500 }));
   }
 }
@@ -82,6 +84,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos', details: error.errors }, { status: 400 }));
     }
+    logger.error('automation_runs.create.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al crear ejecución' }, { status: 500 }));
   }
 });
@@ -140,6 +143,7 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos', details: error.errors }, { status: 400 }));
     }
+    logger.error('automation_runs.update.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar ejecución' }, { status: 500 }));
   }
 });

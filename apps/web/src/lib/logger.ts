@@ -1,90 +1,51 @@
-// lib/logger.ts
-// Structured logging utility for production-safe logging
-
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-interface LogContext {
-    [key: string]: unknown;
-}
-
-interface LogEntry {
-    timestamp: string;
-    level: LogLevel;
-    message: string;
-    context?: LogContext;
-}
-
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
-const LOG_LEVEL = process.env.LOG_LEVEL || (IS_PRODUCTION ? 'info' : 'debug');
-
-const LEVEL_PRIORITY: Record<LogLevel, number> = {
-    debug: 0,
-    info: 1,
-    warn: 2,
-    error: 3,
+const levelOrder: Record<LogLevel, number> = {
+  debug: 10,
+  info: 20,
+  warn: 30,
+  error: 40,
 };
 
+const configuredLevel = (process.env.LOG_LEVEL || 'info') as LogLevel;
+const minLevel = levelOrder[configuredLevel] ?? levelOrder.info;
+
 function shouldLog(level: LogLevel): boolean {
-    return LEVEL_PRIORITY[level] >= LEVEL_PRIORITY[LOG_LEVEL as LogLevel];
+  return levelOrder[level] >= minLevel;
 }
 
-function formatLog(entry: LogEntry): string {
-    if (IS_PRODUCTION) {
-        // JSON format for production (easy to parse by log aggregators)
-        return JSON.stringify(entry);
-    }
-    // Human-readable format for development
-    const contextStr = entry.context ? ` ${JSON.stringify(entry.context)}` : '';
-    return `[${entry.timestamp}] ${entry.level.toUpperCase()}: ${entry.message}${contextStr}`;
-}
+function write(level: LogLevel, message: string, meta?: Record<string, unknown>) {
+  if (!shouldLog(level)) return;
+  const payload = {
+    level,
+    message,
+    timestamp: new Date().toISOString(),
+    ...(meta ? { meta } : {}),
+  };
+  const output = JSON.stringify(payload);
 
-function sanitize(context: LogContext): LogContext {
-    const sensitiveKeys = ['password', 'token', 'secret', 'authorization', 'cookie', 'jwt'];
-    const sanitized: LogContext = {};
-
-    for (const [key, value] of Object.entries(context)) {
-        const lowerKey = key.toLowerCase();
-        if (sensitiveKeys.some(sk => lowerKey.includes(sk))) {
-            sanitized[key] = '[REDACTED]';
-        } else if (typeof value === 'object' && value !== null) {
-            sanitized[key] = sanitize(value as LogContext);
-        } else {
-            sanitized[key] = value;
-        }
-    }
-
-    return sanitized;
-}
-
-function log(level: LogLevel, message: string, context?: LogContext): void {
-    if (!shouldLog(level)) return;
-
-    const entry: LogEntry = {
-        timestamp: new Date().toISOString(),
-        level,
-        message,
-        context: context ? sanitize(context) : undefined,
-    };
-
-    const formatted = formatLog(entry);
-
-    switch (level) {
-        case 'error':
-            console.error(formatted);
-            break;
-        case 'warn':
-            console.warn(formatted);
-            break;
-        default:
-            console.log(formatted);
-    }
+  if (level === 'error') {
+    console.error(output);
+    return;
+  }
+  if (level === 'warn') {
+    console.warn(output);
+    return;
+  }
+  console.log(output);
 }
 
 export const logger = {
-    debug: (message: string, context?: LogContext) => log('debug', message, context),
-    info: (message: string, context?: LogContext) => log('info', message, context),
-    warn: (message: string, context?: LogContext) => log('warn', message, context),
-    error: (message: string, context?: LogContext) => log('error', message, context),
+  debug(message: string, meta?: Record<string, unknown>) {
+    write('debug', message, meta);
+  },
+  info(message: string, meta?: Record<string, unknown>) {
+    write('info', message, meta);
+  },
+  warn(message: string, meta?: Record<string, unknown>) {
+    write('warn', message, meta);
+  },
+  error(message: string, meta?: Record<string, unknown>) {
+    write('error', message, meta);
+  },
 };
-
-export default logger;

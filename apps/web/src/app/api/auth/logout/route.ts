@@ -5,6 +5,7 @@ import { rateLimit, LOGIN_RATE_LIMIT } from '@/middleware/rateLimit';
 import { AuthService } from '@/application/services/AuthService';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { PostgresSessionRepository } from '@/infrastructure/repositories/PostgresSessionRepository';
+import { logger } from '@/lib/logger';
 
 const userRepository = new PostgresUserRepository();
 const sessionRepository = new PostgresSessionRepository();
@@ -16,9 +17,11 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     const validated = validateInput(RefreshTokenSchema, body);
     await authService.logout(validated.refreshToken);
 
+    logger.info('auth.logout.success');
     const response = NextResponse.json({ message: 'Sesion cerrada' });
     return withSecurityHeaders(response);
   } catch (error) {
+    logger.error('auth.logout.error', { error: String(error) });
     return NextResponse.json({ error: 'Error al cerrar sesion' }, { status: 500 });
   }
 });

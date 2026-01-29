@@ -5,6 +5,7 @@ import { rateLimit, LOGIN_RATE_LIMIT } from '@/middleware/rateLimit';
 import { AuthService, AuthError } from '@/application/services/AuthService';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { PostgresSessionRepository } from '@/infrastructure/repositories/PostgresSessionRepository';
+import { logger } from '@/lib/logger';
 
 const userRepository = new PostgresUserRepository();
 const sessionRepository = new PostgresSessionRepository();
@@ -27,11 +28,14 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
       refreshToken: result.refreshToken,
     });
 
+    logger.info('auth.refresh.success', { userId: result.user.id });
     return withSecurityHeaders(response);
   } catch (error) {
     if (error instanceof AuthError) {
+      logger.warn('auth.refresh.invalid', { error: error.message });
       return NextResponse.json({ error: 'Refresh token invalido' }, { status: 401 });
     }
+    logger.error('auth.refresh.error', { error: String(error) });
     return NextResponse.json({ error: 'Error al refrescar token' }, { status: 500 });
   }
 });

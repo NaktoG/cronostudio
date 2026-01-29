@@ -40,6 +40,9 @@ Editar `infra/docker/.env` con valores locales. Ver `.env.example` para referenc
 Variables obligatorias (minimo):
 - `JWT_SECRET`
 
+Variables de logging (opcional):
+- `LOG_LEVEL` (debug | info | warn | error)
+
 Variables para analytics (opcional):
 - `YOUTUBE_ANALYTICS_ACCESS_TOKEN`
 
