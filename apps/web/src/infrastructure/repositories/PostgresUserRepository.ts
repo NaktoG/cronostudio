@@ -9,7 +9,7 @@ export class PostgresUserRepository implements UserRepository {
 
     async findById(id: string): Promise<User | null> {
         const result = await query(
-            'SELECT id, email, name, created_at, updated_at FROM app_users WHERE id = $1',
+            'SELECT id, email, name, email_verified_at, created_at, updated_at FROM app_users WHERE id = $1',
             [id]
         );
 
@@ -19,7 +19,7 @@ export class PostgresUserRepository implements UserRepository {
 
     async findByEmail(email: string): Promise<UserWithPassword | null> {
         const result = await query(
-            'SELECT id, email, name, password_hash, created_at, updated_at FROM app_users WHERE email = $1',
+            'SELECT id, email, name, password_hash, email_verified_at, created_at, updated_at FROM app_users WHERE email = $1',
             [email.toLowerCase()]
         );
 
@@ -31,7 +31,7 @@ export class PostgresUserRepository implements UserRepository {
         const result = await query(
             `INSERT INTO app_users (email, password_hash, name)
        VALUES ($1, $2, $3)
-       RETURNING id, email, name, created_at, updated_at`,
+       RETURNING id, email, name, email_verified_at, created_at, updated_at`,
             [input.email.toLowerCase(), passwordHash, input.name]
         );
 
@@ -67,7 +67,7 @@ export class PostgresUserRepository implements UserRepository {
         const result = await query(
             `UPDATE app_users SET ${updates.join(', ')}, updated_at = NOW() 
        WHERE id = $${paramIndex} 
-       RETURNING id, email, name, created_at, updated_at`,
+       RETURNING id, email, name, email_verified_at, created_at, updated_at`,
             params
         );
 
@@ -80,6 +80,7 @@ export class PostgresUserRepository implements UserRepository {
             id: row.id as string,
             email: row.email as string,
             name: row.name as string,
+            emailVerifiedAt: row.email_verified_at ? new Date(row.email_verified_at as string) : null,
             createdAt: new Date(row.created_at as string),
             updatedAt: new Date(row.updated_at as string),
         };

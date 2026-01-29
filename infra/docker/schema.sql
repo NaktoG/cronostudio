@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS app_users (
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   name VARCHAR(255),
+  email_verified_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -60,6 +61,26 @@ CREATE TABLE IF NOT EXISTS auth_sessions (
   revoked_at TIMESTAMP WITH TIME ZONE
 );
 
+-- Tabla de tokens para verificacion de email
+CREATE TABLE IF NOT EXISTS email_verification_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  token_hash VARCHAR(128) UNIQUE NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  used_at TIMESTAMP WITH TIME ZONE
+);
+
+-- Tabla de tokens para reset de password
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  token_hash VARCHAR(128) UNIQUE NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  used_at TIMESTAMP WITH TIME ZONE
+);
+
 -- Índices para mejorar performance
 CREATE INDEX IF NOT EXISTS idx_channels_user_id ON channels(user_id);
 CREATE INDEX IF NOT EXISTS idx_videos_channel_id ON videos(channel_id);
@@ -67,6 +88,10 @@ CREATE INDEX IF NOT EXISTS idx_analytics_video_id ON analytics(video_id);
 CREATE INDEX IF NOT EXISTS idx_analytics_date ON analytics(date);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
+CREATE INDEX IF NOT EXISTS idx_email_verification_user_id ON email_verification_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_email_verification_expires_at ON email_verification_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_password_reset_user_id ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_reset_expires_at ON password_reset_tokens(expires_at);
 
 -- Insertar usuario de prueba (password: "demo123")
 -- Hash bcrypt de "demo123": $2b$10$rKZLvVZqGqNvQqYqYqYqYuO7kZqGqNvQqYqYqYqYuO7kZqGqNvQqY

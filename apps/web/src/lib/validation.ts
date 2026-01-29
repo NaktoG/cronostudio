@@ -79,6 +79,36 @@ export const RefreshTokenSchema = z.object({
 
 export type RefreshTokenInput = z.infer<typeof RefreshTokenSchema>;
 
+export const PasswordResetRequestSchema = z.object({
+  email: z.string().email('Email inválido').max(255).trim().toLowerCase(),
+});
+
+export type PasswordResetRequestInput = z.infer<typeof PasswordResetRequestSchema>;
+
+export const PasswordResetSchema = z.object({
+  token: z.string().min(10, 'Token requerido'),
+  password: z
+    .string()
+    .min(8, 'Contraseña debe tener al menos 8 caracteres')
+    .max(100, 'Contraseña muy larga')
+    .regex(/[A-Z]/, 'Contraseña debe contener al menos una mayúscula')
+    .regex(/[0-9]/, 'Contraseña debe contener al menos un número'),
+});
+
+export type PasswordResetInput = z.infer<typeof PasswordResetSchema>;
+
+export const VerifyEmailSchema = z.object({
+  token: z.string().min(10, 'Token requerido'),
+});
+
+export type VerifyEmailInput = z.infer<typeof VerifyEmailSchema>;
+
+export const ResendVerificationSchema = z.object({
+  email: z.string().email('Email inválido').max(255).trim().toLowerCase(),
+});
+
+export type ResendVerificationInput = z.infer<typeof ResendVerificationSchema>;
+
 // ==========================================
 // Video Schemas
 // ==========================================
@@ -144,4 +174,3 @@ export function validateInput<T>(schema: z.ZodType<T>, data: unknown): T {
   }
   return result.data;
 }
-

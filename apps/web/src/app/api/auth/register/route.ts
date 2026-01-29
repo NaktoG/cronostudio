@@ -6,6 +6,9 @@ import { validateInput, RegisterSchema } from '@/lib/validation';
 import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, LOGIN_RATE_LIMIT } from '@/middleware/rateLimit';
 import { logger } from '@/lib/logger';
+import { generateToken, hashToken } from '@/lib/token';
+import { sendEmail } from '@/lib/email';
+import { query } from '@/lib/db';
 
 // Clean Architecture services
 import { AuthService, AuthError } from '@/application/services/AuthService';
@@ -46,6 +49,27 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
             token: result.token,
             refreshToken: result.refreshToken,
         }, { status: 201 });
+
+        const rawToken = generateToken();
+        const tokenHash = hashToken(rawToken);
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await query(
+            `INSERT INTO email_verification_tokens (user_id, token_hash, expires_at)
+             VALUES ($1, $2, $3)`,
+            [result.user.id, tokenHash, expiresAt]
+        );
+
+        const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+        const verifyUrl = `${baseUrl}/verify-email?token=${rawToken}`;
+        await sendEmail({
+            to: result.user.email,
+            subject: 'Verifica tu email - CronoStudio',
+            html: `
+              <p>Gracias por registrarte.</p>
+              <p>Confirma tu email aqui:</p>
+              <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+            `,
+        });
 
         return withSecurityHeaders(response);
     } catch (error) {

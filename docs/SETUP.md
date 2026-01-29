@@ -46,6 +46,14 @@ Variables de logging (opcional):
 Variables para analytics (opcional):
 - `YOUTUBE_ANALYTICS_ACCESS_TOKEN`
 
+Variables para email (opcional):
+- `APP_BASE_URL`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASSWORD`
+- `SMTP_FROM`
+
 **⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` a git si contiene credenciales reales.
 
 ### 3. Levantar infraestructura (n8n + Postgres)
