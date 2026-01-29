@@ -1,0 +1,217 @@
+{
+  "name": "CronoStudio - Sync YouTube Videos",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 2,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/auth/login",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ { email: $env.CRONOSTUDIO_EMAIL, password: $env.CRONOSTUDIO_PASSWORD } }}"
+      },
+      "id": "2",
+      "name": "Login CronoStudio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "GET",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels",
+        "responseFormat": "json",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "Fetch CronoStudio Channels",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const channels = items[0].json || [];\nreturn channels.map((channel) => ({\n  json: {\n    channelId: channel.id,\n    youtubeChannelId: channel.youtube_channel_id\n  }\n}));"
+      },
+      "id": "4",
+      "name": "Map Channels",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "GET",
+        "url": "https://www.googleapis.com/youtube/v3/search",
+        "responseFormat": "json",
+        "queryParametersUi": {
+          "parameter": [
+            {
+              "name": "part",
+              "value": "snippet"
+            },
+            {
+              "name": "channelId",
+              "value": "={{$json.youtubeChannelId}}"
+            },
+            {
+              "name": "type",
+              "value": "video"
+            },
+            {
+              "name": "order",
+              "value": "date"
+            },
+            {
+              "name": "maxResults",
+              "value": "20"
+            },
+            {
+              "name": "key",
+              "value": "={{$env.YOUTUBE_API_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5",
+      "name": "Fetch YouTube Videos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1180, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const channelId = $node['Map Channels'].json.channelId;\nconst videos = items[0].json.items || [];\nreturn videos.map((video) => ({\n  json: {\n    channelId,\n    youtubeVideoId: video.id?.videoId,\n    title: video.snippet?.title || 'Video',\n    description: video.snippet?.description || null,\n    publishedAt: video.snippet?.publishedAt || null\n  }\n})).filter((item) => item.json.youtubeVideoId);"
+      },
+      "id": "6",
+      "name": "Map Videos",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [1420, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/videos",
+        "jsonParameters": true,
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
+            }
+          ]
+        },
+        "bodyParametersJson": "={{ { channelId: $json.channelId, youtubeVideoId: $json.youtubeVideoId, title: $json.title, description: $json.description, publishedAt: $json.publishedAt } }}"
+      },
+      "id": "7",
+      "name": "Create Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1660, 300],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Login CronoStudio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login CronoStudio": {
+      "main": [
+        [
+          {
+            "node": "Fetch CronoStudio Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch CronoStudio Channels": {
+      "main": [
+        [
+          {
+            "node": "Map Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Channels": {
+      "main": [
+        [
+          {
+            "node": "Fetch YouTube Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch YouTube Videos": {
+      "main": [
+        [
+          {
+            "node": "Map Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Videos": {
+      "main": [
+        [
+          {
+            "node": "Create Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

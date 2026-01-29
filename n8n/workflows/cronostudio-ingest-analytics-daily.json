@@ -1,0 +1,205 @@
+{
+  "name": "CronoStudio - Ingest Analytics Daily",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 3,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/auth/login",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ { email: $env.CRONOSTUDIO_EMAIL, password: $env.CRONOSTUDIO_PASSWORD } }}"
+      },
+      "id": "2",
+      "name": "Login CronoStudio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "GET",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/videos?limit=100&offset=0",
+        "responseFormat": "json",
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "Fetch CronoStudio Videos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const videos = items[0].json.data || [];\nreturn videos.map((video) => ({\n  json: {\n    videoId: video.id,\n    youtubeVideoId: video.youtube_video_id\n  }\n}));"
+      },
+      "id": "4",
+      "name": "Map Videos",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [940, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "GET",
+        "url": "https://www.googleapis.com/youtube/v3/videos",
+        "responseFormat": "json",
+        "queryParametersUi": {
+          "parameter": [
+            {
+              "name": "part",
+              "value": "statistics"
+            },
+            {
+              "name": "id",
+              "value": "={{$json.youtubeVideoId}}"
+            },
+            {
+              "name": "key",
+              "value": "={{$env.YOUTUBE_API_KEY}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5",
+      "name": "Fetch YouTube Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1180, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const stats = items[0].json.items?.[0]?.statistics || {};\nreturn [{\n  json: {\n    videoId: $node['Map Videos'].json.videoId,\n    date: new Date().toISOString().slice(0, 10),\n    views: parseInt(stats.viewCount || '0', 10),\n    watchTimeMinutes: 0,\n    avgViewDurationSeconds: 0\n  }\n}];"
+      },
+      "id": "6",
+      "name": "Map Analytics",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [1420, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/analytics",
+        "jsonParameters": true,
+        "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
+            }
+          ]
+        },
+        "bodyParametersJson": "={{ { videoId: $json.videoId, date: $json.date, views: $json.views, watchTimeMinutes: $json.watchTimeMinutes, avgViewDurationSeconds: $json.avgViewDurationSeconds } }}"
+      },
+      "id": "7",
+      "name": "Create Analytics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1660, 300],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Login CronoStudio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login CronoStudio": {
+      "main": [
+        [
+          {
+            "node": "Fetch CronoStudio Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch CronoStudio Videos": {
+      "main": [
+        [
+          {
+            "node": "Map Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Videos": {
+      "main": [
+        [
+          {
+            "node": "Fetch YouTube Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch YouTube Stats": {
+      "main": [
+        [
+          {
+            "node": "Map Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Analytics": {
+      "main": [
+        [
+          {
+            "node": "Create Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1"
+}

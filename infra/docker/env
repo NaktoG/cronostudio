@@ -21,3 +21,15 @@ DB_POSTGRESDB_PASSWORD=${POSTGRES_PASSWORD}
 
 # URL pública/base (para webhooks; en local queda así)
 WEBHOOK_URL=${N8N_PROTOCOL}://${N8N_HOST}:${N8N_PORT}/
+
+# --- CronoStudio -> n8n ---
+# Base URL de la API desde el contenedor n8n (Mac/Windows: host.docker.internal)
+CRONOSTUDIO_API_BASE_URL=http://host.docker.internal:3000/api
+CRONOSTUDIO_EMAIL=demo@cronostudio.com
+CRONOSTUDIO_PASSWORD=demo123
+
+# --- YouTube Data API ---
+# API Key para obtener canales/videos públicos
+YOUTUBE_API_KEY=
+# IDs de canales separados por coma (ej: UCxxxx,UCyyyy)
+YOUTUBE_CHANNEL_IDS=
