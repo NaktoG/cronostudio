@@ -162,7 +162,7 @@
     },
     {
       "parameters": {
-        "functionCode": "const rows = items[0].json.rows || [];\nconst row = rows[0] || [];\nconst views = parseInt(row[0] || '0', 10);\nconst watchTimeMinutes = parseInt(row[1] || '0', 10);\nconst avgViewDurationSeconds = parseInt(row[2] || '0', 10);\nreturn [{\n  json: {\n    videoId: $node['Map Videos'].json.videoId,\n    date: $node['Build Date Range'].json.endDate,\n    views,\n    watchTimeMinutes,\n    avgViewDurationSeconds\n  }\n}];"
+        "functionCode": "const inputs = items;\nconst sourceItems = $items('Split Videos');\nconst date = $items('Build Date Range')[0]?.json?.endDate;\nreturn inputs.map((item, index) => {\n  const rows = item.json.rows || [];\n  const row = rows[0] || [];\n  const views = parseInt(row[0] || '0', 10);\n  const watchTimeMinutes = parseInt(row[1] || '0', 10);\n  const avgViewDurationSeconds = parseInt(row[2] || '0', 10);\n  const source = sourceItems[index]?.json || {};\n  return {\n    json: {\n      videoId: source.videoId || null,\n      date: date || new Date().toISOString().slice(0, 10),\n      views,\n      watchTimeMinutes,\n      avgViewDurationSeconds\n    }\n  };\n}).filter((item) => item.json.videoId);"
       },
       "id": "6",
       "name": "Map Analytics",
