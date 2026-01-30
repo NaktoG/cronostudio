@@ -72,6 +72,7 @@ export class AuthService {
             id: userWithPassword.id,
             email: userWithPassword.email,
             name: userWithPassword.name,
+            emailVerifiedAt: userWithPassword.emailVerifiedAt,
             createdAt: userWithPassword.createdAt,
             updatedAt: userWithPassword.updatedAt,
         };
