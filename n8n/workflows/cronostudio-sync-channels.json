@@ -1,255 +1,14 @@
 {
-  "name": "CronoStudio - Sync YouTube Channels",
-  "nodes": [
-    {
-      "parameters": {},
-      "id": "1",
-      "name": "Manual Trigger",
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1,
-      "position": [240, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "POST",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/auth/login",
-        "jsonParameters": true,
-        "options": {},
-        "bodyParametersJson": "={{ { email: $env.CRONOSTUDIO_EMAIL, password: $env.CRONOSTUDIO_PASSWORD } }}"
-      },
-      "id": "2",
-      "name": "Login CronoStudio",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [460, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "POST",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs",
-        "jsonParameters": true,
-        "options": {},
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
-            }
-          ]
-        },
-        "bodyParametersJson": "={{ { workflowName: 'CronoStudio - Sync YouTube Channels', status: 'running' } }}"
-      },
-      "id": "7",
-      "name": "Create Automation Run",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [520, 160]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "GET",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels",
-        "responseFormat": "json",
-        "options": {},
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
-            }
-          ]
-        }
-      },
-      "id": "6",
-      "name": "Fetch CronoStudio Channels",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [700, 160]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "GET",
-        "url": "https://www.googleapis.com/youtube/v3/channels",
-        "responseFormat": "json",
-        "queryParametersUi": {
-          "parameter": [
-            {
-              "name": "part",
-              "value": "snippet,statistics"
-            },
-            {
-              "name": "id",
-              "value": "={{$env.YOUTUBE_CHANNEL_IDS}}"
-            },
-            {
-              "name": "key",
-              "value": "={{$env.YOUTUBE_API_KEY}}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "3",
-      "name": "Fetch YouTube Channels",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [700, 300]
-    },
-    {
-      "parameters": {
-        "functionCode": "const existing = ($node['Fetch CronoStudio Channels'].json || []).map((channel) => channel.youtube_channel_id);\nconst existingSet = new Set(existing);\nconst channels = items[0].json.items || [];\nreturn channels.map((channel) => ({\n  json: {\n    name: channel.snippet?.title || 'Canal',\n    youtubeChannelId: channel.id\n  }\n})).filter((item) => item.json.youtubeChannelId && !existingSet.has(item.json.youtubeChannelId));"
-      },
-      "id": "4",
-      "name": "Map Channels",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2,
-      "position": [940, 300]
-    },
-    {
-      "parameters": {
-        "keepOnlySet": false,
-        "values": {
-          "string": [
-            {
-              "name": "debug",
-              "value": "Map Channels"
-            }
-          ]
-        }
-      },
-      "id": "9",
-      "name": "Debug Map Channels",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [1060, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "POST",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels",
-        "jsonParameters": true,
-        "options": {},
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
-            }
-          ]
-        },
-        "bodyParametersJson": "={{ { name: $json.name, youtubeChannelId: $json.youtubeChannelId, refreshToken: null } }}"
-      },
-      "id": "5",
-      "name": "Create Channel",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1180, 300],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "PUT",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
-        "jsonParameters": true,
-        "options": {},
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
-            }
-          ]
-        },
-        "bodyParametersJson": "={{ { status: 'completed' } }}"
-      },
-      "id": "8",
-      "name": "Complete Automation Run",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1380, 300],
-      "continueOnFail": true
-    }
-  ],
+  "active": false,
+  "activeVersionId": null,
   "connections": {
-    "Manual Trigger": {
-      "main": [
-        [
-          {
-            "node": "Login CronoStudio",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Login CronoStudio": {
-      "main": [
-        [
-          {
-            "node": "Create Automation Run",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Create Automation Run": {
       "main": [
         [
           {
+            "index": 0,
             "node": "Fetch CronoStudio Channels",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch CronoStudio Channels": {
-      "main": [
-        [
-          {
-            "node": "Fetch YouTube Channels",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch YouTube Channels": {
-      "main": [
-        [
-          {
-            "node": "Map Channels",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Map Channels": {
-      "main": [
-        [
-          {
-            "node": "Debug Map Channels",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Debug Map Channels": {
-      "main": [
-        [
-          {
-            "node": "Create Channel",
-            "type": "main",
-            "index": 0
+            "type": "main"
           }
         ]
       ]
@@ -258,15 +17,172 @@
       "main": [
         [
           {
+            "index": 0,
             "node": "Complete Automation Run",
-            "type": "main",
-            "index": 0
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Fetch CronoStudio Channels": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Fetch YouTube Channels",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Login CronoStudio": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Create Automation Run",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Login CronoStudio",
+            "type": "main"
           }
         ]
       ]
     }
   },
-  "active": false,
-  "settings": {},
-  "versionId": "1"
+  "createdAt": "2026-01-29T13:23:12.087+00:00",
+  "description": null,
+  "id": "W1NhLFgrKzY253HRyAtgY",
+  "isArchived": false,
+  "meta": null,
+  "name": "CronoStudio - Sync YouTube Channels",
+  "nodes": [
+    {
+      "id": "471703ef-b7ac-4969-bb10-7e50341af6c1",
+      "name": "Manual Trigger",
+      "parameters": {},
+      "position": [
+        -448,
+        112
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "8889348c-f1e7-4b5f-aeb7-01c522b41a5a",
+      "name": "Login CronoStudio",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/auth/login"
+      },
+      "position": [
+        -176,
+        112
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "92d1d48e-b735-4864-9322-4d1480665b97",
+      "name": "Create Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs"
+      },
+      "position": [
+        -160,
+        -32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "8b66e577-6b07-45e2-bbda-44435b41cec7",
+      "name": "Fetch CronoStudio Channels",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels"
+      },
+      "position": [
+        32,
+        -32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "e0995451-42c5-4902-98d8-c331d0a1509d",
+      "name": "Fetch YouTube Channels",
+      "parameters": {
+        "options": {},
+        "url": "https://www.googleapis.com/youtube/v3/channels"
+      },
+      "position": [
+        80,
+        208
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "8155c812-e668-4ac4-9a4b-2912139d6645",
+      "name": "Map Channels",
+      "parameters": {},
+      "position": [
+        336,
+        208
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "continueOnFail": true,
+      "id": "3c6bb37f-61c9-4ab8-9b2b-b966cc9aaff6",
+      "name": "Create Channel",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels"
+      },
+      "position": [
+        528,
+        208
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "continueOnFail": true,
+      "id": "93994b35-0b69-47c1-91ac-afbd6d3b3303",
+      "name": "Complete Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}"
+      },
+      "position": [
+        720,
+        208
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    }
+  ],
+  "parentFolderId": "gxbXukDSOK73dF3N",
+  "pinData": {},
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "triggerCount": 0,
+  "updatedAt": "2026-01-31T08:01:06.914+00:00",
+  "versionCounter": 9,
+  "versionId": "5abcd74f-2825-43f6-b3db-e248e92efcc6"
 }

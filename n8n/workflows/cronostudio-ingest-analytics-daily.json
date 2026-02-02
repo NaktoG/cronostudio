@@ -1,297 +1,14 @@
 {
-  "name": "CronoStudio - Ingest Analytics Daily",
-  "nodes": [
-    {
-      "parameters": {
-        "triggerTimes": {
-          "item": [
-            {
-              "mode": "everyDay",
-              "hour": 3,
-              "minute": 0
-            }
-          ]
-        }
-      },
-      "id": "1",
-      "name": "Daily Trigger",
-      "type": "n8n-nodes-base.cron",
-      "typeVersion": 1,
-      "position": [240, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "POST",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/auth/login",
-        "jsonParameters": true,
-        "options": {},
-        "bodyParametersJson": "={{ { email: $env.CRONOSTUDIO_EMAIL, password: $env.CRONOSTUDIO_PASSWORD } }}"
-      },
-      "id": "2",
-      "name": "Login CronoStudio",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [460, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "POST",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs",
-        "jsonParameters": true,
-        "options": {},
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
-            }
-          ]
-        },
-        "bodyParametersJson": "={{ { workflowName: 'CronoStudio - Ingest Analytics Daily', status: 'running' } }}"
-      },
-      "id": "9",
-      "name": "Create Automation Run",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [520, 160]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "GET",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/videos?limit=100&offset=0",
-        "responseFormat": "json",
-        "options": {},
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
-            }
-          ]
-        }
-      },
-      "id": "3",
-      "name": "Fetch CronoStudio Videos",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [700, 300]
-    },
-    {
-      "parameters": {
-        "functionCode": "const videos = items[0].json.data || [];\nreturn videos.map((video) => ({\n  json: {\n    videoId: video.id,\n    youtubeVideoId: video.youtube_video_id,\n    youtubeChannelId: video.youtube_channel_id\n  }\n})).filter((item) => item.json.youtubeVideoId && item.json.youtubeChannelId);"
-      },
-      "id": "4",
-      "name": "Map Videos",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2,
-      "position": [940, 300]
-    },
-    {
-      "parameters": {
-        "keepOnlySet": false,
-        "values": {
-          "string": [
-            {
-              "name": "debug",
-              "value": "Map Videos"
-            }
-          ]
-        }
-      },
-      "id": "12",
-      "name": "Debug Map Videos",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [1040, 300]
-    },
-    {
-      "parameters": {
-        "functionCode": "const now = new Date();\nconst end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));\nconst start = new Date(end);\nconst startDate = start.toISOString().slice(0, 10);\nconst endDate = end.toISOString().slice(0, 10);\nreturn [{ json: { startDate, endDate } }];"
-      },
-      "id": "11",
-      "name": "Build Date Range",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2,
-      "position": [1080, 140]
-    },
-    {
-      "parameters": {
-        "keepOnlySet": false,
-        "values": {
-          "string": [
-            {
-              "name": "debug",
-              "value": "Build Date Range"
-            }
-          ]
-        }
-      },
-      "id": "13",
-      "name": "Debug Build Date Range",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [1220, 140]
-    },
-    {
-      "parameters": {
-        "batchSize": 25,
-        "options": {}
-      },
-      "id": "8",
-      "name": "Split Videos",
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 2,
-      "position": [1080, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "GET",
-        "url": "https://youtubeanalytics.googleapis.com/v2/reports",
-        "responseFormat": "json",
-        "queryParametersUi": {
-          "parameter": [
-            {
-              "name": "ids",
-              "value": "={{'channel==' + $json.youtubeChannelId}}"
-            },
-            {
-              "name": "id",
-              "value": "={{$json.youtubeVideoId}}"
-            },
-            {
-              "name": "metrics",
-              "value": "views,estimatedMinutesWatched,averageViewDuration"
-            },
-            {
-              "name": "startDate",
-              "value": "={{$node['Build Date Range'].json.startDate}}"
-            },
-            {
-              "name": "endDate",
-              "value": "={{$node['Build Date Range'].json.endDate}}"
-            },
-            {
-              "name": "filters",
-              "value": "={{'video==' + $json.youtubeVideoId}}"
-            }
-          ]
-        },
-        "options": {},
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{$env.YOUTUBE_ANALYTICS_ACCESS_TOKEN}}"
-            }
-          ]
-        }
-      },
-      "id": "5",
-      "name": "Fetch YouTube Analytics",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1240, 300]
-    },
-    {
-      "parameters": {
-        "functionCode": "const inputs = items;\nconst sourceItems = $items('Split Videos');\nconst date = $items('Build Date Range')[0]?.json?.endDate;\nreturn inputs.map((item, index) => {\n  const rows = item.json.rows || [];\n  const row = rows[0] || [];\n  const views = parseInt(row[0] || '0', 10);\n  const watchTimeMinutes = parseInt(row[1] || '0', 10);\n  const avgViewDurationSeconds = parseInt(row[2] || '0', 10);\n  const source = sourceItems[index]?.json || {};\n  return {\n    json: {\n      videoId: source.videoId || null,\n      date: date || new Date().toISOString().slice(0, 10),\n      views,\n      watchTimeMinutes,\n      avgViewDurationSeconds\n    }\n  };\n}).filter((item) => item.json.videoId);"
-      },
-      "id": "6",
-      "name": "Map Analytics",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2,
-      "position": [1480, 300]
-    },
-    {
-      "parameters": {
-        "keepOnlySet": false,
-        "values": {
-          "string": [
-            {
-              "name": "debug",
-              "value": "Map Analytics"
-            }
-          ]
-        }
-      },
-      "id": "14",
-      "name": "Debug Map Analytics",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 2,
-      "position": [1620, 300]
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "POST",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/analytics",
-        "jsonParameters": true,
-        "options": {},
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
-            }
-          ]
-        },
-        "bodyParametersJson": "={{ { videoId: $json.videoId, date: $json.date, views: $json.views, watchTimeMinutes: $json.watchTimeMinutes, avgViewDurationSeconds: $json.avgViewDurationSeconds } }}"
-      },
-      "id": "7",
-      "name": "Create Analytics",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1720, 300],
-      "continueOnFail": true
-    },
-    {
-      "parameters": {
-        "authentication": "none",
-        "requestMethod": "PUT",
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
-        "jsonParameters": true,
-        "options": {},
-        "headerParametersUi": {
-          "parameter": [
-            {
-              "name": "Authorization",
-              "value": "Bearer {{$node[\"Login CronoStudio\"].json[\"token\"]}}"
-            }
-          ]
-        },
-        "bodyParametersJson": "={{ { status: 'completed' } }}"
-      },
-      "id": "10",
-      "name": "Complete Automation Run",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3,
-      "position": [1900, 300],
-      "continueOnFail": true
-    }
-  ],
+  "active": false,
+  "activeVersionId": null,
   "connections": {
-    "Daily Trigger": {
+    "Create Analytics": {
       "main": [
         [
           {
-            "node": "Login CronoStudio",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Login CronoStudio": {
-      "main": [
-        [
-          {
-            "node": "Create Automation Run",
-            "type": "main",
-            "index": 0
+            "index": 0,
+            "node": "Complete Automation Run",
+            "type": "main"
           }
         ]
       ]
@@ -300,122 +17,216 @@
       "main": [
         [
           {
+            "index": 0,
             "node": "Fetch CronoStudio Videos",
-            "type": "main",
-            "index": 0
+            "type": "main"
           }
         ]
       ]
     },
-    "Fetch CronoStudio Videos": {
+    "Daily Trigger": {
       "main": [
         [
           {
-            "node": "Map Videos",
-            "type": "main",
-            "index": 0
+            "index": 0,
+            "node": "Login CronoStudio",
+            "type": "main"
           }
         ]
       ]
     },
-    "Map Videos": {
+    "Login CronoStudio": {
       "main": [
         [
           {
-            "node": "Debug Map Videos",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Build Date Range",
-            "type": "main",
-            "index": 0
+            "index": 0,
+            "node": "Create Automation Run",
+            "type": "main"
           }
         ]
       ]
-    },
-    "Debug Map Videos": {
-      "main": [
-        [
-          {
-            "node": "Split Videos",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Date Range": {
-      "main": [
-        [
-          {
-            "node": "Debug Build Date Range",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Debug Build Date Range": {
-      "main": []
     },
     "Split Videos": {
       "main": [
         [
           {
+            "index": 0,
             "node": "Fetch YouTube Analytics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Fetch YouTube Analytics": {
-      "main": [
-        [
-          {
-            "node": "Map Analytics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Map Analytics": {
-      "main": [
-        [
-          {
-            "node": "Debug Map Analytics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Debug Map Analytics": {
-      "main": [
-        [
-          {
-            "node": "Create Analytics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Create Analytics": {
-      "main": [
-        [
-          {
-            "node": "Complete Automation Run",
-            "type": "main",
-            "index": 0
+            "type": "main"
           }
         ]
       ]
     }
   },
-  "active": false,
-  "settings": {},
-  "versionId": "1"
+  "createdAt": "2026-01-29T13:22:47.053+00:00",
+  "description": null,
+  "id": "UrKACmB0FVBVaGHeySdYQ",
+  "isArchived": false,
+  "meta": null,
+  "name": "CronoStudio - Ingest Analytics Daily",
+  "nodes": [
+    {
+      "id": "180c057b-7f6d-431f-bbab-53ad539b9143",
+      "name": "Daily Trigger",
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 3
+            }
+          ]
+        }
+      },
+      "position": [
+        -928,
+        144
+      ],
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1
+    },
+    {
+      "id": "7450f2c6-2c8a-43cd-acae-9fc1feb985b7",
+      "name": "Login CronoStudio",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/auth/login"
+      },
+      "position": [
+        -704,
+        144
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "0f188cac-b155-4480-be25-5d07990edbf7",
+      "name": "Create Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs"
+      },
+      "position": [
+        -656,
+        416
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "302fd78a-ca40-4ec8-97d0-de8a37e4a247",
+      "name": "Fetch CronoStudio Videos",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/videos?limit=100&offset=0"
+      },
+      "position": [
+        -432,
+        144
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "3f154b2a-cd08-4d39-884b-dfa56d6bbf39",
+      "name": "Map Videos",
+      "parameters": {},
+      "position": [
+        -224,
+        144
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "id": "e0527668-6beb-45ea-86d0-8b2837ddc94a",
+      "name": "Build Date Range",
+      "parameters": {},
+      "position": [
+        -80,
+        -16
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "id": "19223740-90bc-4f37-ae4f-b373dec3f65a",
+      "name": "Split Videos",
+      "parameters": {
+        "batchSize": 25,
+        "options": {}
+      },
+      "position": [
+        -80,
+        144
+      ],
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2
+    },
+    {
+      "id": "b0cb6c0a-8c34-44ca-b105-edd5ba477d3d",
+      "name": "Fetch YouTube Analytics",
+      "parameters": {
+        "options": {},
+        "url": "https://youtubeanalytics.googleapis.com/v2/reports"
+      },
+      "position": [
+        112,
+        144
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "8b1c9d91-e0cb-4a0c-9248-bc701e24ee94",
+      "name": "Map Analytics",
+      "parameters": {},
+      "position": [
+        320,
+        144
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "continueOnFail": true,
+      "id": "9eb0dff4-2db5-4494-b57c-e20a898bebb5",
+      "name": "Create Analytics",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/analytics"
+      },
+      "position": [
+        560,
+        144
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "continueOnFail": true,
+      "id": "516c58fa-d56e-4557-b327-e95a7081a3f6",
+      "name": "Complete Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}"
+      },
+      "position": [
+        752,
+        144
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    }
+  ],
+  "parentFolderId": "gxbXukDSOK73dF3N",
+  "pinData": {},
+  "settings": {
+    "availableInMCP": false,
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "triggerCount": 0,
+  "updatedAt": "2026-02-02T08:03:05.083+00:00",
+  "versionCounter": 9,
+  "versionId": "8134579c-7949-4a0a-80bd-d8f382009111"
 }

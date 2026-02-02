@@ -4,6 +4,7 @@ import { query } from '@/lib/db';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { logger } from '@/lib/logger';
+import { emitMetric } from '@/lib/observability';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,12 +71,14 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
       ]
     );
 
+    emitMetric({ name: 'automation.run.create', value: 1, tags: { status: result.rows[0].status } });
     return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos', details: error.errors }, { status: 400 }));
     }
     logger.error('automation_runs.create.error', { error: String(error) });
+    emitMetric({ name: 'automation.run.create_error', value: 1 });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al crear ejecución' }, { status: 500 }));
   }
 });
@@ -126,15 +129,18 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     );
 
     if (result.rows.length === 0) {
+      emitMetric({ name: 'automation.run.not_found', value: 1 });
       return withSecurityHeaders(NextResponse.json({ error: 'Ejecución no encontrada' }, { status: 404 }));
     }
 
+    emitMetric({ name: 'automation.run.update', value: 1, tags: { status: result.rows[0].status } });
     return withSecurityHeaders(NextResponse.json(result.rows[0]));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos', details: error.errors }, { status: 400 }));
     }
     logger.error('automation_runs.update.error', { error: String(error) });
+    emitMetric({ name: 'automation.run.update_error', value: 1 });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar ejecución' }, { status: 500 }));
   }
 });
