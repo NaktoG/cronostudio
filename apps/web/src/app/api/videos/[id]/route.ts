@@ -50,7 +50,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * PUT /api/videos/[id]
  * Actualiza un video (requiere autenticación)
  */
-export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { params }: RouteParams) => {
+export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
+    if (!context?.params) {
+        return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
+    }
+    const { params } = context;
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -148,7 +152,11 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { para
  * DELETE /api/videos/[id]
  * Elimina un video (requiere autenticación)
  */
-export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { params }: RouteParams) => {
+export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
+    if (!context?.params) {
+        return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
+    }
+    const { params } = context;
     try {
         const userId = getAuthUser(request)?.userId;
 

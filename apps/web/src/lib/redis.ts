@@ -1,4 +1,4 @@
-import Redis from 'ioredis';
+import Redis, { RedisOptions } from 'ioredis';
 import { config } from '@/lib/config';
 
 let client: Redis | null = null;
@@ -12,7 +12,7 @@ export function getRedisClient(): Redis | null {
     return client;
   }
 
-  const options: Redis.RedisOptions = {
+  const options: RedisOptions = {
     maxRetriesPerRequest: 2,
     enableReadyCheck: false,
   };

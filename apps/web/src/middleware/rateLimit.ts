@@ -10,20 +10,19 @@ const fallbackStore = new Map<string, { count: number; resetTime: number }>();
 function shouldEnforceRateLimit() {
   return process.env.NODE_ENV === 'production' || process.env.RATE_LIMIT_ENFORCE === 'true';
 }
-type RouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<NextResponse> | NextResponse;
+type RouteHandler<Context = unknown> = (request: NextRequest, context?: Context) => Promise<NextResponse> | NextResponse;
 
 export function rateLimit(config: RateLimitConfig) {
-  return (handler: RouteHandler): RouteHandler => {
-    return async (request: NextRequest, ...args: unknown[]) => {
+  return <Context = unknown>(handler: RouteHandler<Context>): RouteHandler<Context> => {
+    return async (request: NextRequest, context?: Context) => {
       if (!shouldEnforceRateLimit()) {
-        return handler(request, ...args);
+        return handler(request, context as Context);
       }
 
       const ip =
         request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
         request.headers.get('x-real-ip') ||
         request.headers.get('cf-connecting-ip') ||
-        request.ip ||
         'unknown';
 
       const identifier = `${request.nextUrl.pathname}:${ip}`;
@@ -44,7 +43,7 @@ export function rateLimit(config: RateLimitConfig) {
         );
       }
 
-      return handler(request, ...args);
+      return handler(request, context);
     };
   };
 }
