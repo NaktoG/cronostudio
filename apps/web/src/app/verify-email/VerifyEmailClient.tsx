@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { GuestRoute } from '../components/ProtectedRoute';
 import Footer from '../components/Footer';
@@ -10,18 +11,16 @@ import Footer from '../components/Footer';
 export default function VerifyEmailClient() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [message, setMessage] = useState('');
+  const initialStatus: 'loading' | 'error' = token ? 'loading' : 'error';
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(initialStatus);
+  const [message, setMessage] = useState(token ? '' : 'Token inválido');
 
   useEffect(() => {
     if (!token) {
-      setStatus('error');
-      setMessage('Token inválido');
       return;
     }
 
     let mounted = true;
-    setStatus('loading');
     fetch('/api/auth/verify-email', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -59,10 +58,13 @@ export default function VerifyEmailClient() {
               className="inline-flex items-center justify-center w-16 h-16 bg-yellow-400 rounded-2xl mb-4 shadow-lg shadow-yellow-400/20"
               whileHover={{ scale: 1.05, rotate: 4 }}
             >
-              <img
+              <Image
                 src="/logo_crono.png"
                 alt="CronoStudio"
+                width={40}
+                height={40}
                 className="w-10 h-10 object-contain"
+                priority
               />
             </motion.div>
             <h1 className="text-3xl font-bold text-white">Verificación de email</h1>

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateChannelSchema, CreateChannelInput } from '@/lib/validation';
-import { withSecurityHeaders } from '@/middleware/auth';
+import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { withCORS } from '@/middleware/cors';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -12,8 +11,6 @@ export const dynamic = 'force-dynamic';
  * Lista todos los canales de YouTube
  */
 // Services Initialization
-import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
-import { AuthService } from '@/application/services/AuthService';
 
 
 
@@ -22,14 +19,8 @@ import { AuthService } from '@/application/services/AuthService';
  * Lista los canales del usuario autenticado
  */
 export async function GET(request: NextRequest) {
-    // Services Initialization
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        // Autenticación: Extraer usuario del header
-        const authHeader = request.headers.get('Authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -67,14 +58,8 @@ export async function GET(request: NextRequest) {
  * Crea un nuevo canal de YouTube vinculado al usuario
  */
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-    // Services Initialization
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository); // Moved inside to prevent build issues
-
     try {
-        // Autenticación
-        const authHeader = request.headers.get('Authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

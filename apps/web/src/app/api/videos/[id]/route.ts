@@ -3,8 +3,6 @@ import { validateInput, UpdateVideoSchema } from '@/lib/validation';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { query } from '@/lib/db';
-import { AuthService } from '@/application/services/AuthService';
-import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +15,7 @@ interface RouteParams {
  * Obtiene un video específico
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
         const { id } = await params;
 
         const result = await query(
@@ -58,12 +51,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * Actualiza un video (requiere autenticación)
  */
 export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { params }: RouteParams) => {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -160,12 +149,8 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { para
  * Elimina un video (requiere autenticación)
  */
 export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { params }: RouteParams) => {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

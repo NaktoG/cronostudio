@@ -10,7 +10,6 @@ interface User {
 
 interface AuthContextType {
     user: User | null;
-    token: string | null;
     isLoading: boolean;
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<void>;
@@ -22,8 +21,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const TOKEN_KEY = 'cronostudio_token';
-const REFRESH_TOKEN_KEY = 'cronostudio_refresh_token';
 const USER_KEY = 'cronostudio_user';
 
 interface AuthProviderProps {
@@ -32,65 +29,58 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
-    const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Cargar sesión desde localStorage al iniciar
-    const saveSession = useCallback((newToken: string, newUser: User, newRefreshToken: string) => {
-        localStorage.setItem(TOKEN_KEY, newToken);
-        localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+    const saveSession = useCallback((newUser: User) => {
         localStorage.setItem(USER_KEY, JSON.stringify(newUser));
-        setToken(newToken);
         setUser(newUser);
     }, []);
 
     const clearSession = useCallback(() => {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
-        setToken(null);
         setUser(null);
     }, []);
 
     useEffect(() => {
-        const storedToken = localStorage.getItem(TOKEN_KEY);
-        const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-        const storedUser = localStorage.getItem(USER_KEY);
-
-        if (storedToken && storedUser) {
+        const hydrateUser = async () => {
             try {
-                setToken(storedToken);
-                setUser(JSON.parse(storedUser));
-            } catch {
-                localStorage.removeItem(TOKEN_KEY);
-                localStorage.removeItem(REFRESH_TOKEN_KEY);
-                localStorage.removeItem(USER_KEY);
-            }
-            setIsLoading(false);
-            return;
-        }
-
-        if (storedRefreshToken) {
-            fetch('/api/auth/refresh', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refreshToken: storedRefreshToken }),
-            })
-                .then(async (res) => {
-                    const data = await res.json();
-                    if (!res.ok) throw new Error(data.error || 'Error al refrescar sesion');
-                    saveSession(data.token, data.user, data.refreshToken);
-                })
-                .catch(() => {
-                    clearSession();
-                })
-                .finally(() => {
-                    setIsLoading(false);
+                const meResponse = await fetch('/api/auth/me', {
+                    credentials: 'include',
                 });
-        } else {
-            setIsLoading(false);
-        }
+                if (meResponse.ok) {
+                    const data = await meResponse.json();
+                    saveSession(data.user);
+                    return;
+                }
+
+                const refreshResponse = await fetch('/api/auth/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({}),
+                });
+                if (refreshResponse.ok) {
+                    const data = await refreshResponse.json();
+                    saveSession(data.user);
+                } else {
+                    clearSession();
+                }
+            } catch {
+                const storedUser = localStorage.getItem(USER_KEY);
+                if (storedUser) {
+                    try {
+                        setUser(JSON.parse(storedUser));
+                    } catch {
+                        clearSession();
+                    }
+                }
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        hydrateUser();
     }, [saveSession, clearSession]);
 
     const login = useCallback(async (email: string, password: string) => {
@@ -103,6 +93,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
                 body: JSON.stringify({ email, password }),
             });
 
@@ -112,7 +103,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 throw new Error(data.error || 'Error al iniciar sesión');
             }
 
-            saveSession(data.token, data.user, data.refreshToken);
+            saveSession(data.user);
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Error desconocido';
             setError(message);
@@ -120,7 +111,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [saveSession]);
 
     const register = useCallback(async (email: string, password: string, name: string) => {
         setIsLoading(true);
@@ -132,6 +123,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'include',
                 body: JSON.stringify({ email, password, name }),
             });
 
@@ -141,7 +133,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 throw new Error(data.error || 'Error al registrar usuario');
             }
 
-            saveSession(data.token, data.user, data.refreshToken);
+            // Registro requiere verificación, no iniciamos sesión
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Error desconocido';
             setError(message);
@@ -152,19 +144,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, []);
 
     const logout = useCallback(() => {
-        const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-        if (refreshToken) {
-            fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ refreshToken }),
-            }).finally(() => {
-                clearSession();
-            });
-        } else {
+        fetch('/api/auth/logout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+        }).finally(() => {
             clearSession();
-        }
-    }, []);
+        });
+    }, [clearSession]);
 
     const clearError = useCallback(() => {
         setError(null);
@@ -172,9 +159,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const value: AuthContextType = {
         user,
-        token,
         isLoading,
-        isAuthenticated: !!token && !!user,
+        isAuthenticated: !!user,
         login,
         register,
         logout,
@@ -195,21 +181,16 @@ export function useAuth() {
 
 // Hook para hacer fetch autenticado
 export function useAuthFetch() {
-    const { token } = useAuth();
+    return useCallback(async (url: string, options: RequestInit = {}) => {
+        const headers = new Headers(options.headers);
+        if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
+            headers.set('Content-Type', 'application/json');
+        }
 
-    return useCallback(
-        async (url: string, options: RequestInit = {}) => {
-            const headers = new Headers(options.headers);
-
-            if (token) {
-                headers.set('Authorization', `Bearer ${token}`);
-            }
-
-            return fetch(url, {
-                ...options,
-                headers,
-            });
-        },
-        [token]
-    );
+        return fetch(url, {
+            credentials: 'include',
+            ...options,
+            headers,
+        });
+    }, []);
 }

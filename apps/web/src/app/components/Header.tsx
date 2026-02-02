@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -37,10 +38,13 @@ export default function Header() {
               whileHover={{ scale: 1.05, rotate: 2 }}
               whileTap={{ scale: 0.95 }}
             >
-              <img
+              <Image
                 src="/logo_crono.png"
                 alt="CronoStudio"
+                width={32}
+                height={32}
                 className="w-8 h-8 object-contain"
+                priority
               />
             </motion.div>
             <h1 className="text-2xl font-bold text-white hidden sm:block group-hover:text-yellow-400 transition-colors">

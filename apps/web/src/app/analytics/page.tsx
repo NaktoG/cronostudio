@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 
 interface AnalyticsData {
     period: string;
@@ -25,7 +25,8 @@ interface Channel {
 function AnalyticsContent() {
     const searchParams = useSearchParams();
     const initialChannelId = searchParams.get('channelId') || '';
-    const { token } = useAuth();
+    const { isAuthenticated } = useAuth();
+    const authFetch = useAuthFetch();
 
     const [analytics, setAnalytics] = useState<AnalyticsData[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
@@ -50,15 +51,13 @@ function AnalyticsContent() {
         { views: 0, watchTime: 0, avgDuration: 0 }
     );
 
-    const fetchChannels = async () => {
+    const fetchChannels = useCallback(async () => {
         try {
-            if (!token) {
+            if (!isAuthenticated) {
                 setChannels([]);
                 return;
             }
-            const response = await fetch('/api/channels', {
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-            });
+            const response = await authFetch('/api/channels');
             if (response.ok) {
                 const data = await response.json();
                 setChannels(data);
@@ -66,12 +65,12 @@ function AnalyticsContent() {
         } catch (err) {
             console.error('Error fetching channels:', err);
         }
-    };
+    }, [isAuthenticated, authFetch]);
 
     const fetchAnalytics = useCallback(async () => {
         try {
             setLoading(true);
-            if (!token) {
+            if (!isAuthenticated) {
                 setAnalytics([]);
                 setError(null);
                 return;
@@ -83,9 +82,7 @@ function AnalyticsContent() {
             if (dateRange.startDate) params.set('startDate', dateRange.startDate);
             if (dateRange.endDate) params.set('endDate', dateRange.endDate);
 
-            const response = await fetch(`/api/analytics?${params.toString()}`, {
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-            });
+            const response = await authFetch(`/api/analytics?${params.toString()}`);
 
             if (!response.ok) {
                 throw new Error('Error al cargar analytics');
@@ -99,11 +96,11 @@ function AnalyticsContent() {
         } finally {
             setLoading(false);
         }
-    }, [channelId, groupBy, dateRange, token]);
+    }, [channelId, groupBy, dateRange, isAuthenticated, authFetch]);
 
     useEffect(() => {
         fetchChannels();
-    }, [token]);
+    }, [fetchChannels]);
 
     useEffect(() => {
         fetchAnalytics();

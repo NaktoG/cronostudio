@@ -15,6 +15,8 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 - `YOUTUBE_ANALYTICS_ACCESS_TOKEN` (Bearer token OAuth2)
 - `YOUTUBE_CHANNEL_IDS` (IDs separados por coma)
 
+> Seguridad y hardening: ver `docs/n8n/SECURITY.md`.
+
 ## Workflows incluidos
 1) `cronostudio-sync-channels.json`
    - Importa canales por IDs (YouTube Data API) y los crea en CronoStudio.

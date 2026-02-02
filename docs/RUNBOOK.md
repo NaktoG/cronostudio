@@ -10,6 +10,8 @@ docker compose up -d
 docker ps
 ```
 
+> **Nota:** En entornos de producción (Hetzner) todas las variables obligatorias (`JWT_SECRET`, `DATABASE_URL`, `POSTGRES_*`, `N8N_*`, `SMTP_*`, etc.) deben estar definidas manualmente. El runtime no aplicará valores de respaldo, así que valida el `.env` antes de desplegar.
+
 ### Levantar frontend
 
 En otra terminal:

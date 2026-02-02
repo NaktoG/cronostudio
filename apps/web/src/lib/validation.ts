@@ -74,7 +74,7 @@ export const RegisterSchema = z.object({
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 
 export const RefreshTokenSchema = z.object({
-  refreshToken: z.string().min(10, 'Refresh token requerido'),
+  refreshToken: z.string().min(10, 'Refresh token requerido').optional(),
 });
 
 export type RefreshTokenInput = z.infer<typeof RefreshTokenSchema>;

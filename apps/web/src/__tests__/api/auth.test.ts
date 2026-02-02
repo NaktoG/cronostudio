@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
+vi.mock('@/lib/observability', () => ({
+    emitMetric: vi.fn(),
+}));
+
 // Mock JWT module
 vi.mock('jsonwebtoken', () => ({
     default: {
@@ -23,8 +27,8 @@ vi.mock('jsonwebtoken', () => ({
 vi.mock('bcrypt', () => ({
     default: {
         hash: vi.fn(() => Promise.resolve('hashed-password')),
-        compare: vi.fn((password: string, hash: string) => {
-            return Promise.resolve(password === 'correct-password');
+        compare: vi.fn((password: string, _hash: string) => {
+            return Promise.resolve(password === 'correct-password' && typeof _hash === 'string');
         }),
     },
 }));
@@ -35,10 +39,13 @@ vi.mock('@/lib/db', () => ({
 }));
 
 import { query } from '@/lib/db';
+import { emitMetric } from '@/lib/observability';
 
 describe('Auth API', () => {
+    const emitMetricMock = vi.mocked(emitMetric);
     beforeEach(() => {
         vi.clearAllMocks();
+        emitMetricMock.mockClear();
     });
 
     describe('POST /api/auth/login', () => {
@@ -61,6 +68,7 @@ describe('Auth API', () => {
 
             expect(response.status).toBe(401);
             expect(data.error).toBe('Credenciales inválidas');
+            expect(emitMetricMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.login.failure' }));
         });
 
         it('should return 400 for invalid email format', async () => {
@@ -76,6 +84,7 @@ describe('Auth API', () => {
 
             const response = await POST(request);
             expect(response.status).toBe(400);
+            expect(emitMetricMock).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.login.success' }));
         });
     });
 
@@ -94,6 +103,7 @@ describe('Auth API', () => {
 
             const response = await POST(request);
             expect(response.status).toBe(400);
+            expect(emitMetricMock).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.register.success' }));
         });
 
         it('should return 409 for duplicate email', async () => {
@@ -116,6 +126,7 @@ describe('Auth API', () => {
 
             const response = await POST(request);
             expect(response.status).toBe(409);
+            expect(emitMetricMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.register.failure' }));
         });
     });
 });

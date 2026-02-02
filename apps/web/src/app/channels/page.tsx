@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 
 interface Channel {
     id: string;
@@ -18,7 +18,8 @@ interface Channel {
 }
 
 export default function ChannelsPage() {
-    const { token } = useAuth();
+    const { isAuthenticated } = useAuth();
+    const authFetch = useAuthFetch();
     const [channels, setChannels] = useState<Channel[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -30,16 +31,14 @@ export default function ChannelsPage() {
     const [submitting, setSubmitting] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
 
-    const fetchChannels = async () => {
+    const fetchChannels = useCallback(async () => {
         try {
             setLoading(true);
-            if (!token) {
+            if (!isAuthenticated) {
                 setChannels([]);
                 return;
             }
-            const response = await fetch('/api/channels', {
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-            });
+            const response = await authFetch('/api/channels');
 
             if (!response.ok) {
                 throw new Error('Error al cargar canales');
@@ -53,11 +52,11 @@ export default function ChannelsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [isAuthenticated, authFetch]);
 
     useEffect(() => {
         fetchChannels();
-    }, [token]);
+    }, [fetchChannels]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -65,12 +64,8 @@ export default function ChannelsPage() {
         setError(null);
 
         try {
-            const response = await fetch('/api/channels', {
+            const response = await authFetch('/api/channels', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
                 body: JSON.stringify(formData),
             });
 

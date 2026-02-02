@@ -1,4 +1,5 @@
 import { Pool, QueryResult } from 'pg';
+import { validateConfig } from '@/lib/config';
 
 
 
@@ -7,6 +8,10 @@ let pool: Pool | null = null;
 
 function getPool(): Pool {
   if (pool) return pool;
+
+  if (process.env.NODE_ENV === 'production') {
+    validateConfig();
+  }
 
   const databaseUrl = process.env.DATABASE_URL;
 
@@ -17,6 +22,7 @@ function getPool(): Pool {
           max: 20,
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 2000,
+          ...getSslConfig(databaseUrl),
         }
       : {
           host: process.env.POSTGRES_HOST || 'localhost',
@@ -39,6 +45,29 @@ function getPool(): Pool {
   return pool;
 }
 
+function getSslConfig(databaseUrl: string) {
+  const explicit = process.env.DB_SSL?.toLowerCase();
+  if (explicit === 'false') {
+    return {};
+  }
+
+  const url = new URL(databaseUrl);
+  const host = url.hostname;
+  const isLocalHost = ['localhost', '127.0.0.1'].includes(host);
+  const shouldUseSsl = explicit === 'true' || !isLocalHost;
+
+  if (!shouldUseSsl) {
+    return {};
+  }
+
+  const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false';
+  return {
+    ssl: {
+      rejectUnauthorized,
+    },
+  };
+}
+
 /**
  * Ejecutar query SQL
  * @param text - Query SQL
@@ -47,7 +76,7 @@ function getPool(): Pool {
  */
 export async function query(
   text: string,
-  params?: any[]
+  params?: unknown[]
 ): Promise<QueryResult> {
   const start = Date.now();
   try {

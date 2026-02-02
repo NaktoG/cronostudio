@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 
 interface SeoData {
     id: string;
@@ -20,29 +20,28 @@ interface SeoData {
 }
 
 export default function SeoPage() {
-    const { token } = useAuth();
+    const { isAuthenticated } = useAuth();
+    const authFetch = useAuthFetch();
     const [seoData, setSeoData] = useState<SeoData[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const fetchSeoData = async () => {
+    const fetchSeoData = useCallback(async () => {
         try {
             setLoading(true);
-            if (!token) {
+            if (!isAuthenticated) {
                 setSeoData([]);
                 return;
             }
-            const response = await fetch('/api/seo', {
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-            });
+            const response = await authFetch('/api/seo');
             if (response.ok) setSeoData(await response.json());
         } catch (err) {
             console.error('Error:', err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [isAuthenticated, authFetch]);
 
-    useEffect(() => { fetchSeoData(); }, [token]);
+    useEffect(() => { fetchSeoData(); }, [fetchSeoData]);
 
     const getScoreColor = (score: number) => {
         if (score >= 80) return 'text-green-400';

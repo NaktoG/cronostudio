@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 
 interface Thumbnail {
     id: string;
@@ -26,43 +27,38 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ThumbnailsPage() {
-    const { token } = useAuth();
+    const { isAuthenticated } = useAuth();
+    const authFetch = useAuthFetch();
     const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({ title: '', notes: '', imageUrl: '' });
     const [submitting, setSubmitting] = useState(false);
 
-    const fetchThumbnails = async () => {
+    const fetchThumbnails = useCallback(async () => {
         try {
             setLoading(true);
-            if (!token) {
+            if (!isAuthenticated) {
                 setThumbnails([]);
                 return;
             }
-            const response = await fetch('/api/thumbnails', {
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-            });
+            const response = await authFetch('/api/thumbnails');
             if (response.ok) setThumbnails(await response.json());
         } catch (err) {
             console.error('Error:', err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [isAuthenticated, authFetch]);
 
-    useEffect(() => { fetchThumbnails(); }, [token]);
+    useEffect(() => { fetchThumbnails(); }, [fetchThumbnails]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            await fetch('/api/thumbnails', {
+            await authFetch('/api/thumbnails', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
                 body: JSON.stringify(formData),
             });
             setShowModal(false);
@@ -76,12 +72,8 @@ export default function ThumbnailsPage() {
     };
 
     const updateStatus = async (id: string, status: string) => {
-        await fetch(`/api/thumbnails?id=${id}`, {
+        await authFetch(`/api/thumbnails?id=${id}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token && { Authorization: `Bearer ${token}` }),
-            },
             body: JSON.stringify({ status }),
         });
         await fetchThumbnails();
@@ -89,9 +81,8 @@ export default function ThumbnailsPage() {
 
     const deleteThumbnail = async (id: string) => {
         if (!confirm('¿Eliminar esta miniatura?')) return;
-        await fetch(`/api/thumbnails?id=${id}`, {
+        await authFetch(`/api/thumbnails?id=${id}`, {
             method: 'DELETE',
-            headers: { ...(token && { Authorization: `Bearer ${token}` }) },
         });
         await fetchThumbnails();
     };
@@ -146,9 +137,16 @@ export default function ThumbnailsPage() {
                                     whileHover={{ y: -4 }}
                                 >
                                     {/* Preview */}
-                                    <div className="aspect-video bg-gray-800 flex items-center justify-center">
+                                    <div className="relative aspect-video bg-gray-800 flex items-center justify-center">
                                         {thumb.image_url ? (
-                                            <img src={thumb.image_url} alt={thumb.title} className="w-full h-full object-cover" />
+                                            <Image
+                                                src={thumb.image_url}
+                                                alt={thumb.title}
+                                                fill
+                                                className="object-cover"
+                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 300px"
+                                                unoptimized
+                                            />
                                         ) : (
                                             <span className="text-6xl opacity-30">🖼️</span>
                                         )}

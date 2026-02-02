@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withSecurityHeaders } from '@/middleware/auth';
+import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { query } from '@/lib/db';
-import { AuthService } from '@/application/services/AuthService';
-import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,12 +15,8 @@ interface RouteParams {
  * Obtiene analytics agregados de un canal (requiere autenticación)
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { withSecurityHeaders } from '@/middleware/auth';
+import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { z } from 'zod';
 import { validateInput } from '@/lib/validation';
-import { AuthService } from '@/application/services/AuthService';
-import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,12 +35,8 @@ function calculateMetrics(intro?: string, body?: string, cta?: string, outro?: s
 }
 
 export async function GET(request: NextRequest) {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -69,12 +63,8 @@ export async function GET(request: NextRequest) {
 }
 
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -101,12 +91,8 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 });
 
 export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -156,12 +142,8 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 });
 
 export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));

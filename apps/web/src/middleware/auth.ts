@@ -5,8 +5,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { config } from '@/lib/config';
 import { logger } from '@/lib/logger';
+import { getAccessCookie } from '@/lib/authCookies';
 
 const JWT_SECRET = config.jwt.secret;
+
+type RouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<NextResponse> | NextResponse;
 
 
 export interface JWTPayload {
@@ -23,11 +26,11 @@ export interface AuthenticatedRequest extends NextRequest {
 /**
  * Verifica que la request tiene un token JWT válido
  */
-export function withAuth(handler: Function) {
+export function withAuth(handler: RouteHandler): RouteHandler {
   return async (request: NextRequest, ...args: unknown[]) => {
-    const authHeader = request.headers.get('authorization');
+    const token = extractTokenFromRequest(request);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       return NextResponse.json(
         {
           error: 'No autorizado',
@@ -37,48 +40,15 @@ export function withAuth(handler: Function) {
       );
     }
 
-    const token = authHeader.slice(7); // Remove "Bearer " prefix
-
     try {
-      // Verificar y decodificar JWT
       const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-
-      // Agregar usuario al request
       (request as AuthenticatedRequest).user = {
         userId: decoded.userId,
         email: decoded.email,
       };
-
       return handler(request, ...args);
     } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
-        return NextResponse.json(
-          {
-            error: 'Token expirado',
-            message: 'Por favor inicia sesión nuevamente',
-          },
-          { status: 401 }
-        );
-      }
-
-      if (error instanceof jwt.JsonWebTokenError) {
-        return NextResponse.json(
-          {
-            error: 'Token inválido',
-            message: 'Token de autorización inválido',
-          },
-          { status: 401 }
-        );
-      }
-
-      logger.error('[Auth Middleware] Token verification failed', { error: String(error) });
-      return NextResponse.json(
-        {
-          error: 'Error de autenticación',
-          message: 'Error al verificar token',
-        },
-        { status: 500 }
-      );
+      return handleJwtError(error);
     }
   };
 }
@@ -87,12 +57,11 @@ export function withAuth(handler: Function) {
  * Middleware opcional de autenticación
  * No falla si no hay token, pero agrega usuario si existe
  */
-export function withOptionalAuth(handler: Function) {
+export function withOptionalAuth(handler: RouteHandler): RouteHandler {
   return async (request: NextRequest, ...args: unknown[]) => {
-    const authHeader = request.headers.get('authorization');
+    const token = extractTokenFromRequest(request);
 
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
+    if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
         (request as AuthenticatedRequest).user = {
@@ -100,7 +69,7 @@ export function withOptionalAuth(handler: Function) {
           email: decoded.email,
         };
       } catch {
-        // Ignorar errores, es opcional
+        // Opcional, ignorar errores
       }
     }
 
@@ -116,7 +85,23 @@ export function withSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  response.headers.set('Referrer-Policy', 'no-referrer');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   response.headers.set('Cache-Control', 'no-store');
+  response.headers.set(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "img-src 'self' data: https:",
+      "script-src 'self'",
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+    ].join('; ')
+  );
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+  response.headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
 
   return response;
 }
@@ -125,5 +110,55 @@ export function withSecurityHeaders(response: NextResponse): NextResponse {
  * Helper para obtener usuario del request autenticado
  */
 export function getAuthUser(request: NextRequest): JWTPayload | null {
-  return (request as AuthenticatedRequest).user || null;
+  const cached = (request as AuthenticatedRequest).user;
+  if (cached) {
+    return cached;
+  }
+  const token = extractTokenFromRequest(request);
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+  } catch {
+    return null;
+  }
+}
+
+function extractTokenFromRequest(request: NextRequest): string | null {
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+  const cookieToken = getAccessCookie(request);
+  return cookieToken || null;
+}
+
+function handleJwtError(error: unknown): NextResponse {
+  if (error instanceof jwt.TokenExpiredError) {
+    return NextResponse.json(
+      {
+        error: 'Token expirado',
+        message: 'Por favor inicia sesión nuevamente',
+      },
+      { status: 401 }
+    );
+  }
+
+  if (error instanceof jwt.JsonWebTokenError) {
+    return NextResponse.json(
+      {
+        error: 'Token inválido',
+        message: 'Token de autorización inválido',
+      },
+      { status: 401 }
+    );
+  }
+
+  logger.error('[Auth Middleware] Token verification failed', { error: String(error) });
+  return NextResponse.json(
+    {
+      error: 'Error de autenticación',
+      message: 'Error al verificar token',
+    },
+    { status: 500 }
+  );
 }

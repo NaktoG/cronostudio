@@ -6,6 +6,7 @@ import { validateInput, LoginSchema } from '@/lib/validation';
 import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, LOGIN_RATE_LIMIT } from '@/middleware/rateLimit';
 import { logger } from '@/lib/logger';
+import { setAccessCookie, setRefreshCookie } from '@/lib/authCookies';
 
 // Clean Architecture services
 import { AuthService, AuthError } from '@/application/services/AuthService';
@@ -38,25 +39,29 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
                 email: result.user.email,
                 name: result.user.name,
             },
-            token: result.token,
-            refreshToken: result.refreshToken,
         });
+
+        setAccessCookie(response, result.token);
+        setRefreshCookie(response, result.refreshToken);
 
         return withSecurityHeaders(response);
     } catch (error) {
         // Handle AuthError
         if (error instanceof AuthError) {
             if (error.code === 'INVALID_CREDENTIALS') {
-                return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 });
+                return withSecurityHeaders(NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 }));
+            }
+            if (error.code === 'EMAIL_NOT_VERIFIED') {
+                return withSecurityHeaders(NextResponse.json({ error: 'Email no verificado' }, { status: 403 }));
             }
         }
 
         // Handle validation errors
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return withSecurityHeaders(NextResponse.json({ error: error.message }, { status: 400 }));
         }
 
         logger.error('Login error', { error: String(error) });
-        return NextResponse.json({ error: 'Error al iniciar sesión' }, { status: 500 });
+        return withSecurityHeaders(NextResponse.json({ error: 'Error al iniciar sesión' }, { status: 500 }));
     }
 });

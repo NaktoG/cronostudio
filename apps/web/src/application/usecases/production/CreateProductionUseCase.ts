@@ -2,7 +2,7 @@
 // Use Case: Create a new production
 
 import { ProductionRepository } from '@/domain/repositories/ProductionRepository';
-import { Production, CreateProductionInput } from '@/domain/entities/Production';
+import { Production } from '@/domain/entities/Production';
 
 export interface CreateProductionRequest {
     userId: string;

@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '../contexts/AuthContext';
 import { GuestRoute } from '../components/ProtectedRoute';
 import Footer from '../components/Footer';
@@ -17,10 +18,12 @@ export default function RegisterPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [localError, setLocalError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setLocalError('');
+        setSuccessMessage('');
         clearError();
 
         if (!name || !email || !password || !confirmPassword) {
@@ -50,7 +53,8 @@ export default function RegisterPage() {
 
         try {
             await register(email, password, name);
-            router.push('/');
+            setSuccessMessage('Cuenta creada. Revisá tu email para verificarla.');
+            router.push('/login');
         } catch {
             // Error ya manejado en el context
         }
@@ -81,10 +85,13 @@ export default function RegisterPage() {
                                 className="inline-flex items-center justify-center w-16 h-16 bg-yellow-400 rounded-2xl mb-4 shadow-lg shadow-yellow-400/20"
                                 whileHover={{ scale: 1.05, rotate: -5 }}
                             >
-                                <img
+                                <Image
                                     src="/logo_crono.png"
                                     alt="CronoStudio"
+                                    width={40}
+                                    height={40}
                                     className="w-10 h-10 object-contain"
+                                    priority
                                 />
                             </motion.div>
                             <h1 className="text-3xl font-bold text-white">CronoStudio</h1>
@@ -106,6 +113,16 @@ export default function RegisterPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                 >
                                     {error || localError}
+                                </motion.div>
+                            )}
+
+                            {successMessage && (
+                                <motion.div
+                                    className="bg-green-500/10 border border-green-500/40 rounded-lg p-3 text-green-300 text-sm"
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                >
+                                    {successMessage}
                                 </motion.div>
                             )}
 

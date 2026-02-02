@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 
 interface Script {
     id: string;
@@ -29,7 +29,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function ScriptsPage() {
-    const { token } = useAuth();
+    const { isAuthenticated } = useAuth();
+    const authFetch = useAuthFetch();
     const [scripts, setScripts] = useState<Script[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -37,25 +38,23 @@ export default function ScriptsPage() {
     const [formData, setFormData] = useState({ title: '', intro: '', body: '', cta: '', outro: '' });
     const [submitting, setSubmitting] = useState(false);
 
-    const fetchScripts = async () => {
+    const fetchScripts = useCallback(async () => {
         try {
             setLoading(true);
-            if (!token) {
+            if (!isAuthenticated) {
                 setScripts([]);
                 return;
             }
-            const response = await fetch('/api/scripts', {
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-            });
+            const response = await authFetch('/api/scripts');
             if (response.ok) setScripts(await response.json());
         } catch (err) {
             console.error('Error:', err);
         } finally {
             setLoading(false);
         }
-    };
+    }, [isAuthenticated, authFetch]);
 
-    useEffect(() => { fetchScripts(); }, [token]);
+    useEffect(() => { fetchScripts(); }, [fetchScripts]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -64,12 +63,8 @@ export default function ScriptsPage() {
             const url = editingId ? `/api/scripts?id=${editingId}` : '/api/scripts';
             const method = editingId ? 'PUT' : 'POST';
 
-            await fetch(url, {
+            await authFetch(url, {
                 method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
                 body: JSON.stringify(formData),
             });
             setShowModal(false);
@@ -97,9 +92,8 @@ export default function ScriptsPage() {
 
     const deleteScript = async (id: string) => {
         if (!confirm('¿Eliminar este guion?')) return;
-        await fetch(`/api/scripts?id=${id}`, {
+        await authFetch(`/api/scripts?id=${id}`, {
             method: 'DELETE',
-            headers: { ...(token && { Authorization: `Bearer ${token}` }) },
         });
         await fetchScripts();
     };

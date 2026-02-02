@@ -1,14 +1,15 @@
 // lib/config.ts
 // Centralized configuration with validation
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 function getRequiredEnv(key: string, fallbackForDev?: string): string {
     const value = process.env[key];
 
     if (value) return value;
 
-    // Allow fallback even in production (for build safety when .env is missing due to EPERM)
-    if (fallbackForDev) {
-        console.warn(`CRITICAL WARNING: Using fallback value for ${key} in ${process.env.NODE_ENV}. Ensure this is configured!`);
+    if (!isProduction && fallbackForDev) {
+        console.warn(`WARNING: Using fallback value for ${key} in ${process.env.NODE_ENV}. Do not rely on this outside local development.`);
         return fallbackForDev;
     }
 
@@ -22,7 +23,7 @@ function getOptionalEnv(key: string, defaultValue: string): string {
 export const config = {
     // Environment
     nodeEnv: getOptionalEnv('NODE_ENV', 'development'),
-    isProduction: process.env.NODE_ENV === 'production',
+    isProduction,
 
     // JWT Configuration
     jwt: {
@@ -34,6 +35,15 @@ export const config = {
     // Database
     database: {
         url: getRequiredEnv('DATABASE_URL', 'postgresql://crono:crono@localhost:5432/cronostudio'),
+    },
+
+    app: {
+        baseUrl: getOptionalEnv('APP_BASE_URL', 'http://localhost:3000'),
+    },
+
+    observability: {
+        enabled: getOptionalEnv('OBS_ENABLED', 'false') === 'true',
+        endpoint: process.env.OBS_ENDPOINT,
     },
 
     // Rate Limiting
@@ -57,11 +67,17 @@ export const config = {
 // Validate critical config on startup
 export function validateConfig(): void {
     if (config.isProduction) {
-        if (config.jwt.secret === 'dev-secret-change-in-production') {
+        if (!config.jwt.secret || config.jwt.secret === 'dev-secret-change-in-production') {
             throw new Error('CRITICAL: JWT_SECRET must be set in production!');
         }
         if (config.jwt.secret.length < 32) {
             throw new Error('CRITICAL: JWT_SECRET must be at least 32 characters in production!');
+        }
+        if (!config.database.url || config.database.url.includes('localhost')) {
+            throw new Error('CRITICAL: DATABASE_URL must be set for production!');
+        }
+        if (!config.app.baseUrl || config.app.baseUrl.includes('localhost')) {
+            throw new Error('CRITICAL: APP_BASE_URL must be set for production!');
         }
     }
 }

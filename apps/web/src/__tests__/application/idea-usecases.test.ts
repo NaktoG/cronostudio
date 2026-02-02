@@ -5,6 +5,13 @@ import { DeleteIdeaUseCase } from '@/application/usecases/idea/DeleteIdeaUseCase
 import { IdeaRepository } from '@/domain/repositories/IdeaRepository';
 import { Idea } from '@/domain/entities/Idea';
 
+vi.mock('@/lib/observability', () => ({
+    emitMetric: vi.fn(),
+}));
+
+import { emitMetric } from '@/lib/observability';
+import { IdeaStatus } from '@/domain/value-objects/IdeaStatus';
+
 // Mock repository
 const createMockRepository = (): IdeaRepository => ({
     findById: vi.fn(),
@@ -33,10 +40,12 @@ const mockIdea: Idea = {
 describe('CreateIdeaUseCase', () => {
     let repository: IdeaRepository;
     let useCase: CreateIdeaUseCase;
+    const emitMetricMock = vi.mocked(emitMetric);
 
     beforeEach(() => {
         repository = createMockRepository();
         useCase = new CreateIdeaUseCase(repository);
+        emitMetricMock.mockClear();
     });
 
     it('should create idea with valid input', async () => {
@@ -57,6 +66,7 @@ describe('CreateIdeaUseCase', () => {
             tags: [],
         });
         expect(result.id).toBe('idea-123');
+        expect(emitMetricMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'idea.created' }));
     });
 
     it('should reject empty title', async () => {
@@ -100,7 +110,7 @@ describe('UpdateIdeaUseCase', () => {
         await expect(useCase.execute({
             ideaId: 'idea-123',
             userId: 'user-456',
-            updates: { status: 'invalid' as any },
+            updates: { status: 'invalid' as unknown as IdeaStatus },
         })).rejects.toThrow('Invalid status');
     });
 

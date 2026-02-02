@@ -2,7 +2,8 @@
 // Use Case: Create a new idea - Single Responsibility
 
 import { IdeaRepository } from '@/domain/repositories/IdeaRepository';
-import { Idea, CreateIdeaInput } from '@/domain/entities/Idea';
+import { Idea } from '@/domain/entities/Idea';
+import { emitMetric } from '@/lib/observability';
 
 export interface CreateIdeaRequest {
     userId: string;
@@ -26,16 +27,21 @@ export class CreateIdeaUseCase {
             throw new Error('Priority must be between 0 and 10');
         }
 
-        // Create idea through repository
-        const idea = await this.ideaRepository.create({
-            userId: request.userId,
-            title: request.title.trim(),
-            description: request.description,
-            channelId: request.channelId,
-            priority: request.priority ?? 0,
-            tags: request.tags ?? [],
-        });
+        try {
+            const idea = await this.ideaRepository.create({
+                userId: request.userId,
+                title: request.title.trim(),
+                description: request.description,
+                channelId: request.channelId,
+                priority: request.priority ?? 0,
+                tags: request.tags ?? [],
+            });
 
-        return idea;
+            emitMetric({ name: 'idea.created', value: 1 });
+            return idea;
+        } catch (error) {
+            emitMetric({ name: 'idea.create.failure', value: 1 });
+            throw error;
+        }
     }
 }

@@ -5,6 +5,7 @@ import { rateLimit, LOGIN_RATE_LIMIT } from '@/middleware/rateLimit';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { query } from '@/lib/db';
 import { generateToken, hashToken } from '@/lib/token';
+import { config } from '@/lib/config';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
 
@@ -30,7 +31,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
       [user.id, tokenHash, expiresAt]
     );
 
-    const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+    const baseUrl = config.app.baseUrl;
     const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
 
     await sendEmail({

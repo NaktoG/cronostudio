@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { testConnection } from '@/lib/db';
 import { validateConfig } from '@/lib/config';
+import { emitMetric } from '@/lib/observability';
 
 /**
  * GET /api/health
  * Health check endpoint - verifica el estado de los servicios
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         validateConfig();
         // Verificar PostgreSQL
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
         const allHealthy = dbHealthy && n8nHealthy;
         const status = allHealthy ? 'healthy' : dbHealthy ? 'degraded' : 'unhealthy';
 
+        emitMetric({ name: `health.${status}`, value: 1 });
         return NextResponse.json({
             status,
             timestamp: new Date().toISOString(),
@@ -44,6 +46,7 @@ export async function GET(request: NextRequest) {
         });
     } catch (error) {
         console.error('[GET /api/health] Error:', error);
+        emitMetric({ name: 'health.error', value: 1 });
 
         return NextResponse.json(
             {

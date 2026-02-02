@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateAnalyticsSchema, AnalyticsQuerySchema } from '@/lib/validation';
-import { withSecurityHeaders, withAuth, getAuthUser } from '@/middleware/auth';
+import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { query } from '@/lib/db';
-import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
-import { AuthService } from '@/application/services/AuthService';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,13 +15,9 @@ export const dynamic = 'force-dynamic';
  * Obtiene analytics con filtros y agregación, limitado a los recursos del usuario autenticado
  */
 export async function GET(request: NextRequest) {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
         // Autenticación requerida
-        const authHeader = request.headers.get('Authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -166,12 +160,8 @@ export async function GET(request: NextRequest) {
  * Registra métricas de analytics (requiere autenticación)
  */
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getAuthUser(request)?.userId;
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

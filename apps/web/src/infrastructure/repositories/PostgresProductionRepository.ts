@@ -4,7 +4,7 @@
 import { query } from '@/lib/db';
 import { ProductionRepository, ProductionFilters, PipelineStats } from '@/domain/repositories/ProductionRepository';
 import { Production, CreateProductionInput, UpdateProductionInput } from '@/domain/entities/Production';
-import { ProductionStatus, PRODUCTION_STATUSES, getNextProductionStatus } from '@/domain/value-objects/ProductionStatus';
+import { ProductionStatus, getNextProductionStatus } from '@/domain/value-objects/ProductionStatus';
 
 export class PostgresProductionRepository implements ProductionRepository {
 

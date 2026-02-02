@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 
 interface Idea {
     id: string;
@@ -27,7 +27,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function IdeasPage() {
-    const { token, isAuthenticated } = useAuth();
+    const { isAuthenticated } = useAuth();
+    const authFetch = useAuthFetch();
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -37,16 +38,14 @@ export default function IdeasPage() {
     const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
-    const fetchIdeas = async () => {
+    const fetchIdeas = useCallback(async () => {
         try {
             setLoading(true);
-            if (!token) {
+            if (!isAuthenticated) {
                 setIdeas([]);
                 return;
             }
-            const response = await fetch('/api/ideas', {
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-            });
+            const response = await authFetch('/api/ideas');
             if (response.ok) {
                 setIdeas(await response.json());
             }
@@ -55,7 +54,7 @@ export default function IdeasPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [isAuthenticated, authFetch]);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -63,22 +62,15 @@ export default function IdeasPage() {
             return;
         }
         fetchIdeas();
-    }, [isAuthenticated, token]);
+    }, [isAuthenticated, fetchIdeas]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         setError(null);
         try {
-            if (!token) {
-                throw new Error('Sesión no válida. Inicia sesión de nuevo.');
-            }
-            const response = await fetch('/api/ideas', {
+            const response = await authFetch('/api/ideas', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token && { Authorization: `Bearer ${token}` }),
-                },
                 body: JSON.stringify(formData),
             });
             if (!response.ok) {
@@ -96,16 +88,8 @@ export default function IdeasPage() {
     };
 
     const updateStatus = async (id: string, status: string) => {
-        if (!token) {
-            setError('Sesión no válida. Inicia sesión de nuevo.');
-            return;
-        }
-        await fetch(`/api/ideas?id=${id}`, {
+        await authFetch(`/api/ideas?id=${id}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token && { Authorization: `Bearer ${token}` }),
-            },
             body: JSON.stringify({ status }),
         });
         await fetchIdeas();
@@ -118,16 +102,10 @@ export default function IdeasPage() {
 
     const confirmDelete = async () => {
         if (!deleteTarget) return;
-        if (!token) {
-            setError('Sesión no válida. Inicia sesión de nuevo.');
-            setDeleteTarget(null);
-            return;
-        }
         setDeleteSubmitting(true);
         try {
-            const response = await fetch(`/api/ideas?id=${deleteTarget.id}`, {
+            const response = await authFetch(`/api/ideas?id=${deleteTarget.id}`, {
                 method: 'DELETE',
-                headers: { ...(token && { Authorization: `Bearer ${token}` }) },
             });
             if (!response.ok) {
                 const data = await response.json();

@@ -1,13 +1,14 @@
 // application/services/AuthService.ts
 // Centralized authentication service - eliminates code duplication
 
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
 import { config } from '@/lib/config';
 import { UserRepository } from '@/domain/repositories/UserRepository';
 import { SessionRepository } from '@/domain/repositories/SessionRepository';
 import { User, CreateUserInput } from '@/domain/entities/User';
+import { emitMetric } from '@/lib/observability';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -35,6 +36,7 @@ export class AuthService {
         // Check if email exists
         const exists = await this.userRepository.emailExists(input.email);
         if (exists) {
+            this.trackMetric('auth.register.failure', { reason: 'email_exists' });
             throw new AuthError('Email already registered', 'EMAIL_EXISTS');
         }
 
@@ -48,7 +50,24 @@ export class AuthService {
         const token = this.generateAccessToken(user);
         const refreshToken = await this.createRefreshSession(user.id);
 
+        this.trackMetric('auth.register.success');
         return { user, token, refreshToken };
+    }
+
+    /**
+     * Register without issuing tokens (requires email verification)
+     */
+    async registerWithoutSession(input: CreateUserInput): Promise<User> {
+        const exists = await this.userRepository.emailExists(input.email);
+        if (exists) {
+            this.trackMetric('auth.register.failure', { reason: 'email_exists' });
+            throw new AuthError('Email already registered', 'EMAIL_EXISTS');
+        }
+
+        const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
+        const user = await this.userRepository.create(input, passwordHash);
+        this.trackMetric('auth.register.success');
+        return user;
     }
 
     /**
@@ -58,12 +77,19 @@ export class AuthService {
         // Find user
         const userWithPassword = await this.userRepository.findByEmail(email);
         if (!userWithPassword) {
+            this.trackMetric('auth.login.failure', { reason: 'user_not_found' });
             throw new AuthError('Invalid credentials', 'INVALID_CREDENTIALS');
+        }
+
+        if (!userWithPassword.emailVerifiedAt) {
+            this.trackMetric('auth.login.failure', { reason: 'email_not_verified' });
+            throw new AuthError('Email not verified', 'EMAIL_NOT_VERIFIED');
         }
 
         // Verify password
         const isValid = await bcrypt.compare(password, userWithPassword.passwordHash);
         if (!isValid) {
+            this.trackMetric('auth.login.failure', { reason: 'invalid_password' });
             throw new AuthError('Invalid credentials', 'INVALID_CREDENTIALS');
         }
 
@@ -79,6 +105,7 @@ export class AuthService {
         const token = this.generateAccessToken(user);
         const refreshToken = await this.createRefreshSession(user.id);
 
+        this.trackMetric('auth.login.success');
         return { user, token, refreshToken };
     }
 
@@ -87,11 +114,13 @@ export class AuthService {
         const sessionRepository = this.requireSessionRepository();
         const session = await sessionRepository.findValidByTokenHash(refreshTokenHash);
         if (!session) {
+            this.trackMetric('auth.refresh.failure', { reason: 'session_not_found' });
             throw new AuthError('Invalid refresh token', 'INVALID_REFRESH_TOKEN');
         }
 
         const user = await this.userRepository.findById(session.userId);
         if (!user) {
+            this.trackMetric('auth.refresh.failure', { reason: 'user_not_found' });
             throw new AuthError('User not found', 'USER_NOT_FOUND');
         }
 
@@ -99,6 +128,7 @@ export class AuthService {
         const newRefreshToken = await this.createRefreshSession(user.id);
         const token = this.generateAccessToken(user);
 
+        this.trackMetric('auth.refresh.success');
         return { user, token, refreshToken: newRefreshToken };
     }
 
@@ -140,10 +170,11 @@ export class AuthService {
     }
 
     private generateAccessToken(user: User): string {
+        const expiresIn = config.jwt.expiresIn as SignOptions['expiresIn'];
         return jwt.sign(
             { userId: user.id, email: user.email },
             config.jwt.secret,
-            { expiresIn: config.jwt.expiresIn as any }
+            { expiresIn }
         );
     }
 
@@ -180,6 +211,10 @@ export class AuthService {
             d: 24 * 60 * 60 * 1000,
         };
         return amount * (multipliers[unit] || 24 * 60 * 60 * 1000);
+    }
+
+    private trackMetric(name: string, tags?: Record<string, string>) {
+        emitMetric({ name, value: 1, tags });
     }
 }
 

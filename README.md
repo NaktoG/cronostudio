@@ -204,6 +204,8 @@ apps/web/src/
 - [Arquitectura](docs/ARCHITECTURE.md)
 - [Política de ramas](docs/BRANCHING.md)
 - [Script de limpieza de ramas](scripts/branch_cleanup.sh)
+- [Runbook Hetzner VPS](docs/runbooks/02-hetzner-vps.md)
+- [Observabilidad](docs/OBSERVABILITY.md)
 
 ---
 

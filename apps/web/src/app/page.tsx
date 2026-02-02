@@ -10,7 +10,7 @@ import PriorityActions from './components/PriorityActions';
 import ProductionPipeline from './components/ProductionPipeline';
 import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth, useAuthFetch } from './contexts/AuthContext';
 
 interface PipelineStats {
   idea: number;
@@ -52,7 +52,8 @@ function generatePriorityActions(productions: Production[]): PriorityAction[] {
 }
 
 export default function Dashboard() {
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
+  const authFetch = useAuthFetch();
   const [productions, setProductions] = useState<Production[]>([]);
   const [pipelineStats, setPipelineStats] = useState<PipelineStats>({
     idea: 0, scripting: 0, recording: 0, editing: 0, shorts: 0, publishing: 0, published: 0
@@ -63,18 +64,7 @@ export default function Dashboard() {
   const [newTitle, setNewTitle] = useState('');
   const [ideasCount, setIdeasCount] = useState(0);
 
-  const authFetch = useCallback(async (url: string, options: RequestInit = {}) => {
-    const headers = new Headers(options.headers);
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-    headers.set('Content-Type', 'application/json');
-    return fetch(url, { ...options, headers });
-  }, [token]);
-
   const fetchData = useCallback(async () => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
     try {
       const [productionsRes, ideasRes, runsRes] = await Promise.all([
         authFetch('/api/productions?stats=true'),
@@ -113,7 +103,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [token, authFetch]);
+  }, [authFetch]);
 
   useEffect(() => {
     if (isAuthenticated) fetchData();

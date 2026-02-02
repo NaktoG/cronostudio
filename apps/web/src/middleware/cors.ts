@@ -9,8 +9,10 @@ const ALLOWED_ORIGINS = process.env.CORS_ORIGIN?.split(',') || [
  * Middleware de CORS
  * Verifica el origin y agrega headers CORS apropiados
  */
-export function withCORS(handler: Function) {
-    return async (request: NextRequest, ...args: any[]) => {
+type RouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<NextResponse> | NextResponse;
+
+export function withCORS(handler: RouteHandler): RouteHandler {
+    return async (request: NextRequest, ...args: unknown[]) => {
         const origin = request.headers.get('origin');
 
         // Verificar si el origin está permitido

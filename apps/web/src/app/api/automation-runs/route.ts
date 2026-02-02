@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { query } from '@/lib/db';
-import { withSecurityHeaders } from '@/middleware/auth';
+import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { AuthService } from '@/application/services/AuthService';
-import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -23,16 +21,9 @@ const UpdateRunSchema = z.object({
   errorMessage: z.string().max(500).optional().nullable(),
 });
 
-function getUserId(request: NextRequest): string | null {
-  const userRepository = new PostgresUserRepository();
-  const authService = new AuthService(userRepository);
-  const authHeader = request.headers.get('authorization');
-  return authService.extractUserIdFromHeader(authHeader);
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const userId = getUserId(request);
+    const userId = getAuthUser(request)?.userId;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }
@@ -56,7 +47,7 @@ export async function GET(request: NextRequest) {
 
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getUserId(request);
+    const userId = getAuthUser(request)?.userId;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }
@@ -91,7 +82,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 
 export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getUserId(request);
+    const userId = getAuthUser(request)?.userId;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }

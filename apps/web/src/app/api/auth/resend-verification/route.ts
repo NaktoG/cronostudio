@@ -7,6 +7,7 @@ import { query } from '@/lib/db';
 import { generateToken, hashToken } from '@/lib/token';
 import { sendEmail } from '@/lib/email';
 import { logger } from '@/lib/logger';
+import { config } from '@/lib/config';
 
 const userRepository = new PostgresUserRepository();
 
@@ -30,7 +31,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
       [user.id, tokenHash, expiresAt]
     );
 
-    const baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+    const baseUrl = config.app.baseUrl;
     const verifyUrl = `${baseUrl}/verify-email?token=${rawToken}`;
 
     await sendEmail({

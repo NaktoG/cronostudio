@@ -1,7 +1,6 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { ReactNode } from 'react';
 
 // Variantes de animación de página

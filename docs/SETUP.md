@@ -37,14 +37,19 @@ cp infra/docker/.env.example infra/docker/.env
 
 Editar `infra/docker/.env` con valores locales. Ver `.env.example` para referencias.
 
-Variables obligatorias (minimo):
-- `JWT_SECRET`
+Variables obligatorias (mínimo):
+- `JWT_SECRET` (mínimo 32 caracteres, sin usar valores por defecto)
 
 Variables de logging (opcional):
 - `LOG_LEVEL` (debug | info | warn | error)
 
 Variables para analytics (opcional):
 - `YOUTUBE_ANALYTICS_ACCESS_TOKEN`
+- `YOUTUBE_CHANNEL_IDS`
+
+Servicios adicionales:
+- `REDIS_URL` (URL del cluster Redis usado para rate limiting en producción)
+- `OBS_ENABLED` / `OBS_ENDPOINT` (ver `docs/OBSERVABILITY.md` para métricas y alertas)
 
 Variables para email (opcional):
 - `APP_BASE_URL`
@@ -54,10 +59,13 @@ Variables para email (opcional):
 - `SMTP_PASSWORD`
 - `SMTP_FROM`
 
+Control de registro:
+- `ALLOW_PUBLIC_SIGNUP=false` (recomendado en producción)
+
 QA recomendado:
 - Ver `docs/QA_AUTH_FLOW.md`
 
-**⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` a git si contiene credenciales reales.
+**⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` a git si contiene credenciales reales y recuerda que en producción no existen valores de respaldo: cada variable crítica debe establecerse explícitamente.
 
 ### 3. Levantar infraestructura (n8n + Postgres)
 
@@ -74,8 +82,10 @@ Verificar que ambos containers están en estado `Up`:
 ### 3.1 Ejecutar migraciones de base de datos
 
 ```bash
-./scripts/db_migrate.sh
+./scripts/db/migrate.sh
 ```
+
+> Ver `infra/migrations/README.md` para crear nuevas migraciones (`./scripts/db/create-migration.sh <descripcion>`).
 
 ### 3.2 Cargar datos de demo (opcional)
 

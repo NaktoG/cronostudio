@@ -4,6 +4,7 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '../contexts/AuthContext';
 import { GuestRoute } from '../components/ProtectedRoute';
 import Footer from '../components/Footer';
@@ -59,10 +60,13 @@ export default function LoginPage() {
                                 className="inline-flex items-center justify-center w-16 h-16 bg-yellow-400 rounded-2xl mb-4 shadow-lg shadow-yellow-400/20"
                                 whileHover={{ scale: 1.05, rotate: 5 }}
                             >
-                                <img
+                                <Image
                                     src="/logo_crono.png"
                                     alt="CronoStudio"
+                                    width={40}
+                                    height={40}
                                     className="w-10 h-10 object-contain"
+                                    priority
                                 />
                             </motion.div>
                             <h1 className="text-3xl font-bold text-white">CronoStudio</h1>

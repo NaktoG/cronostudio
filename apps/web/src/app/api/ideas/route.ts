@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { withSecurityHeaders } from '@/middleware/auth';
+import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { validateInput } from '@/lib/validation';
 import { logger } from '@/lib/logger';
@@ -16,8 +16,6 @@ import { ListIdeasUseCase } from '@/application/usecases/idea/ListIdeasUseCase';
 import { UpdateIdeaUseCase } from '@/application/usecases/idea/UpdateIdeaUseCase';
 import { DeleteIdeaUseCase } from '@/application/usecases/idea/DeleteIdeaUseCase';
 import { PostgresIdeaRepository } from '@/infrastructure/repositories/PostgresIdeaRepository';
-import { AuthService } from '@/application/services/AuthService';
-import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { IdeaStatus } from '@/domain/value-objects/IdeaStatus';
 
 // Schemas for HTTP validation
@@ -39,11 +37,7 @@ const UpdateIdeaSchema = z.object({
 
 // Helper to extract userId from request
 function getUserId(request: NextRequest): string | null {
-    const authHeader = request.headers.get('authorization');
-    // These services would typically be instantiated per request or via a DI container
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-    return authService.extractUserIdFromHeader(authHeader);
+    return getAuthUser(request)?.userId ?? null;
 }
 
 /**
@@ -83,12 +77,8 @@ export async function GET(request: NextRequest) {
  * Create a new idea
  */
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-    const userRepository = new PostgresUserRepository();
-    const authService = new AuthService(userRepository);
-
     try {
-        const authHeader = request.headers.get('authorization');
-        const userId = authService.extractUserIdFromHeader(authHeader);
+        const userId = getUserId(request);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }
