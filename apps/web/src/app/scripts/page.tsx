@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -36,6 +37,7 @@ export default function ScriptsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({ title: '', intro: '', body: '', cta: '', outro: '' });
+    const [deleteTarget, setDeleteTarget] = useState<Script | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
     const fetchScripts = useCallback(async () => {
@@ -90,11 +92,12 @@ export default function ScriptsPage() {
         setShowModal(true);
     };
 
-    const deleteScript = async (id: string) => {
-        if (!confirm('¿Eliminar este guion?')) return;
-        await authFetch(`/api/scripts?id=${id}`, {
+    const deleteScript = async () => {
+        if (!deleteTarget) return;
+        await authFetch(`/api/scripts?id=${deleteTarget.id}`, {
             method: 'DELETE',
         });
+        setDeleteTarget(null);
         await fetchScripts();
     };
 
@@ -114,9 +117,16 @@ export default function ScriptsPage() {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
-                        <div>
-                            <h2 className="text-4xl font-bold text-white mb-2">📝 Guiones</h2>
-                            <p className="text-gray-400">Escribe y gestiona los guiones de tus videos</p>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-3">
+                                <Link href="/" className="inline-flex items-center text-sm text-gray-400 hover:text-yellow-300 transition-colors">
+                                    ← Volver al dashboard
+                                </Link>
+                            </div>
+                            <div>
+                                <h2 className="text-4xl font-bold text-white mb-2">📝 Guiones</h2>
+                                <p className="text-gray-400">Escribe y gestiona los guiones de tus videos</p>
+                            </div>
                         </div>
                         <motion.button
                             onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '' }); setShowModal(true); }}
@@ -167,7 +177,7 @@ export default function ScriptsPage() {
                                             <button onClick={() => openEdit(script)} className="px-3 py-1 text-sm text-yellow-400 hover:text-yellow-300">
                                                 Editar
                                             </button>
-                                            <button onClick={() => deleteScript(script.id)} className="px-3 py-1 text-sm text-red-400 hover:text-red-300">
+                                            <button onClick={() => setDeleteTarget(script)} className="px-3 py-1 text-sm text-red-400 hover:text-red-300">
                                                 Eliminar
                                             </button>
                                         </div>
@@ -257,6 +267,33 @@ export default function ScriptsPage() {
                             </motion.div>
                         </motion.div>
                     )}
+
+                <AnimatePresence>
+                    {deleteTarget && (
+                        <motion.div
+                            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setDeleteTarget(null)}
+                        >
+                            <motion.div
+                                className="bg-gray-900 border border-red-500/30 rounded-2xl p-8 w-full max-w-lg"
+                                initial={{ scale: 0.9 }}
+                                animate={{ scale: 1 }}
+                                exit={{ scale: 0.9 }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <h3 className="text-2xl font-bold text-white mb-3">Eliminar guion</h3>
+                                <p className="text-sm text-gray-400 mb-6">Estás por eliminar <span className="text-white font-semibold">{deleteTarget.title}</span>. Esta acción no se puede deshacer.</p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">Cancelar</button>
+                                    <button onClick={deleteScript} className="flex-1 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500">Eliminar</button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
                 </AnimatePresence>
             </div>
         </ProtectedRoute>

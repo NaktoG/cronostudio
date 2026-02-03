@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
+import Link from 'next/link';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { PageTransition } from '../components/Animations';
@@ -247,10 +248,13 @@ export default function ConfiguracionPage() {
         <Header />
         <PageTransition className="flex-1">
           <main className="w-full px-4 md:px-8 lg:px-12 py-8">
-            <motion.div className="mb-8" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-              <h1 className="text-3xl md:text-4xl font-bold text-white">Configuración</h1>
-              <p className="text-gray-400">Administra tu cuenta personal de CronoStudio.</p>
-              {user && <p className="text-sm text-gray-500 mt-1">Sesión iniciada como {user.email}</p>}
+            <motion.div className="mb-8 space-y-2" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
+              <Link href="/" className="inline-flex items-center text-sm text-gray-400 hover:text-yellow-300 transition-colors">← Volver al dashboard</Link>
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold text-white">Configuración</h1>
+                <p className="text-gray-400">Administra tu cuenta personal de CronoStudio.</p>
+                {user && <p className="text-sm text-gray-500 mt-1">Sesión iniciada como {user.email}</p>}
+              </div>
             </motion.div>
             {cargandoPerfil ? (
               <div className="flex justify-center py-20">
