@@ -14,7 +14,8 @@ const NAV_ITEMS = [
   { href: '/thumbnails', label: 'Miniaturas', icon: '🖼️' },
   { href: '/seo', label: 'SEO', icon: '🔍' },
   { href: '/channels', label: 'Canales', icon: '📺' },
-  { href: '/analytics', label: 'Analytics', icon: '📊' },
+  { href: '/analytics', label: 'Analítica', icon: '📊' },
+  { href: '/configuracion', label: 'Configuración', icon: '⚙️' },
 ];
 
 export default function Header() {

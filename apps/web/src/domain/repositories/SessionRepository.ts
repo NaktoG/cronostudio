@@ -12,4 +12,5 @@ export interface SessionRepository {
   findValidByTokenHash(refreshTokenHash: string): Promise<SessionRecord | null>;
   revokeById(sessionId: string): Promise<void>;
   revokeByTokenHash(refreshTokenHash: string): Promise<void>;
+  deleteByUserId(userId: string): Promise<void>;
 }

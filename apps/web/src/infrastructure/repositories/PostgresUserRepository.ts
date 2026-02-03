@@ -17,6 +17,16 @@ export class PostgresUserRepository implements UserRepository {
         return this.toDomain(result.rows[0]);
     }
 
+    async findByIdWithPassword(id: string): Promise<UserWithPassword | null> {
+        const result = await query(
+            'SELECT id, email, name, password_hash, email_verified_at, created_at, updated_at FROM app_users WHERE id = $1',
+            [id]
+        );
+
+        if (result.rows.length === 0) return null;
+        return this.toDomainWithPassword(result.rows[0]);
+    }
+
     async findByEmail(email: string): Promise<UserWithPassword | null> {
         const result = await query(
             'SELECT id, email, name, password_hash, email_verified_at, created_at, updated_at FROM app_users WHERE email = $1',
@@ -73,6 +83,14 @@ export class PostgresUserRepository implements UserRepository {
 
         if (result.rows.length === 0) return null;
         return this.toDomain(result.rows[0]);
+    }
+
+    async updatePassword(id: string, passwordHash: string): Promise<void> {
+        await query('UPDATE app_users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, id]);
+    }
+
+    async deleteById(id: string): Promise<void> {
+        await query('DELETE FROM app_users WHERE id = $1', [id]);
     }
 
     private toDomain(row: Record<string, unknown>): User {

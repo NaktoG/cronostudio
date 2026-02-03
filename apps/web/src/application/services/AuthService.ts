@@ -153,6 +153,44 @@ export class AuthService {
         }
     }
 
+    async getProfile(userId: string): Promise<User> {
+        const user = await this.userRepository.findById(userId);
+        if (!user) {
+            throw new AuthError('Usuario no encontrado', 'USER_NOT_FOUND');
+        }
+        return user;
+    }
+
+    async updateProfile(userId: string, input: Partial<Pick<User, 'name' | 'email'>>): Promise<User> {
+        const updated = await this.userRepository.update(userId, input);
+        if (!updated) {
+            throw new AuthError('No hay cambios para guardar', 'PROFILE_NO_CHANGES');
+        }
+        this.trackMetric('auth.profile.update');
+        return updated;
+    }
+
+    async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+        const user = await this.userRepository.findByIdWithPassword(userId);
+        if (!user) {
+            throw new AuthError('Usuario no encontrado', 'USER_NOT_FOUND');
+        }
+        const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+        if (!matches) {
+            throw new AuthError('La contraseña actual no es correcta', 'INVALID_PASSWORD');
+        }
+        const newHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+        await this.userRepository.updatePassword(userId, newHash);
+        this.trackMetric('auth.password.change');
+    }
+
+    async deleteAccount(userId: string): Promise<void> {
+        const sessionRepository = this.requireSessionRepository();
+        await sessionRepository.deleteByUserId(userId);
+        await this.userRepository.deleteById(userId);
+        this.trackMetric('auth.account.deleted');
+    }
+
     /**
      * Extract user ID from Authorization header
      */

@@ -40,6 +40,10 @@ export class PostgresSessionRepository implements SessionRepository {
     );
   }
 
+  async deleteByUserId(userId: string): Promise<void> {
+    await query('DELETE FROM auth_sessions WHERE user_id = $1', [userId]);
+  }
+
   private toDomain(row: Record<string, unknown>): SessionRecord {
     return {
       id: row.id as string,

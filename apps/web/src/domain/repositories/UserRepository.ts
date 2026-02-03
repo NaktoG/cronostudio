@@ -10,6 +10,11 @@ export interface UserRepository {
     findById(id: string): Promise<User | null>;
 
     /**
+     * Find a user by their ID including password hash
+     */
+    findByIdWithPassword(id: string): Promise<UserWithPassword | null>;
+
+    /**
      * Find a user by their email address
      */
     findByEmail(email: string): Promise<UserWithPassword | null>;
@@ -28,4 +33,14 @@ export interface UserRepository {
      * Update user profile
      */
     update(id: string, input: Partial<Pick<User, 'name' | 'email'>>): Promise<User | null>;
+
+    /**
+     * Update user password
+     */
+    updatePassword(id: string, passwordHash: string): Promise<void>;
+
+    /**
+     * Delete user permanently
+     */
+    deleteById(id: string): Promise<void>;
 }
