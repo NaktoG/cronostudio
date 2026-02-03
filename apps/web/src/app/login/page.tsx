@@ -170,20 +170,6 @@ export default function LoginPage() {
                             </div>
                         </motion.form>
 
-                        {/* Demo credentials */}
-                        <motion.div
-                            className="mt-6 p-4 bg-gray-900/30 rounded-lg border border-yellow-500/10"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.5 }}
-                        >
-                            <p className="text-gray-400 text-xs text-center">
-                                Demo email: <span className="text-yellow-400">demo@cronostudio.com</span>
-                            </p>
-                            <p className="text-gray-400 text-xs text-center mt-1">
-                                Demo password: <span className="text-yellow-400">demo123</span>
-                            </p>
-                        </motion.div>
                     </motion.div>
                 </div>
                 <Footer />
