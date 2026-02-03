@@ -30,7 +30,8 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
         const body = await request.json();
         const validatedData = validateInput(RegisterSchema, body);
 
-        if (config.isProduction && process.env.ALLOW_PUBLIC_SIGNUP !== 'true') {
+        const allowPublicSignup = process.env.ALLOW_PUBLIC_SIGNUP !== 'false';
+        if (config.isProduction && !allowPublicSignup) {
             return withSecurityHeaders(NextResponse.json({ error: 'Registro deshabilitado' }, { status: 403 }));
         }
 

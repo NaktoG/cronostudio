@@ -50,6 +50,7 @@ Variables para analytics (opcional):
 Servicios adicionales:
 - `REDIS_URL` (URL del cluster Redis usado para rate limiting en producción)
 - `OBS_ENABLED` / `OBS_ENDPOINT` (ver `docs/OBSERVABILITY.md` para métricas y alertas)
+- `ALLOW_PUBLIC_SIGNUP` (por defecto true; pon \"false\" si quieres desactivar registros en producción)
 
 Variables para email (opcional):
 - `APP_BASE_URL`

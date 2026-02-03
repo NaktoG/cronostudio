@@ -46,7 +46,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     });
 
     const payload: Record<string, unknown> = { message: 'Si el email existe, se enviará un link' };
-    if (!enviado && !config.isProduction) {
+    if (!enviado) {
       payload['enlaceManual'] = resetUrl;
     }
 

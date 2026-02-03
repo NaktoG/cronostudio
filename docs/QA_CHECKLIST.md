@@ -17,7 +17,7 @@ Guía para validar la app de extremo a extremo después de cada release.
    - Cerrar sesión y comprobar redirección a `/login`.
 3. **Reset de contraseña**
    - Usar `/forgot-password`, revisar mail, completar `/reset-password`.
-   - Si SMTP no está configurado, copiar el enlace devuelto por la API y probar `/reset-password?token=...`.
+   - Si el correo no llega, copiar el enlace que devuelve la respuesta de la API (`enlaceManual`) y completar `/reset-password?token=...`.
 
 ## 3. Configuración de cuenta
 1. Ingresar a `/configuracion`.
