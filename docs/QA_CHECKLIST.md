@@ -18,9 +18,6 @@ Guía para validar la app de extremo a extremo después de cada release.
 3. **Reset de contraseña**
    - Usar `/forgot-password`, revisar mail, completar `/reset-password`.
    - Si SMTP no está configurado, copiar el enlace devuelto por la API y probar `/reset-password?token=...`.
-4. **Login con Google**
-   - Probar "Continuar con Google" en `/login` (con una cuenta real).
-   - Repetir en `/register` para confirmar creación automática.
 
 ## 3. Configuración de cuenta
 1. Ingresar a `/configuracion`.

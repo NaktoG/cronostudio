@@ -41,11 +41,6 @@ export interface UserRepository {
     updatePassword(id: string, passwordHash: string): Promise<void>;
 
     /**
-     * Mark email as verified
-     */
-    markEmailVerified(id: string): Promise<void>;
-
-    /**
      * Delete user permanently
      */
     deleteById(id: string): Promise<void>;
