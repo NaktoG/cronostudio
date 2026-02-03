@@ -44,16 +44,6 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
 
         logger.info('User registered', { userId: user.id, email: user.email });
 
-        const response = NextResponse.json({
-            message: 'Usuario registrado exitosamente',
-            user: {
-                id: user.id,
-                email: user.email,
-                name: user.name,
-                createdAt: user.createdAt,
-            },
-        }, { status: 201 });
-
         const rawToken = generateToken();
         const tokenHash = hashToken(rawToken);
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -65,7 +55,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
 
         const baseUrl = config.app.baseUrl;
         const verifyUrl = `${baseUrl}/verify-email?token=${rawToken}`;
-        await sendEmail({
+        const enviado = await sendEmail({
             to: user.email,
             subject: 'Verifica tu email - CronoStudio',
             html: `
@@ -75,7 +65,21 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
             `,
         });
 
-        return withSecurityHeaders(response);
+        const payload: Record<string, unknown> = {
+            message: 'Usuario registrado exitosamente',
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                createdAt: user.createdAt,
+            },
+        };
+
+        if (!enviado) {
+            payload['enlaceVerificacion'] = verifyUrl;
+        }
+
+        return withSecurityHeaders(NextResponse.json(payload, { status: 201 }));
     } catch (error) {
         // Handle AuthError
         if (error instanceof AuthError) {

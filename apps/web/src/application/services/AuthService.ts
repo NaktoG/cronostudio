@@ -78,7 +78,8 @@ export class AuthService {
             throw new AuthError('Invalid credentials', 'INVALID_CREDENTIALS');
         }
 
-        if (!userWithPassword.emailVerifiedAt) {
+        const requireVerified = process.env.REQUIRE_EMAIL_VERIFIED !== 'false';
+        if (requireVerified && !userWithPassword.emailVerifiedAt) {
             this.trackMetric('auth.login.failure', { reason: 'email_not_verified' });
             throw new AuthError('Email not verified', 'EMAIL_NOT_VERIFIED');
         }

@@ -34,7 +34,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     const baseUrl = config.app.baseUrl;
     const verifyUrl = `${baseUrl}/verify-email?token=${rawToken}`;
 
-    await sendEmail({
+    const enviado = await sendEmail({
       to: user.email,
       subject: 'Verifica tu email - CronoStudio',
       html: `
@@ -43,7 +43,12 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
       `,
     });
 
-    return withSecurityHeaders(NextResponse.json({ message: 'Si el email existe, se enviara un link' }));
+    const payload: Record<string, unknown> = { message: 'Si el email existe, se enviara un link' };
+    if (!enviado) {
+      payload['enlaceVerificacion'] = verifyUrl;
+    }
+
+    return withSecurityHeaders(NextResponse.json(payload));
   } catch (error) {
     logger.error('auth.email_resend.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al reenviar verificacion' }, { status: 500 }));
