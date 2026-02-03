@@ -51,6 +51,10 @@ Servicios adicionales:
 - `REDIS_URL` (URL del cluster Redis usado para rate limiting en producción)
 - `OBS_ENABLED` / `OBS_ENDPOINT` (ver `docs/OBSERVABILITY.md` para métricas y alertas)
 
+Login con Google (opcional):
+- `GOOGLE_CLIENT_ID` (servidor)
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (cliente)
+
 Variables para email (opcional):
 - `APP_BASE_URL`
 - `SMTP_HOST`

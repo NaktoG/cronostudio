@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useAuth } from '../contexts/AuthContext';
 import { GuestRoute } from '../components/ProtectedRoute';
 import Footer from '../components/Footer';
+import { GoogleLoginButton } from '../components/GoogleLoginButton';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -155,6 +156,12 @@ export default function LoginPage() {
                                 </Link>
                             </div>
 
+                            <div className="flex items-center gap-3">
+                                <div className="h-px bg-gray-800 flex-1" />
+                                <span className="text-xs text-gray-500">o</span>
+                                <div className="h-px bg-gray-800 flex-1" />
+                            </div>
+                            <GoogleLoginButton />
                             <div className="text-center text-gray-400 text-sm">
                                 ¿No tienes cuenta?{' '}
                                 <Link href="/register" className="text-yellow-400 hover:text-yellow-300 transition-colors">

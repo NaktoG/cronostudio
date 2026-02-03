@@ -89,6 +89,10 @@ export class PostgresUserRepository implements UserRepository {
         await query('UPDATE app_users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, id]);
     }
 
+    async markEmailVerified(id: string): Promise<void> {
+        await query('UPDATE app_users SET email_verified_at = NOW(), updated_at = NOW() WHERE id = $1', [id]);
+    }
+
     async deleteById(id: string): Promise<void> {
         await query('DELETE FROM app_users WHERE id = $1', [id]);
     }

@@ -73,6 +73,36 @@ export class AuthService {
     /**
      * Login with email and password
      */
+    async loginWithProvider(email: string, name?: string): Promise<AuthResult> {
+        const existing = await this.userRepository.findByEmail(email);
+        let user: User | null = null;
+
+        if (!existing) {
+            const tempPassword = crypto.randomBytes(16).toString('hex');
+            const passwordHash = await bcrypt.hash(tempPassword, BCRYPT_ROUNDS);
+            const created = await this.userRepository.create({ email, password: tempPassword, name: name || email.split('@')[0] }, passwordHash);
+            await this.userRepository.markEmailVerified(created.id);
+            user = await this.userRepository.findById(created.id);
+        } else {
+            if (!existing.emailVerifiedAt) {
+                await this.userRepository.markEmailVerified(existing.id);
+            }
+            if (!existing.name && name) {
+                await this.userRepository.update(existing.id, { name });
+            }
+            user = await this.userRepository.findById(existing.id);
+        }
+
+        if (!user) {
+            throw new AuthError('Usuario no encontrado', 'USER_NOT_FOUND');
+        }
+
+        const token = this.generateAccessToken(user);
+        const refreshToken = await this.createRefreshSession(user.id);
+        this.trackMetric('auth.login.google');
+        return { user, token, refreshToken };
+    }
+
     async login(email: string, password: string): Promise<AuthResult> {
         // Find user
         const userWithPassword = await this.userRepository.findByEmail(email);

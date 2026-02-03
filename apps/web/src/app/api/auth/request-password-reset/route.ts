@@ -34,7 +34,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     const baseUrl = config.app.baseUrl;
     const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
 
-    await sendEmail({
+    const enviado = await sendEmail({
       to: user.email,
       subject: 'Restablecer contraseña - CronoStudio',
       html: `
@@ -45,7 +45,12 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
       `,
     });
 
-    return withSecurityHeaders(NextResponse.json({ message: 'Si el email existe, se enviara un link' }));
+    const payload: Record<string, unknown> = { message: 'Si el email existe, se enviará un link' };
+    if (!enviado && !config.isProduction) {
+      payload['enlaceManual'] = resetUrl;
+    }
+
+    return withSecurityHeaders(NextResponse.json(payload));
   } catch (error) {
     logger.error('auth.password_reset.request.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al solicitar reset' }, { status: 500 }));

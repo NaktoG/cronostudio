@@ -3,6 +3,7 @@
 
 import { User, CreateUserInput, UserWithPassword } from '../entities/User';
 
+
 export interface UserRepository {
     /**
      * Find a user by their unique ID
@@ -38,6 +39,11 @@ export interface UserRepository {
      * Update user password
      */
     updatePassword(id: string, passwordHash: string): Promise<void>;
+
+    /**
+     * Mark email as verified
+     */
+    markEmailVerified(id: string): Promise<void>;
 
     /**
      * Delete user permanently
