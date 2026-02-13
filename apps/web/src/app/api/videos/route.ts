@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateVideoSchema } from '@/lib/validation';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
+import { requireRoles } from '@/middleware/rbac';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
  * POST /api/videos
  * Crea un nuevo video (requiere autenticación y propiedad del canal)
  */
-export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -146,7 +147,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             { status: 500 }
         );
     }
-});
+}));
 
 /**
  * OPTIONS /api/videos

@@ -28,4 +28,9 @@ Objetivo: evitar que los workflows expongan credenciales o accedan a CronoStudio
 - Mantener la imagen `n8nio/n8n` actualizada (`docker compose pull n8n`).
 - Revisar changelog en cada upgrade mayor y probar en staging antes de producción.
 
+## 7. Rotación de credenciales y acceso
+- **Basic Auth para n8n/adminer (`n8n.atonixdev.com`):** corre `./scripts/n8n/rotate-basic-auth.sh <usuario> <password>` para generar la entrada `htpasswd`. Copia la línea resultante en `/etc/nginx/.adminer_htpasswd`, recarga Nginx (`sudo systemctl reload nginx`) y actualiza `infra/docker/.env`. Finalmente reinicia el contenedor `n8n`.
+- **Reset del owner en la UI:** `./scripts/n8n/reset-owner.sh correo@example.com` ejecuta `n8n user-management:reset` dentro del contenedor (puedes lanzarlo vía SSH). Sigue el enlace que imprime el comando para elegir una contraseña nueva.
+- Documenta cada rotación (quién, cuándo, por qué) y guarda los secretos en el gestor corporativo (Vault/1Password).
+
 Cumpliendo estos pasos minimizamos el riesgo de comprometer los tokens que permiten automatizar el canal de YouTube.

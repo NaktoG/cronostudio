@@ -51,15 +51,15 @@ const itemVariants = {
 export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps) {
     return (
         <motion.div
-            className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden"
+            className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
         >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
-                <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">⚡ Automatizaciones</span>
-                <span className="text-sm text-gray-500">{runs.length} runs</span>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/70">
+                <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">⚡ Automatizaciones</span>
+                <span className="text-sm text-slate-300">{runs.length} runs</span>
             </div>
 
             {/* Runs list */}
@@ -71,13 +71,13 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
             >
                 {runs.length === 0 ? (
                     <motion.div
-                        className="px-5 py-5 flex items-center gap-3 text-gray-400"
+                        className="px-5 py-5 flex items-center gap-3 text-slate-200"
                         variants={itemVariants}
                     >
                         <span className="text-2xl">🤖</span>
                         <div>
                             <span className="text-base block">Sin ejecuciones recientes</span>
-                            <span className="text-sm text-gray-500">Los agentes están listos</span>
+                            <span className="text-sm text-slate-400">Los agentes están listos</span>
                         </div>
                     </motion.div>
                 ) : (
@@ -87,7 +87,7 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                         return (
                             <motion.div
                                 key={run.id}
-                                className="flex items-center gap-4 px-5 py-4 hover:bg-gray-800/40 cursor-pointer transition-colors group"
+                                className="flex items-center gap-4 px-5 py-4 hover:bg-slate-800/40 cursor-pointer transition-colors group"
                                 onClick={() => onRunClick?.(run)}
                                 variants={itemVariants}
                                 whileHover={{ x: 3 }}
@@ -100,9 +100,9 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                                 <span className="text-xl">{config.icon}</span>
                                 <div className="flex-1 min-w-0">
                                     <span className="text-base text-white truncate block font-medium">{run.workflow_name}</span>
-                                    <span className="text-sm text-gray-500">{config.label}</span>
+                                    <span className="text-sm text-slate-300">{config.label}</span>
                                 </div>
-                                <span className="text-sm text-gray-500">{formatTimeAgo(run.started_at)}</span>
+                                <span className="text-sm text-slate-300">{formatTimeAgo(run.started_at)}</span>
                             </motion.div>
                         );
                     })

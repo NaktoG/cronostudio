@@ -38,6 +38,10 @@ Esto genera un archivo con timestamp actual en esta carpeta, listo para editar.
 
 ## Estado actual
 
-> Aún no se han versionado migraciones existentes. Para crear una línea base, ejecutar `pg_dump --schema-only` y copiar el resultado al primer archivo (`YYYYMMDDHHMM__baseline.sql`).
+- `202401010000__baseline.sql:` esquema inicial (`app_users`, `channels`, `videos`, `analytics`) + datos demo.
+- `202601240000__content_modules.sql:` tablas de ideas, scripts, thumbnails y SEO.
+- `202601250000__productions_pipeline.sql:` pipeline de producciones, shorts, social posts y automation_runs.
+- `202601290000__auth_sessions.sql` y `202601300000__auth_email_tokens.sql:` tablas de sesiones y tokens.
+- `202602090000__user_roles.sql`: agrega columna `role` a `app_users` para habilitar RBAC.
 
-Una vez agregada la línea base, todos los cambios deben pasar por este flujo.
+> Todos los despliegues deben usar `scripts/db/migrate.sh` (local `DATABASE_URL`) o `scripts/db_migrate.sh` (stack Docker) para aplicar estos archivos en orden.

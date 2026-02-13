@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { config } from '@/lib/config';
 
-const ALLOWED_ORIGINS = process.env.CORS_ORIGIN?.split(',') || [
-    'http://localhost:3000',
-    'http://localhost:3001',
-];
+const ALLOWED_ORIGINS = config.cors.allowedOrigins;
 
 /**
  * Middleware de CORS

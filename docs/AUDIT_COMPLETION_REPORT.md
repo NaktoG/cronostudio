@@ -11,7 +11,7 @@
 
 | Aspecto | Antes | Después | Mejora |
 |---------|-------|---------|--------|
-| **Autenticación APIs** | ❌ Ninguna | ⚠️ JWT (TODO) | 🔴 Crítica |
+| **Autenticación APIs** | ❌ Ninguna | ✅ JWT (middleware + AuthService) | 🟢 Completa |
 | **Validación inputs** | ❌ Manual | ✅ Zod | 🟢 Completa |
 | **Rate limiting** | ❌ Ninguno | ✅ Middleware | 🟢 Implementado |
 | **Docker seguridad** | ⚠️ Básico | ✅ Hardened | 🟢 Mejorado |
@@ -32,8 +32,7 @@
 ✅ **P11: Sin autenticación en APIs**
 - **Estado anterior**: APIs públicas, sin verificación de usuario
 - **Acción**: Creado middleware `auth.ts` con JWT
-- **Estado actual**: TODO - Requiere token Bearer en Authorization header
-- **Próximo paso**: Implementar JWT verification cuando DB esté lista
+- **Estado actual**: ✅ Todos los handlers críticos usan `withAuth`/`getAuthUser` y tokens firmados por `AuthService`
 
 ✅ **P29: Sin autenticación global**
 - **Estado anterior**: Cualquiera puede acceder
@@ -93,7 +92,7 @@
 | `docs/SECURITY_AUDIT.md` | Auditoría de hallazgos | ✅ Completo |
 | `docs/SECURITY_POLICY.md` | Políticas de seguridad | ✅ Completo |
 | `apps/web/src/lib/validation.ts` | Validación con Zod | ✅ Listo |
-| `apps/web/src/middleware/auth.ts` | JWT middleware | ⚠️ Estructura lista |
+| `apps/web/src/middleware/auth.ts` | JWT middleware | ✅ En uso |
 | `apps/web/src/middleware/rateLimit.ts` | Rate limiting | ✅ Listo |
 
 ### 🔧 **Archivos modificados:**
@@ -219,10 +218,11 @@ export async function POST(request: NextRequest) {
 - ✅ PostgreSQL SCRAM-SHA-256
 - ✅ Política de seguridad documentada
 - ✅ Auditoría completa documentada
+- ✅ Toggle claro/oscuro accesible
+- ✅ Alertas críticas (DB, health) conectadas a Observability
 
 ### 🟠 TODO (Próximas tareas):
 
-- ⚠️ Implementar JWT verification en middleware
 - ⚠️ Implementar CORS middleware
 - ⚠️ Conectar API a PostgreSQL real
 - ⚠️ Implementar roles y permisos (RBAC)
@@ -252,8 +252,8 @@ Riesgo ALTO:     🟠🟠🟠 (3/5)
 ### Después:
 ```
 Riesgo CRÍTICO:  🔴🔴 (2/5) ✅ Reducido 60%
-- TODO: JWT implementation
 - TODO: CORS configuration
+- TODO: RBAC/seguridad a nivel de datos
 
 Riesgo ALTO:     🟠 (1/5) ✅ Reducido 67%
 - TODO: 2FA en n8n
@@ -271,20 +271,13 @@ Riesgo MEDIO:    🟡 (0/5) ✅ Resuelto
 
 ### 🔴 CRÍTICOS (Esta semana):
 
-1. **Implementar JWT verification**
-   ```typescript
-   // En middleware/auth.ts
-   // Decodificar y validar JWT token
-   // Extraer user ID y permisos
-   ```
-
-2. **Implementar CORS middleware**
+1. **Implementar CORS middleware**
    ```typescript
    // Validar CORS_ORIGIN del .env
    // Bloquear requests desde otros orígenes
    ```
 
-3. **Testar rate limiting**
+2. **Testar rate limiting**
    ```bash
    # Hacer 101 requests en 15 min
    # Verificar que el 101 retorna 429
@@ -292,32 +285,27 @@ Riesgo MEDIO:    🟡 (0/5) ✅ Resuelto
 
 ### 🟠 ALTOS (Próximas 2 semanas):
 
-4. **Conectar API a PostgreSQL**
-   - Crear schema de `users` y `channels`
-   - Implementar SELECT/INSERT queries
-   - Testing
+3. **Conectar API a PostgreSQL**
+    - Crear schema de `users` y `channels`
+    - Implementar SELECT/INSERT queries
+    - Testing
 
-5. **Implementar 2FA en n8n**
-   - Forzar contraseña admin fuerte
-   - Activar 2FA en UI
+4. **Implementar 2FA en n8n**
+    - Forzar contraseña admin fuerte
+    - Activar 2FA en UI
 
-6. **Configurar logging centralizado**
-   - CloudWatch / ElasticSearch
-   - Rotación de logs
+5. **Configurar logging centralizado**
+    - CloudWatch / ElasticSearch
+    - Rotación de logs
 
 ### 🟡 MEDIOS (Próximo mes):
 
-7. **Implementar autenticación de usuarios**
-   - Register/Login endpoints
-   - Hash de passwords (bcrypt)
-   - Session management
+6. **Testing de seguridad**
+    - SQL injection tests
+    - XSS tests
+    - OWASP top 10
 
-8. **Testing de seguridad**
-   - SQL injection tests
-   - XSS tests
-   - OWASP top 10
-
-9. **Documentación final**
+7. **Documentación final**
    - README de seguridad
    - Guía de deployment seguro
    - Incident response plan
@@ -332,11 +320,11 @@ Riesgo MEDIO:    🟡 (0/5) ✅ Resuelto
 - ✅ Infraestructura Docker hardened
 - ✅ APIs con validación robusta
 - ✅ Políticas de seguridad documentadas
-- ⚠️ Falta autenticación JWT (TODO esta semana)
+- ⚠️ Falta CORS estricto y RBAC granular
 - ⚠️ Falta conectar a BD real (TODO próximas 2 semanas)
 
 **Recomendación**: DEPLOY a development con cambios actuales.  
-**No DEPLOY a producción** hasta implementar JWT y tests de seguridad.
+**No DEPLOY a producción** hasta cerrar CORS, RBAC y pruebas de seguridad.
 
 ---
 

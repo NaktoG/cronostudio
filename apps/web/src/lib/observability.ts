@@ -1,5 +1,6 @@
 import { logger } from '@/lib/logger';
 import { config } from '@/lib/config';
+import { logger } from '@/lib/logger';
 
 interface MetricsEvent {
   name: string;
@@ -8,9 +9,29 @@ interface MetricsEvent {
 }
 
 const pumpers: Array<(event: MetricsEvent) => void> = [];
+type AlertSeverity = 'info' | 'warning' | 'critical';
+
+interface AlertEvent {
+  title: string;
+  message: string;
+  severity: AlertSeverity;
+  tags?: Record<string, string>;
+  context?: Record<string, unknown>;
+  source?: string;
+}
+
+type AlertHandler = (event: AlertEvent) => void;
+
+const alertHandlers: AlertHandler[] = [];
+const alertCooldowns = new Map<string, number>();
+const DEFAULT_ALERT_COOLDOWN = 60_000;
 
 export function registerMetricsPumper(pumper: (event: MetricsEvent) => void) {
   pumpers.push(pumper);
+}
+
+export function registerAlertSink(handler: AlertHandler) {
+  alertHandlers.push(handler);
 }
 
 export function emitMetric(event: MetricsEvent) {
@@ -21,6 +42,29 @@ export function emitMetric(event: MetricsEvent) {
   }
 }
 
+interface AlertOptions {
+  dedupeKey?: string;
+  cooldownMs?: number;
+}
+
+export function emitAlert(event: AlertEvent, options?: AlertOptions) {
+  try {
+    const key = options?.dedupeKey ?? `${event.severity}:${event.title}`;
+    const cooldown = options?.cooldownMs ?? DEFAULT_ALERT_COOLDOWN;
+    if (cooldown > 0) {
+      const last = alertCooldowns.get(key) ?? 0;
+      const now = Date.now();
+      if (now - last < cooldown) {
+        return;
+      }
+      alertCooldowns.set(key, now);
+    }
+    alertHandlers.forEach((handler) => handler(event));
+  } catch (error) {
+    logger.error('[Observability] alert dispatch failed', { error });
+  }
+}
+
 if (config.observability.enabled && config.observability.endpoint) {
   registerMetricsPumper((event) => {
     fetch(config.observability.endpoint as string, {
@@ -28,5 +72,26 @@ if (config.observability.enabled && config.observability.endpoint) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(event),
     }).catch((error) => logger.error('[Observability] remote sink failed', { error }));
+  });
+} else if (process.env.NODE_ENV !== 'test') {
+  registerMetricsPumper((event) => {
+    logger.debug('[Observability] metric', { event });
+  });
+}
+
+if (config.observability.alertWebhook) {
+  registerAlertSink((event) => {
+    fetch(config.observability.alertWebhook as string, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+    }).catch((error) => logger.error('[Observability] alert webhook failed', { error }));
+  });
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  registerAlertSink((event) => {
+    const logMethod = event.severity === 'critical' ? logger.error : logger.warn;
+    logMethod('[Alert] event captured', { event });
   });
 }

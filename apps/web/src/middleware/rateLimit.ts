@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { config } from '@/lib/config';
 import { getRedisClient, getRateLimitKey } from '@/lib/redis';
+import { emitMetric } from '@/lib/observability';
 
 interface RateLimitConfig {
   maxRequests: number;
@@ -7,8 +9,21 @@ interface RateLimitConfig {
 }
 
 const fallbackStore = new Map<string, { count: number; resetTime: number }>();
+
+if (config.isProduction && !process.env.REDIS_URL) {
+  throw new Error('Rate limiting requires REDIS_URL in production. Configure Redis before starting the server.');
+}
+
 function shouldEnforceRateLimit() {
-  return process.env.NODE_ENV === 'production' || process.env.RATE_LIMIT_ENFORCE === 'true';
+  if (process.env.RATE_LIMIT_DISABLE === 'true') {
+    return false;
+  }
+
+  if (process.env.NODE_ENV === 'test') {
+    return process.env.RATE_LIMIT_ENFORCE === 'true';
+  }
+
+  return true;
 }
 type RouteHandler<Context = unknown> = (request: NextRequest, context?: Context) => Promise<NextResponse> | NextResponse;
 
@@ -29,6 +44,7 @@ export function rateLimit(config: RateLimitConfig) {
       const retryAfter = await checkRateLimit(identifier, config);
 
       if (retryAfter > 0) {
+        emitMetric({ name: 'rate_limit.block', value: 1, tags: { path: request.nextUrl.pathname } });
         return NextResponse.json(
           {
             error: 'Too Many Requests',
@@ -68,6 +84,11 @@ async function checkRateLimit(identifier: string, config: RateLimitConfig): Prom
   }
 
   const now = Date.now();
+
+  if (config.isProduction) {
+    throw new Error('Redis rate limit backend unavailable in production. This should never happen.');
+  }
+
   const record = fallbackStore.get(identifier);
   if (record && now < record.resetTime) {
     if (record.count >= config.maxRequests) {

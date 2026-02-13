@@ -46,10 +46,14 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 > También puedes usar la UI de n8n (`Download` en cada workflow), pero el método anterior garantiza export completo con IDs y metadatos.
 
 ## Backups
-- El script `ops/backup.sh` se ejecuta diariamente (cron `0 2 * * *`) y guarda:
+- El script `scripts/hetzner/backup.sh` se ejecuta diariamente (cron `0 2 * * *`) y guarda:
   - Dump de Postgres (`/home/deploy/backups/postgres/…`)
   - Snapshot de `/home/deploy/agentos/projects/n8n/data` (`/home/deploy/backups/n8n/…`)
 - Verifica los archivos tras cada deploy: `ls /home/deploy/backups/{postgres,n8n}` en el VPS.
+
+## Operación diaria
+- **Rotar Basic Auth:** usa `./scripts/n8n/rotate-basic-auth.sh <user> <password>` para generar la nueva entrada `htpasswd` y actualizar el `.env`. La misma credencial protege `https://n8n.atonixdev.com/` y `/adminer`.
+- **Resetear owner:** si se pierde acceso a la UI, ejecuta `./scripts/n8n/reset-owner.sh correo@example.com` para obtener un enlace temporal de recuperación.
 
 ## Tracking de ejecuciones
 Los workflows registran ejecuciones en `automation_runs` para mostrarlas en el dashboard y ahora emiten métricas (`automation.run.*`) para observabilidad.

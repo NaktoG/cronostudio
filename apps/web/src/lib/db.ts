@@ -1,5 +1,6 @@
 import { Pool, QueryResult } from 'pg';
 import { validateConfig } from '@/lib/config';
+import { emitMetric, emitAlert } from '@/lib/observability';
 
 
 
@@ -39,6 +40,15 @@ function getPool(): Pool {
   // Manejar errores del pool
   pool.on('error', (err) => {
     console.error('Unexpected error on idle client', err);
+    emitAlert(
+      {
+        title: 'DB pool error',
+        message: err instanceof Error ? err.message : 'Unexpected pool error',
+        severity: 'critical',
+        tags: { component: 'database' },
+      },
+      { dedupeKey: 'db.pool_error', cooldownMs: 300000 }
+    );
     process.exit(-1);
   });
 
@@ -98,6 +108,17 @@ export async function query(
       text: text.substring(0, 100),
       error: error instanceof Error ? error.message : 'Unknown error'
     });
+    emitMetric({ name: 'db.query_error', value: 1 });
+    emitAlert(
+      {
+        title: 'DB query error',
+        message: error instanceof Error ? error.message : 'Unknown query error',
+        severity: 'warning',
+        tags: { component: 'database' },
+        context: { query: text.substring(0, 100) },
+      },
+      { dedupeKey: 'db.query_error', cooldownMs: 60000 }
+    );
     throw error;
   }
 }
@@ -120,6 +141,16 @@ export async function testConnection(): Promise<boolean> {
     return result.rows.length > 0;
   } catch (error) {
     console.error('[DB Connection Test] Failed:', error);
+    emitMetric({ name: 'db.connection_error', value: 1 });
+    emitAlert(
+      {
+        title: 'Database connection failure',
+        message: error instanceof Error ? error.message : 'Unknown connection error',
+        severity: 'critical',
+        tags: { component: 'database' },
+      },
+      { dedupeKey: 'db.connection_error', cooldownMs: 300000 }
+    );
     return false;
   }
 }

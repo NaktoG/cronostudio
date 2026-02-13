@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '@/lib/config';
 import { logger } from '@/lib/logger';
 import { getAccessCookie } from '@/lib/authCookies';
+import type { User } from '@/domain/entities/User';
 
 const JWT_SECRET = config.jwt.secret;
 
@@ -15,6 +16,7 @@ type RouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<NextRe
 export interface JWTPayload {
   userId: string;
   email: string;
+  role: User['role'];
   iat?: number;
   exp?: number;
 }
@@ -43,8 +45,9 @@ export function withAuth(handler: RouteHandler): RouteHandler {
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
       (request as AuthenticatedRequest).user = {
-        userId: decoded.userId,
-        email: decoded.email,
+          userId: decoded.userId,
+          email: decoded.email,
+          role: decoded.role ?? 'owner',
       };
       return handler(request, ...args);
     } catch (error) {
@@ -67,6 +70,7 @@ export function withOptionalAuth(handler: RouteHandler): RouteHandler {
         (request as AuthenticatedRequest).user = {
           userId: decoded.userId,
           email: decoded.email,
+          role: decoded.role ?? 'owner',
         };
       } catch {
         // Opcional, ignorar errores
@@ -117,7 +121,12 @@ export function getAuthUser(request: NextRequest): JWTPayload | null {
   const token = extractTokenFromRequest(request);
   if (!token) return null;
   try {
-    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    return {
+      userId: payload.userId,
+      email: payload.email,
+      role: payload.role ?? 'owner',
+    };
   } catch {
     return null;
   }

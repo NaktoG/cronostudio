@@ -15,6 +15,7 @@ const BCRYPT_ROUNDS = 12;
 export interface AuthTokenPayload {
     userId: string;
     email: string;
+    role: User['role'];
 }
 
 export interface AuthResult {
@@ -44,7 +45,7 @@ export class AuthService {
         const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
 
         // Create user
-        const user = await this.userRepository.create(input, passwordHash);
+        const user = await this.userRepository.create({ ...input, role: input.role ?? 'owner' }, passwordHash);
 
         // Generate token
         const token = this.generateAccessToken(user);
@@ -65,7 +66,7 @@ export class AuthService {
         }
 
         const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
-        const user = await this.userRepository.create(input, passwordHash);
+        const user = await this.userRepository.create({ ...input, role: input.role ?? 'owner' }, passwordHash);
         this.trackMetric('auth.register.success');
         return user;
     }
@@ -96,6 +97,7 @@ export class AuthService {
             id: userWithPassword.id,
             email: userWithPassword.email,
             name: userWithPassword.name,
+            role: userWithPassword.role,
             emailVerifiedAt: userWithPassword.emailVerifiedAt,
             createdAt: userWithPassword.createdAt,
             updatedAt: userWithPassword.updatedAt,
@@ -208,7 +210,7 @@ export class AuthService {
     private generateAccessToken(user: User): string {
         const expiresIn = config.jwt.expiresIn as SignOptions['expiresIn'];
         return jwt.sign(
-            { userId: user.id, email: user.email },
+            { userId: user.id, email: user.email, role: user.role },
             config.jwt.secret,
             { expiresIn }
         );

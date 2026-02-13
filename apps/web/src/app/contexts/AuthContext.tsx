@@ -1,11 +1,15 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import type { User as DomainUser } from '@/domain/entities/User';
+
+type UserRole = DomainUser['role'];
 
 interface User {
     id: string;
     email: string;
     name: string;
+    role: UserRole;
 }
 
 interface AuthContextType {
@@ -33,8 +37,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [error, setError] = useState<string | null>(null);
 
     const saveSession = useCallback((newUser: User) => {
-        localStorage.setItem(USER_KEY, JSON.stringify(newUser));
-        setUser(newUser);
+        const normalizedUser: User = {
+            ...newUser,
+            role: newUser.role ?? 'owner',
+        };
+        localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+        setUser(normalizedUser);
     }, []);
 
     const clearSession = useCallback(() => {

@@ -9,7 +9,7 @@ export class PostgresUserRepository implements UserRepository {
 
     async findById(id: string): Promise<User | null> {
         const result = await query(
-            'SELECT id, email, name, email_verified_at, created_at, updated_at FROM app_users WHERE id = $1',
+            'SELECT id, email, name, role, email_verified_at, created_at, updated_at FROM app_users WHERE id = $1',
             [id]
         );
 
@@ -19,7 +19,7 @@ export class PostgresUserRepository implements UserRepository {
 
     async findByIdWithPassword(id: string): Promise<UserWithPassword | null> {
         const result = await query(
-            'SELECT id, email, name, password_hash, email_verified_at, created_at, updated_at FROM app_users WHERE id = $1',
+            'SELECT id, email, name, role, password_hash, email_verified_at, created_at, updated_at FROM app_users WHERE id = $1',
             [id]
         );
 
@@ -29,7 +29,7 @@ export class PostgresUserRepository implements UserRepository {
 
     async findByEmail(email: string): Promise<UserWithPassword | null> {
         const result = await query(
-            'SELECT id, email, name, password_hash, email_verified_at, created_at, updated_at FROM app_users WHERE email = $1',
+            'SELECT id, email, name, role, password_hash, email_verified_at, created_at, updated_at FROM app_users WHERE email = $1',
             [email.toLowerCase()]
         );
 
@@ -39,10 +39,10 @@ export class PostgresUserRepository implements UserRepository {
 
     async create(input: CreateUserInput, passwordHash: string): Promise<User> {
         const result = await query(
-            `INSERT INTO app_users (email, password_hash, name)
-       VALUES ($1, $2, $3)
-       RETURNING id, email, name, email_verified_at, created_at, updated_at`,
-            [input.email.toLowerCase(), passwordHash, input.name]
+            `INSERT INTO app_users (email, password_hash, name, role)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, email, name, role, email_verified_at, created_at, updated_at`,
+            [input.email.toLowerCase(), passwordHash, input.name, input.role ?? 'owner']
         );
 
         return this.toDomain(result.rows[0]);
@@ -77,7 +77,7 @@ export class PostgresUserRepository implements UserRepository {
         const result = await query(
             `UPDATE app_users SET ${updates.join(', ')}, updated_at = NOW() 
        WHERE id = $${paramIndex} 
-       RETURNING id, email, name, email_verified_at, created_at, updated_at`,
+       RETURNING id, email, name, role, email_verified_at, created_at, updated_at`,
             params
         );
 
@@ -98,6 +98,7 @@ export class PostgresUserRepository implements UserRepository {
             id: row.id as string,
             email: row.email as string,
             name: row.name as string,
+            role: row.role as User['role'],
             emailVerifiedAt: row.email_verified_at ? new Date(row.email_verified_at as string) : null,
             createdAt: new Date(row.created_at as string),
             updatedAt: new Date(row.updated_at as string),

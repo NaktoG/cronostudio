@@ -56,6 +56,18 @@ printf "admin:$(openssl passwd -apr1)" | sudo tee /etc/nginx/.adminer_htpasswd
 ```
 Actualiza las credenciales cuando sea necesario.
 
+### Rotación de credenciales para n8n
+
+> `n8n.atonixdev.com` y `/adminer` comparten el mismo archivo `/etc/nginx/.adminer_htpasswd`.
+
+1. Genera las nuevas credenciales localmente:
+   ```bash
+   ./scripts/n8n/rotate-basic-auth.sh nuevo_usuario nueva_password
+   ```
+   Copia la entrada `htpasswd` resultante al VPS (`/etc/nginx/.adminer_htpasswd`) y recarga Nginx (`sudo systemctl reload nginx`).
+2. Actualiza `infra/docker/.env` (valores `N8N_BASIC_AUTH_*`) y reinicia el contenedor: `docker compose -f infra/docker/docker-compose.yml up -d n8n`.
+3. Si necesitas resetear el usuario owner de n8n, ejecuta `./scripts/n8n/reset-owner.sh owner@example.com` (local o vía SSH). Sigue el enlace temporal que devuelve el comando.
+
 ## 4. Servicios de aplicación
 
 ### Docker Compose (Postgres + n8n + Adminer)

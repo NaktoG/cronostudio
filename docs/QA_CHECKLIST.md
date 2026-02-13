@@ -80,7 +80,24 @@ Guía para validar la app de extremo a extremo después de cada release.
 - Consultar `/api/health` (debe devolver `status=healthy`).
 - Revisar collector (`OBS_ENDPOINT`) si está habilitado para métricas de login/health.
 
-## 14. Checklist final
+## 14. CORS y RBAC
+1. **CORS**
+   - Desde un curl con origin no permitido (`-H 'Origin: https://evil.dev'`) llamar `/api/channels`. Debe responder `403`.
+   - Desde `http://localhost:3000` el mismo endpoint debe incluir `Access-Control-Allow-Origin` correcto.
+2. **Roles**
+   - Crear usuario con rol `owner` (registro normal) y `collaborator` (actualizar manualmente en DB) y verificar que solo `owner` pueda crear/eliminar videos (`POST /api/videos`, `DELETE /api/videos/:id`).
+   - Revisar payload del JWT (`access_token`) incluye `role`.
+
+## 15. Accesibilidad / UI
+1. **Toggle de tema**
+   - Click en el botón flotante (icono ☀️/🌙) alterna entre modo claro/oscuro y persiste al recargar.
+   - Verificar contraste en ambos modos (usar `axe` o Lighthouse, apuntar a AA).
+2. **Focus states**
+   - Navegar formulario de login con teclado y confirmar outline visible.
+3. **Texto dinámico**
+   - `PriorityActions` y `AutomationRuns` muestran textos descriptivos en empty states (ver lector de pantalla).
+
+## 16. Checklist final
 - [ ] No errores en consola del navegador.
 - [ ] No errores en logs de Next.js (`docker logs cronostudio_web`).
 - [ ] n8n workflows en estado “Success”.

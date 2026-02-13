@@ -4,7 +4,7 @@ set -euo pipefail
 root_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 env_file="${ENV_FILE:-$root_dir/infra/docker/.env}"
 compose_file="$root_dir/infra/docker/docker-compose.yml"
-migrations_dir="$root_dir/infra/docker"
+migrations_dir="$root_dir/infra/migrations"
 
 if [[ ! -f "$env_file" ]]; then
   echo "No se encontro $env_file. Copia infra/docker/.env.example a infra/docker/.env"
@@ -50,10 +50,9 @@ apply_migration() {
   "${psql_cmd[@]}" -c "INSERT INTO schema_migrations (id, checksum) VALUES ('$name', '$checksum')"
 }
 
-apply_migration "$migrations_dir/schema.sql"
+mapfile -t migration_files < <(ls -1 "$migrations_dir"/*.sql | sort)
 
-for file in "$migrations_dir"/migration_*.sql; do
-  [[ -f "$file" ]] || continue
+for file in "${migration_files[@]}"; do
   apply_migration "$file"
 done
 

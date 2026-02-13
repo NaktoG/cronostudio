@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, UpdateVideoSchema } from '@/lib/validation';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
+import { requireRoles } from '@/middleware/rbac';
 import { query } from '@/lib/db';
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,11 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
+        const userId = getAuthUser(request)?.userId;
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
         const { id } = await params;
 
         const result = await query(
@@ -24,8 +30,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                     c.name as channel_name, c.youtube_channel_id
              FROM videos v
              JOIN channels c ON v.channel_id = c.id
-             WHERE v.id = $1`,
-            [id]
+             WHERE v.id = $1 AND c.user_id = $2`,
+            [id, userId]
         );
 
         if (result.rows.length === 0) {
@@ -50,7 +56,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * PUT /api/videos/[id]
  * Actualiza un video (requiere autenticación)
  */
-export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
+export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
     if (!context?.params) {
         return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
     }
@@ -70,8 +76,10 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, contex
 
         // Verificar que el video existe
         const existingVideo = await query(
-            'SELECT id FROM videos WHERE id = $1',
-            [id]
+            `SELECT v.id FROM videos v
+             JOIN channels c ON v.channel_id = c.id
+             WHERE v.id = $1 AND c.user_id = $2`,
+            [id, userId]
         );
 
         if (existingVideo.rows.length === 0) {
@@ -146,13 +154,13 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, contex
             { status: 500 }
         );
     }
-});
+}));
 
 /**
  * DELETE /api/videos/[id]
  * Elimina un video (requiere autenticación)
  */
-export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
+export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
     if (!context?.params) {
         return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
     }
@@ -167,8 +175,11 @@ export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, con
         const { id } = await params;
 
         const result = await query(
-            'DELETE FROM videos WHERE id = $1 RETURNING id, title',
-            [id]
+            `DELETE FROM videos v
+             USING channels c
+             WHERE v.channel_id = c.id AND v.id = $1 AND c.user_id = $2
+             RETURNING v.id, v.title`,
+            [id, userId]
         );
 
         if (result.rows.length === 0) {
@@ -194,7 +205,7 @@ export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, con
             { status: 500 }
         );
     }
-});
+}));
 
 /**
  * OPTIONS /api/videos/[id]

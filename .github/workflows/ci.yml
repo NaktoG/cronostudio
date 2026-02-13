@@ -73,12 +73,8 @@ jobs:
 
       - name: Run database migrations
         env:
-          PGPASSWORD: cronostudio
-        run: |
-          psql -h localhost -U cronostudio -d cronostudio -v ON_ERROR_STOP=1 -f infra/docker/schema.sql
-          for file in infra/docker/migration_*.sql; do
-            psql -h localhost -U cronostudio -d cronostudio -v ON_ERROR_STOP=1 -f "$file"
-          done
+          DATABASE_URL: postgresql://cronostudio:cronostudio@localhost:5432/cronostudio
+        run: ./scripts/db/migrate.sh
 
       - name: Run tests
         run: npm run test

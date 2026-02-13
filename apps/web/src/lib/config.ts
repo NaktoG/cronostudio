@@ -20,6 +20,15 @@ function getOptionalEnv(key: string, defaultValue: string): string {
     return process.env[key] || defaultValue;
 }
 
+function getArrayEnv(key: string, defaultValues: string[]): string[] {
+    const value = process.env[key];
+    if (!value) return defaultValues;
+    return value
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter((origin) => origin.length > 0);
+}
+
 export const config = {
     // Environment
     nodeEnv: getOptionalEnv('NODE_ENV', 'development'),
@@ -41,9 +50,26 @@ export const config = {
         baseUrl: getOptionalEnv('APP_BASE_URL', 'http://localhost:3000'),
     },
 
+    automation: {
+        n8nBaseUrl: getOptionalEnv('N8N_BASE_URL', 'http://localhost:5678'),
+    },
+
+    cors: {
+        allowedOrigins: getArrayEnv('CORS_ALLOWED_ORIGINS', [
+            'http://localhost:3000',
+            'http://localhost:3001',
+        ]),
+    },
+
     observability: {
         enabled: getOptionalEnv('OBS_ENABLED', 'false') === 'true',
         endpoint: process.env.OBS_ENDPOINT,
+        alertWebhook: process.env.OBS_ALERT_WEBHOOK,
+    },
+
+    redis: {
+        url: process.env.REDIS_URL,
+        skipTlsVerify: process.env.REDIS_SKIP_TLS_VERIFY === 'true',
     },
 
     // Rate Limiting
@@ -78,6 +104,15 @@ export function validateConfig(): void {
         }
         if (!config.app.baseUrl || config.app.baseUrl.includes('localhost')) {
             throw new Error('CRITICAL: APP_BASE_URL must be set for production!');
+        }
+        if (config.cors.allowedOrigins.length === 0) {
+            throw new Error('CRITICAL: CORS_ALLOWED_ORIGINS must include at least one origin in production!');
+        }
+        if (!config.redis.url) {
+            throw new Error('CRITICAL: REDIS_URL must be configured in production for rate limiting!');
+        }
+        if (config.redis.skipTlsVerify) {
+            throw new Error('CRITICAL: Disable REDIS_SKIP_TLS_VERIFY in production to avoid MITM vulnerabilities.');
         }
     }
 }

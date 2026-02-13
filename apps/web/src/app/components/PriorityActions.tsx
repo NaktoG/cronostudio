@@ -27,8 +27,8 @@ const ACTION_ICONS: Record<string, string> = {
 
 const URGENCY_STYLES: Record<string, { dot: string; bg: string }> = {
     high: { dot: 'bg-red-500', bg: 'bg-red-500/10' },
-    medium: { dot: 'bg-yellow-500', bg: 'bg-yellow-500/10' },
-    low: { dot: 'bg-gray-500', bg: 'bg-gray-500/10' },
+    medium: { dot: 'bg-amber-400', bg: 'bg-amber-400/10' },
+    low: { dot: 'bg-emerald-400', bg: 'bg-emerald-400/10' },
 };
 
 const containerVariants = {
@@ -62,8 +62,8 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
         >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
-                <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">🎯 Acciones Pendientes</span>
-                <span className="text-sm text-gray-500">{actions.length} items</span>
+                <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">🎯 Acciones Pendientes</span>
+                <span className="text-sm text-slate-300">{actions.length} items</span>
             </div>
 
             {/* Action list */}
@@ -97,7 +97,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                             {/* Action text */}
                             <div className="flex-1 min-w-0">
                                 <span className="text-base font-medium text-white block truncate">{action.title}</span>
-                                <span className="text-sm text-gray-500 truncate block">{action.productionTitle}</span>
+                                <span className="text-sm text-slate-300 truncate block">{action.productionTitle}</span>
                             </div>
 
                             {/* Action button */}
@@ -115,7 +115,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                 {/* Empty state */}
                 {actions.length === 0 && (
                     <motion.div
-                        className="flex items-center gap-4 px-5 py-4 text-gray-400 hover:bg-gray-800/40 cursor-pointer"
+                        className="flex items-center gap-4 px-5 py-4 text-slate-200 hover:bg-gray-800/40 cursor-pointer"
                         onClick={onCreateNew}
                         variants={itemVariants}
                         whileHover={{ x: 4 }}
@@ -123,7 +123,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                         <span className="w-3 h-3 rounded-full bg-green-500" />
                         <span className="text-xl">✓</span>
                         <div className="flex-1">
-                            <span className="text-base text-gray-300">¡Todo al día!</span>
+                            <span className="text-base text-slate-100">¡Todo al día!</span>
                             <span className="text-sm text-yellow-400 block hover:underline">Crear nuevo contenido</span>
                         </div>
                     </motion.div>

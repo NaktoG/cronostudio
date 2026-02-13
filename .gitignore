@@ -13,6 +13,10 @@ out/
 # OS
 .DS_Store
 
+# AgentOS (symlink to ~/.agentes)
+.agentes
+.agentes.LOCAL_BACKUP/
+
 # Docker data
 infra/docker/docker-data/
 
