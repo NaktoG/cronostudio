@@ -15,7 +15,6 @@ const NAV_ITEMS = [
   { href: '/seo', label: 'SEO', icon: '🔍' },
   { href: '/channels', label: 'Canales', icon: '📺' },
   { href: '/analytics', label: 'Analítica', icon: '📊' },
-  { href: '/configuracion', label: 'Configuración', icon: '⚙️' },
 ];
 
 export default function Header() {
@@ -91,6 +90,15 @@ export default function Header() {
                   </div>
                   <p className="text-base font-medium text-white">{user?.name}</p>
                 </motion.div>
+                <Link href="/configuracion">
+                  <motion.div
+                    className="px-4 py-2 text-base text-gray-400 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Mi cuenta
+                  </motion.div>
+                </Link>
                 <motion.button
                   onClick={logout}
                   className="px-4 py-2 text-base text-gray-400 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all"
@@ -172,6 +180,26 @@ export default function Header() {
                     </motion.div>
                   );
                 })}
+                {isAuthenticated && (
+                  <motion.div
+                    key="/configuracion"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: NAV_ITEMS.length * 0.05 }}
+                  >
+                    <Link
+                      href="/configuracion"
+                      className={`flex items-center gap-3 py-3 px-4 rounded-lg transition-all text-base ${pathname === '/configuracion'
+                          ? 'bg-yellow-400/10 text-yellow-400'
+                          : 'text-gray-400 hover:text-yellow-400 hover:bg-gray-800/50'
+                        }`}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <span className="text-xl">⚙️</span>
+                      <span className="font-medium">Mi cuenta</span>
+                    </Link>
+                  </motion.div>
+                )}
               </div>
             </motion.nav>
           )}
