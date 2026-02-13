@@ -65,6 +65,7 @@ export const config = {
         enabled: getOptionalEnv('OBS_ENABLED', 'false') === 'true',
         endpoint: process.env.OBS_ENDPOINT,
         alertWebhook: process.env.OBS_ALERT_WEBHOOK,
+        alertEmail: process.env.OBS_ALERT_EMAIL,
     },
 
     redis: {

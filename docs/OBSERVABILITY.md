@@ -11,6 +11,25 @@ En `apps/web/.env` o variables del hosting define:
 | `OBS_ENABLED` | `true` para activar el envío de métricas. Por defecto `false`. |
 | `OBS_ENDPOINT` | URL HTTP(S) que recibirá los eventos JSON. |
 | `OBS_ALERT_WEBHOOK` | (Opcional) URL que recibirá alertas críticas (Slack, Discord, etc.). |
+| `OBS_ALERT_EMAIL` | (Opcional) Email de destino para alertas críticas. |
+
+## Slack (webhook de alertas)
+
+Si quieres recibir alertas en Slack:
+
+1. Crea un Incoming Webhook en Slack.
+2. Define `OBS_ALERT_WEBHOOK` con la URL del webhook en el entorno de Hetzner.
+3. Verifica enviando un fallo de prueba en `/api/health` (por ejemplo, parando Postgres).
+
+Las alertas se envían como JSON con campos `title`, `message`, `severity`, `tags` y `context`.
+
+## Email (alertas por correo)
+
+Si prefieres email en lugar de Slack:
+
+1. Configura SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`).
+2. Define `OBS_ALERT_EMAIL` con el correo destino.
+3. Verifica provocando un error de salud controlado (`/api/health`).
 
 Cada métrica enviada tiene el siguiente formato:
 

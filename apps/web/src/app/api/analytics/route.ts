@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateAnalyticsSchema, AnalyticsQuerySchema } from '@/lib/validation';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
+import { requireRoles } from '@/middleware/rbac';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -159,7 +160,7 @@ export async function GET(request: NextRequest) {
  * POST /api/analytics
  * Registra métricas de analytics (requiere autenticación)
  */
-export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -230,13 +231,4 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             { status: 500 }
         );
     }
-});
-
-/**
- * OPTIONS /api/analytics
- * Manejar preflight requests
- */
-export async function OPTIONS(request: NextRequest) {
-    const { handlePreflight } = await import('@/middleware/cors');
-    return handlePreflight(request);
-}
+}));

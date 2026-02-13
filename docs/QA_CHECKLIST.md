@@ -79,6 +79,8 @@ Guía para validar la app de extremo a extremo después de cada release.
 ## 13. Observabilidad
 - Consultar `/api/health` (debe devolver `status=healthy`).
 - Revisar collector (`OBS_ENDPOINT`) si está habilitado para métricas de login/health.
+- Si `OBS_ALERT_WEBHOOK` está configurado (Slack), validar recepción de alerta en un fallo controlado.
+- Si `OBS_ALERT_EMAIL` está configurado, validar recepción del email en un fallo controlado.
 
 ## 14. CORS y RBAC
 1. **CORS**

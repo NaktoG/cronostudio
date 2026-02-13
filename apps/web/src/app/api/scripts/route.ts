@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
+import { requireRoles } from '@/middleware/rbac';
 import { z } from 'zod';
 import { validateInput } from '@/lib/validation';
 
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -88,9 +89,9 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al crear guion' }, { status: 500 }));
     }
-});
+}));
 
-export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -139,9 +140,9 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         console.error('Error updating script:', error);
         return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar guion' }, { status: 500 }));
     }
-});
+}));
 
-export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -165,4 +166,4 @@ export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => 
         console.error('Error deleting script:', error);
         return withSecurityHeaders(NextResponse.json({ error: 'Error al eliminar guion' }, { status: 500 }));
     }
-});
+}));

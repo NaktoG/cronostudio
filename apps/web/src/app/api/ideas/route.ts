@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
+import { requireRoles } from '@/middleware/rbac';
 import { validateInput } from '@/lib/validation';
 import { logger } from '@/lib/logger';
 
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
  * POST /api/ideas
  * Create a new idea
  */
-export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getUserId(request);
         if (!userId) {
@@ -105,13 +106,13 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al crear idea' }, { status: 500 }));
     }
-});
+}));
 
 /**
  * PUT /api/ideas?id=<uuid>
  * Update an existing idea
  */
-export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getUserId(request);
         if (!userId) {
@@ -155,13 +156,13 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar idea' }, { status: 500 }));
     }
-});
+}));
 
 /**
  * DELETE /api/ideas?id=<uuid>
  * Delete an idea
  */
-export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getUserId(request);
         if (!userId) {
@@ -188,4 +189,4 @@ export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => 
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al eliminar idea' }, { status: 500 }));
     }
-});
+}));

@@ -148,12 +148,3 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         );
     }
 }));
-
-/**
- * OPTIONS /api/videos
- * Manejar preflight requests
- */
-export async function OPTIONS(request: NextRequest) {
-    const { handlePreflight } = await import('@/middleware/cors');
-    return handlePreflight(request);
-}

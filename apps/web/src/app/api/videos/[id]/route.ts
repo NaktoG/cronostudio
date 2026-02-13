@@ -206,12 +206,3 @@ export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (r
         );
     }
 }));
-
-/**
- * OPTIONS /api/videos/[id]
- * Manejar preflight requests
- */
-export async function OPTIONS(request: NextRequest) {
-    const { handlePreflight } = await import('@/middleware/cors');
-    return handlePreflight(request);
-}

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { query } from '@/lib/db';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
+import { requireRoles } from '@/middleware/rbac';
 import { logger } from '@/lib/logger';
 import { emitMetric } from '@/lib/observability';
 
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
     const userId = getAuthUser(request)?.userId;
     if (!userId) {
@@ -81,9 +82,9 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     emitMetric({ name: 'automation.run.create_error', value: 1 });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al crear ejecución' }, { status: 500 }));
   }
-});
+}));
 
-export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
     const userId = getAuthUser(request)?.userId;
     if (!userId) {
@@ -143,4 +144,4 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     emitMetric({ name: 'automation.run.update_error', value: 1 });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar ejecución' }, { status: 500 }));
   }
-});
+}));

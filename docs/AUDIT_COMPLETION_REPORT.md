@@ -78,8 +78,8 @@
 
 ✅ **P14: Sin CORS configurado**
 - **Estado anterior**: CORS permisivo por defecto
-- **Acción**: Documentar CORS_ORIGIN en .env.example
-- **Estado actual**: ✅ Variable de entorno lista (TODO: implementar en middleware)
+- **Acción**: Definir `CORS_ALLOWED_ORIGINS` y aplicar middleware global en `/api/*`
+- **Estado actual**: ✅ CORS estricto activo en middleware
 
 ---
 
@@ -223,13 +223,11 @@ export async function POST(request: NextRequest) {
 
 ### 🟠 TODO (Próximas tareas):
 
-- ⚠️ Implementar CORS middleware
-- ⚠️ Conectar API a PostgreSQL real
-- ⚠️ Implementar roles y permisos (RBAC)
+- ⚠️ Configurar alertas automáticas (Slack) y validar dedupe/cooldowns
 - ⚠️ Agregar 2FA en n8n
 - ⚠️ Configurar logging centralizado
-- ⚠️ Configurar alertas automáticas
-- ⚠️ Agregar tests de seguridad
+- ⚠️ Agregar tests de seguridad (CORS/RBAC)
+- ⚠️ Auditar endpoints legacy para eliminar mocks restantes
 
 ---
 
@@ -251,13 +249,12 @@ Riesgo ALTO:     🟠🟠🟠 (3/5)
 
 ### Después:
 ```
-Riesgo CRÍTICO:  🔴🔴 (2/5) ✅ Reducido 60%
-- TODO: CORS configuration
-- TODO: RBAC/seguridad a nivel de datos
+Riesgo CRÍTICO:  🟢 (0/5) ✅ Resuelto
 
-Riesgo ALTO:     🟠 (1/5) ✅ Reducido 67%
+Riesgo ALTO:     🟠🟠 (2/5) ✅ Reducido 33%
 - TODO: 2FA en n8n
 - TODO: Logging centralizado
+- TODO: Alertas automáticas (Slack)
 
 Riesgo MEDIO:    🟡 (0/5) ✅ Resuelto
 - ✅ Validación
@@ -316,15 +313,15 @@ Riesgo MEDIO:    🟡 (0/5) ✅ Resuelto
 
 **Estado actual**: 🟠 **MEJORADO SIGNIFICATIVAMENTE**
 
-- ✅ Riesgos críticos reducidos en 60%
+- ✅ Riesgos críticos reducidos y mitigados
 - ✅ Infraestructura Docker hardened
 - ✅ APIs con validación robusta
 - ✅ Políticas de seguridad documentadas
-- ⚠️ Falta CORS estricto y RBAC granular
-- ⚠️ Falta conectar a BD real (TODO próximas 2 semanas)
+- ✅ CORS estricto y RBAC aplicado en endpoints write
+- ⚠️ Pendiente: tests de seguridad y alertas Slack
 
 **Recomendación**: DEPLOY a development con cambios actuales.  
-**No DEPLOY a producción** hasta cerrar CORS, RBAC y pruebas de seguridad.
+**No DEPLOY a producción** hasta cerrar alertas Slack y pruebas de seguridad.
 
 ---
 

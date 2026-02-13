@@ -135,11 +135,3 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         );
     }
 }
-
-/**
- * OPTIONS /api/analytics/channel/[channelId]
- */
-export async function OPTIONS(request: NextRequest) {
-    const { handlePreflight } = await import('@/middleware/cors');
-    return handlePreflight(request);
-}

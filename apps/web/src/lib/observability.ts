@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import { config } from '@/lib/config';
-import { logger } from '@/lib/logger';
+import { sendEmail } from '@/lib/email';
 
 interface MetricsEvent {
   name: string;
@@ -86,6 +86,29 @@ if (config.observability.alertWebhook) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(event),
     }).catch((error) => logger.error('[Observability] alert webhook failed', { error }));
+  });
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  const fallbackEmail = config.observability.alertEmail;
+  registerAlertSink((event) => {
+    const contextEmail = typeof event.context?.userEmail === 'string' ? event.context.userEmail : null;
+    const recipient = contextEmail || fallbackEmail;
+    if (!recipient) {
+      return;
+    }
+
+    void sendEmail({
+      to: recipient,
+      subject: `[CronoStudio] ${event.severity.toUpperCase()}: ${event.title}`,
+      html: `
+        <h2>${event.title}</h2>
+        <p><strong>Severidad:</strong> ${event.severity}</p>
+        <p>${event.message}</p>
+        ${event.tags ? `<pre>Tags: ${JSON.stringify(event.tags, null, 2)}</pre>` : ''}
+        ${event.context ? `<pre>Context: ${JSON.stringify(event.context, null, 2)}</pre>` : ''}
+      `,
+    }).catch((error) => logger.error('[Observability] alert email failed', { error }));
   });
 }
 
