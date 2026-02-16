@@ -1,0 +1,63 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'push' && 'production' || inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        run: |
+          if [ -z "${{ secrets.DEPLOY_SSH_KEY }}" ] || [ -z "${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}" ]; then
+            echo "Missing DEPLOY_SSH_KEY or DEPLOY_SSH_KNOWN_HOSTS secrets" >&2
+            exit 1
+          fi
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Select deploy target
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            DEPLOY_ENV=production
+          else
+            DEPLOY_ENV="${{ inputs.environment }}"
+          fi
+          echo "DEPLOY_ENV=$DEPLOY_ENV" >> "$GITHUB_ENV"
+
+          if [ "$DEPLOY_ENV" = "staging" ]; then
+            echo "DEPLOY_PATH=${{ secrets.DEPLOY_PATH_STAGING }}" >> "$GITHUB_ENV"
+            echo "DEPLOY_SERVICE_PATH=${{ secrets.DEPLOY_SERVICE_PATH_STAGING }}" >> "$GITHUB_ENV"
+          else
+            echo "DEPLOY_PATH=${{ secrets.DEPLOY_PATH_PROD }}" >> "$GITHUB_ENV"
+            echo "DEPLOY_SERVICE_PATH=${{ secrets.DEPLOY_SERVICE_PATH_PROD }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Deploy
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+          DEPLOY_KEY: ~/.ssh/id_ed25519
+        run: ./scripts/deploy_remote.sh

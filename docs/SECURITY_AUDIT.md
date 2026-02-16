@@ -1,4 +1,5 @@
 # 🔒 AUDITORÍA DE SEGURIDAD - CronoStudio
+**Nota**: Este documento refleja el estado al 23 de enero de 2026. Parte de los hallazgos ya fueron abordados (health checks, rate limiting, headers, redes/puertos locales). Úsalo como referencia histórica y valida el estado actual antes de aplicar cambios.
 **Fecha**: 23 de enero de 2026  
 **Alcance**: Infraestructura Docker, APIs, Variables de entorno, Código
 

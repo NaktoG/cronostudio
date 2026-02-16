@@ -9,7 +9,7 @@ Todas las migraciones viven en `infra/migrations/*.sql` con el formato `YYYYMMDD
 | Local / CI con `DATABASE_URL` | `DATABASE_URL=postgresql://user:pass@host:5432/db ./scripts/db/migrate.sh` |
 | Stack Docker (contendedores infra/docker) | `./scripts/db_migrate.sh` |
 
-Ambos scripts son idempotentes: crean la tabla `_migrations` y solo ejecutan archivos pendientes.
+Ambos scripts son idempotentes: crean la tabla `schema_migrations` y solo ejecutan archivos pendientes.
 
 ## 🚢 Deploy en entornos existentes
 
@@ -17,16 +17,16 @@ Ambos scripts son idempotentes: crean la tabla `_migrations` y solo ejecutan arc
    ```bash
    ssh deploy@vps "pg_dump -Fc cronostudio > /var/backups/cronostudio/$(date +%Y%m%d%H%M).dump"
    ```
-2. **Actualizar código** (`git pull` en `/opt/cronostudio`).
+2. **Actualizar código** (`git pull` en `/home/deploy/agentos/projects/cronostudio/repo`).
 3. **Aplicar migraciones**
    ```bash
-   cd /opt/cronostudio
-   DATABASE_URL=postgresql://cronostudio:********@127.0.0.1:5432/cronostudio \
+   cd /home/deploy/agentos/projects/cronostudio/repo
+   DATABASE_URL=postgresql://cronostudio:********@127.0.0.1:5432/cronostudio_db \
      ./scripts/db/migrate.sh
    ```
 4. **Verificar**
    ```bash
-   psql $DATABASE_URL -c "SELECT * FROM public._migrations ORDER BY executed_at DESC LIMIT 5;"
+   psql $DATABASE_URL -c "SELECT * FROM public.schema_migrations ORDER BY applied_at DESC LIMIT 5;"
    ```
 5. **Reiniciar servicios** si la migración añade columnas usadas por el backend (`systemctl restart cronostudio-web`).
 

@@ -2,15 +2,15 @@
 set -euo pipefail
 
 # Configuración
-BACKUP_ROOT="/var/backups/cronostudio"
-RETENTION_DAYS="7"
+BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/cronostudio}"
+RETENTION_DAYS="${RETENTION_DAYS:-7}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 
-POSTGRES_CONTAINER="cronostudio-postgres"
+POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-cronostudio-postgres}"
 POSTGRES_DB="${POSTGRES_DB:-cronostudio}"
 POSTGRES_USER="${POSTGRES_USER:-crono}"
 
-N8N_CONTAINER="cronostudio-n8n"
+N8N_CONTAINER="${N8N_CONTAINER:-cronostudio-n8n}"
 N8N_EXPORT_DIR="$BACKUP_ROOT/n8n"
 
 mkdir -p "$BACKUP_ROOT/postgres" "$N8N_EXPORT_DIR"

@@ -16,6 +16,11 @@ Objetivo: evitar que los workflows expongan credenciales o accedan a CronoStudio
 - Crear una cuenta dedicada de CronoStudio para n8n (rol “Automation”) con permisos mínimos.
 - Limitar `APP_BASE_URL` a HTTPS y validar que el token de sesión tiene vencimientos cortos.
 
+## 3.1 Webhook secret (recomendado)
+- Configurar `CRONOSTUDIO_WEBHOOK_SECRET` en el entorno de CronoStudio.
+- En los requests desde n8n hacia la API, enviar el header `x-cronostudio-webhook-secret` con ese valor.
+- Esto agrega una capa de protección adicional aunque el workflow use login/password.
+
 ## 4. Auditoría
 - Habilitar logging de ejecuciones en la base de datos (`automation_runs`); los workflows incluidos ya lo hacen.
 - Configurar notificaciones de error en n8n (ej. webhook a Slack) para saber cuando falla un workflow programado.

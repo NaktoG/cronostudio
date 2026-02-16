@@ -4,6 +4,7 @@ import { query } from '@/lib/db';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRoles } from '@/middleware/rbac';
+import { requireWebhookSecret } from '@/middleware/webhook';
 import { logger } from '@/lib/logger';
 import { emitMetric } from '@/lib/observability';
 
@@ -49,6 +50,9 @@ export async function GET(request: NextRequest) {
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
+    const webhookGuard = requireWebhookSecret(request);
+    if (webhookGuard) return webhookGuard;
+
     const userId = getAuthUser(request)?.userId;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
@@ -86,6 +90,9 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
 
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
+    const webhookGuard = requireWebhookSecret(request);
+    if (webhookGuard) return webhookGuard;
+
     const userId = getAuthUser(request)?.userId;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));

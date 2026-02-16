@@ -73,6 +73,10 @@ export const config = {
         skipTlsVerify: process.env.REDIS_SKIP_TLS_VERIFY === 'true',
     },
 
+    webhooks: {
+        secret: process.env.CRONOSTUDIO_WEBHOOK_SECRET,
+    },
+
     // Rate Limiting
     rateLimit: {
         api: {
