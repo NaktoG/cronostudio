@@ -1,18 +1,19 @@
 # API Documentation - CronoStudio
 
-**Base URL**: `http://localhost:3001/api`
+**Base URL**: `http://localhost:3000/api`
 
 ---
 
 ## 🔐 Authentication
 
-All protected routes require a JWT token:
+La autenticación principal usa cookies httpOnly (`access_token`, `refresh_token`).
+Opcionalmente se puede enviar un JWT en el header:
 ```
 Authorization: Bearer <token>
 ```
 
-**Public routes:** `/health`, `GET /channels`, `GET /videos`  
-**Protected routes:** All `POST`, `PUT`, `DELETE` endpoints
+**Public routes:** `/health`, `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/request-password-reset`, `/auth/reset-password`, `/auth/verify-email`, `/auth/resend-verification`
+**Protected routes:** todos los endpoints de datos (ideas, scripts, channels, videos, analytics, etc.) salvo que se indique lo contrario.
 
 ---
 
@@ -431,3 +432,21 @@ Cache-Control: no-store
 |----------|-------|
 | API general | 100 req / 15 min |
 | Login/Register | 5 req / 15 min |
+
+---
+
+## 🤖 Automation Runs
+
+Los workflows de n8n registran ejecuciones en este endpoint. Si `CRONOSTUDIO_WEBHOOK_SECRET` está definido, enviar el header:
+```
+x-cronostudio-webhook-secret: <valor>
+```
+
+#### GET `/automation-runs` 🔒
+Lista las últimas ejecuciones para el usuario autenticado.
+
+#### POST `/automation-runs` 🔒
+Crea una nueva ejecución (usado por n8n).
+
+#### PUT `/automation-runs?id=<uuid>` 🔒
+Actualiza el estado/error de una ejecución.

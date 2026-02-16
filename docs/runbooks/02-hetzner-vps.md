@@ -126,9 +126,16 @@ Script `scripts/hetzner/backup.sh` (incluido en repo) realiza:
 ### Instalación
 
 1. Copiar script a `/usr/local/bin/cronostudio-backup` y dar permisos (`chmod +x`).
-2. Crear cron diario 02:00:
+2. Configurar variables para contenedores reales del VPS (ejemplo):
    ```bash
-   echo "0 2 * * * cronostudio /usr/local/bin/cronostudio-backup" | sudo tee /etc/cron.d/cronostudio-backup
+   export POSTGRES_CONTAINER=postgres_platform
+   export POSTGRES_DB=cronostudio_db
+   export POSTGRES_USER=cronostudio_user
+   export N8N_CONTAINER=n8n
+   ```
+3. Crear cron diario 02:00:
+   ```bash
+   echo "0 2 * * * cronostudio POSTGRES_CONTAINER=postgres_platform POSTGRES_DB=cronostudio_db POSTGRES_USER=cronostudio_user N8N_CONTAINER=n8n /usr/local/bin/cronostudio-backup" | sudo tee /etc/cron.d/cronostudio-backup
    ```
 3. (Opcional) Sincronizar backups a Object Storage: editar script para ejecutar `rclone copy /var/backups/cronostudio remote:cronostudio-backups`.
 

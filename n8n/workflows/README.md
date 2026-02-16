@@ -11,6 +11,7 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 - `CRONOSTUDIO_API_BASE_URL` (ej: `http://host.docker.internal:3000/api`)
 - `CRONOSTUDIO_EMAIL`
 - `CRONOSTUDIO_PASSWORD`
+- `CRONOSTUDIO_WEBHOOK_SECRET` (opcional, recomendado)
 - `YOUTUBE_API_KEY`
 - `YOUTUBE_ANALYTICS_ACCESS_TOKEN` (Bearer token OAuth2)
 - `YOUTUBE_CHANNEL_IDS` (IDs separados por coma)
@@ -57,6 +58,11 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 
 ## Tracking de ejecuciones
 Los workflows registran ejecuciones en `automation_runs` para mostrarlas en el dashboard y ahora emiten métricas (`automation.run.*`) para observabilidad.
+
+Si `CRONOSTUDIO_WEBHOOK_SECRET` está definido en CronoStudio, los requests a la API deben incluir el header:
+```
+x-cronostudio-webhook-secret: <valor>
+```
 
 ## Debug local de mapeos
 Para probar los mapeos sin n8n:

@@ -5,7 +5,7 @@
 ### Levantar infraestructura
 
 ```bash
-cd /Volumes/SSD-QVO/cronostudio/infra/docker
+cd /Volumes/SSD-QVO/projects/cronostudio/infra/docker
 docker compose up -d
 docker ps
 ```
@@ -17,7 +17,7 @@ docker ps
 En otra terminal:
 
 ```bash
-cd /Volumes/SSD-QVO/cronostudio/apps/web
+cd /Volumes/SSD-QVO/projects/cronostudio/apps/web
 npm run dev
 ```
 
