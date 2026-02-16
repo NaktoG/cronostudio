@@ -89,6 +89,14 @@
       "name": "Login CronoStudio",
       "parameters": {
         "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        },
         "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/auth/login"
       },
       "position": [
@@ -103,6 +111,14 @@
       "name": "Create Automation Run",
       "parameters": {
         "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        },
         "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs"
       },
       "position": [
@@ -117,6 +133,14 @@
       "name": "Fetch CronoStudio Videos",
       "parameters": {
         "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        },
         "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/videos?limit=100&offset=0"
       },
       "position": [
@@ -193,6 +217,14 @@
       "name": "Create Analytics",
       "parameters": {
         "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        },
         "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/analytics"
       },
       "position": [
@@ -208,6 +240,14 @@
       "name": "Complete Automation Run",
       "parameters": {
         "options": {},
+        "headerParametersUi": {
+          "parameter": [
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        },
         "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}"
       },
       "position": [
