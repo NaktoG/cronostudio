@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
+import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
@@ -130,6 +131,7 @@ function AnalyticsContent() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
             >
+                <BackToDashboard />
                 <h2 className="text-4xl font-bold text-white mb-2">Analytics</h2>
                 <p className="text-gray-400">
                     Métricas de rendimiento de tus canales y videos

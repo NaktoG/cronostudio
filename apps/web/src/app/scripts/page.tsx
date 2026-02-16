@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
 import Header from '../components/Header';
+import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
@@ -118,11 +118,7 @@ export default function ScriptsPage() {
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <div className="space-y-2">
-                            <div className="flex items-center gap-3">
-                                <Link href="/" className="inline-flex items-center text-sm text-gray-400 hover:text-yellow-300 transition-colors">
-                                    ← Volver al dashboard
-                                </Link>
-                            </div>
+                            <BackToDashboard />
                             <div>
                                 <h2 className="text-4xl font-bold text-white mb-2">📝 Guiones</h2>
                                 <p className="text-gray-400">Escribe y gestiona los guiones de tus videos</p>

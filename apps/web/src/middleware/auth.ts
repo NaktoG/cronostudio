@@ -10,7 +10,8 @@ import type { User } from '@/domain/entities/User';
 
 const JWT_SECRET = config.jwt.secret;
 
-type RouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<NextResponse> | NextResponse;
+type RouteContext = { params: Promise<Record<string, string>> };
+type RouteHandler<Context = RouteContext> = (request: NextRequest, context: Context) => Promise<NextResponse> | NextResponse;
 
 
 export interface JWTPayload {
@@ -28,8 +29,8 @@ export interface AuthenticatedRequest extends NextRequest {
 /**
  * Verifica que la request tiene un token JWT válido
  */
-export function withAuth(handler: RouteHandler): RouteHandler {
-  return async (request: NextRequest, ...args: unknown[]) => {
+export function withAuth<Context = RouteContext>(handler: RouteHandler<Context>): RouteHandler<Context> {
+  return async (request: NextRequest, context: Context) => {
     const token = extractTokenFromRequest(request);
 
     if (!token) {
@@ -49,7 +50,7 @@ export function withAuth(handler: RouteHandler): RouteHandler {
           email: decoded.email,
           role: decoded.role ?? 'owner',
       };
-      return handler(request, ...args);
+      return handler(request, context);
     } catch (error) {
       return handleJwtError(error);
     }
@@ -60,8 +61,8 @@ export function withAuth(handler: RouteHandler): RouteHandler {
  * Middleware opcional de autenticación
  * No falla si no hay token, pero agrega usuario si existe
  */
-export function withOptionalAuth(handler: RouteHandler): RouteHandler {
-  return async (request: NextRequest, ...args: unknown[]) => {
+export function withOptionalAuth<Context = RouteContext>(handler: RouteHandler<Context>): RouteHandler<Context> {
+  return async (request: NextRequest, context: Context) => {
     const token = extractTokenFromRequest(request);
 
     if (token) {
@@ -77,7 +78,7 @@ export function withOptionalAuth(handler: RouteHandler): RouteHandler {
       }
     }
 
-    return handler(request, ...args);
+    return handler(request, context);
   };
 }
 

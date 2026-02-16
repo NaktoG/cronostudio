@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
+import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
@@ -131,6 +132,7 @@ export default function IdeasPage() {
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <div>
+                            <BackToDashboard />
                             <h2 className="text-4xl font-bold text-white mb-2">💡 Ideas</h2>
                             <p className="text-gray-400">Apunta y gestiona tus ideas para videos</p>
                         </div>

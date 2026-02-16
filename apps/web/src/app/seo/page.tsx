@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
+import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
@@ -67,6 +68,7 @@ export default function SeoPage() {
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
+                        <BackToDashboard />
                         <h2 className="text-4xl font-bold text-white mb-2">🔍 SEO</h2>
                         <p className="text-gray-400">Optimización de títulos, descripciones y tags para YouTube</p>
                     </motion.div>

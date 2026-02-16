@@ -9,8 +9,9 @@ interface RateLimitConfig {
 }
 
 const fallbackStore = new Map<string, { count: number; resetTime: number }>();
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
 
-if (config.isProduction && !process.env.REDIS_URL) {
+if (config.isProduction && !process.env.REDIS_URL && !isBuildPhase) {
   throw new Error('Rate limiting requires REDIS_URL in production. Configure Redis before starting the server.');
 }
 
@@ -25,13 +26,14 @@ function shouldEnforceRateLimit() {
 
   return true;
 }
-type RouteHandler<Context = unknown> = (request: NextRequest, context?: Context) => Promise<NextResponse> | NextResponse;
+type RouteContext = { params: Promise<Record<string, string>> };
+type RouteHandler<Context = RouteContext> = (request: NextRequest, context: Context) => Promise<NextResponse> | NextResponse;
 
 export function rateLimit(config: RateLimitConfig) {
-  return <Context = unknown>(handler: RouteHandler<Context>): RouteHandler<Context> => {
-    return async (request: NextRequest, context?: Context) => {
+  return <Context = RouteContext>(handler: RouteHandler<Context>): RouteHandler<Context> => {
+    return async (request: NextRequest, context: Context) => {
       if (!shouldEnforceRateLimit()) {
-        return handler(request, context as Context);
+        return handler(request, context);
       }
 
       const ip =
@@ -68,15 +70,15 @@ export const API_RATE_LIMIT = { maxRequests: 100, windowMs: 15 * 60 * 1000 };
 export const LOGIN_RATE_LIMIT = { maxRequests: 5, windowMs: 15 * 60 * 1000 };
 export const FILE_UPLOAD_RATE_LIMIT = { maxRequests: 10, windowMs: 60 * 60 * 1000 };
 
-async function checkRateLimit(identifier: string, config: RateLimitConfig): Promise<number> {
+async function checkRateLimit(identifier: string, rateLimitConfig: RateLimitConfig): Promise<number> {
   const redis = getRedisClient();
   if (redis) {
     const key = getRateLimitKey(['rl', identifier]);
     const current = await redis.incr(key);
     if (current === 1) {
-      await redis.pexpire(key, config.windowMs);
+      await redis.pexpire(key, rateLimitConfig.windowMs);
     }
-    if (current > config.maxRequests) {
+    if (current > rateLimitConfig.maxRequests) {
       const ttl = await redis.pttl(key);
       return Math.ceil(Math.max(ttl, 0) / 1000);
     }
@@ -91,7 +93,7 @@ async function checkRateLimit(identifier: string, config: RateLimitConfig): Prom
 
   const record = fallbackStore.get(identifier);
   if (record && now < record.resetTime) {
-    if (record.count >= config.maxRequests) {
+    if (record.count >= rateLimitConfig.maxRequests) {
       return Math.ceil((record.resetTime - now) / 1000);
     }
     record.count += 1;
@@ -100,7 +102,7 @@ async function checkRateLimit(identifier: string, config: RateLimitConfig): Prom
 
   fallbackStore.set(identifier, {
     count: 1,
-    resetTime: now + config.windowMs,
+    resetTime: now + rateLimitConfig.windowMs,
   });
   return 0;
 }

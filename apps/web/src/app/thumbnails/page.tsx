@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Header from '../components/Header';
+import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
@@ -98,6 +99,7 @@ export default function ThumbnailsPage() {
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <div>
+                            <BackToDashboard />
                             <h2 className="text-4xl font-bold text-white mb-2">🖼️ Miniaturas</h2>
                             <p className="text-gray-400">Gestiona las miniaturas de tus videos</p>
                         </div>
