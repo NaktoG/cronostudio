@@ -138,7 +138,7 @@ export default function Header() {
                     className="px-5 py-2.5 text-sm text-black font-semibold rounded-lg"
                     style={{
                       background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-                      boxShadow: '0 12px 24px rgba(246, 201, 69, 0.3)',
+                      boxShadow: '0 8px 18px rgba(246, 201, 69, 0.22)',
                     }}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}

@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Sparkles } from 'lucide-react';
+import { Instagram, Music2, Plus, Sparkles } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -169,7 +169,7 @@ function DashboardContent() {
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-black rounded-lg"
                   style={{
                     background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-                    boxShadow: '0 16px 32px rgba(246, 201, 69, 0.3)',
+                    boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
                   }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -207,6 +207,41 @@ function DashboardContent() {
 
                   <div className="space-y-6">
                     <AutomationRuns runs={runs} />
+
+                    <motion.div
+                      className="surface-card glow-hover p-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">Redes sociales</div>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                              <Instagram className="w-4 h-4" />
+                            </span>
+                            <div>
+                              <p className="text-sm font-semibold text-white">Instagram</p>
+                              <p className="text-xs text-slate-400">Reels, posts y stories</p>
+                            </div>
+                          </div>
+                          <button className="text-xs font-semibold text-yellow-400 hover:text-yellow-300">Conectar</button>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                              <Music2 className="w-4 h-4" />
+                            </span>
+                            <div>
+                              <p className="text-sm font-semibold text-white">TikTok</p>
+                              <p className="text-xs text-slate-400">Clips cortos y trends</p>
+                            </div>
+                          </div>
+                          <button className="text-xs font-semibold text-yellow-400 hover:text-yellow-300">Conectar</button>
+                        </div>
+                      </div>
+                    </motion.div>
 
                     {/* Stats */}
                     <motion.div
@@ -247,13 +282,13 @@ function DashboardContent() {
       </PageTransition>
       <Footer />
 
-      <motion.button
-        onClick={() => setShowModal(true)}
-        className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 text-sm font-semibold text-black rounded-full"
-        style={{
-          background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-          boxShadow: '0 16px 32px rgba(246, 201, 69, 0.3)',
-        }}
+        <motion.button
+          onClick={() => setShowModal(true)}
+          className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 text-sm font-semibold text-black rounded-full"
+          style={{
+            background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+            boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
+          }}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
