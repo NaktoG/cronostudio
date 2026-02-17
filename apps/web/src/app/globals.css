@@ -10,7 +10,7 @@
   --border-color: rgba(255, 255, 255, 0.08);
   --accent: #f6c945;
   --accent-soft: rgba(246, 201, 69, 0.15);
-  --glow: 0 0 24px rgba(246, 201, 69, 0.25);
+  --glow: 0 0 18px rgba(246, 201, 69, 0.18);
 }
 
 [data-theme='light'] {
@@ -32,7 +32,7 @@
   --border-color: rgba(255, 255, 255, 0.08);
   --accent: #f6c945;
   --accent-soft: rgba(246, 201, 69, 0.15);
-  --glow: 0 0 24px rgba(246, 201, 69, 0.25);
+  --glow: 0 0 18px rgba(246, 201, 69, 0.18);
 }
 
 @theme inline {
@@ -77,7 +77,7 @@ body {
 }
 
 .glow-hover:hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: var(--glow);
-  border-color: rgba(246, 201, 69, 0.35);
+  border-color: rgba(246, 201, 69, 0.22);
 }
