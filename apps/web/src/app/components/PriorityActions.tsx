@@ -1,6 +1,8 @@
 'use client';
 
+import type { ComponentType } from 'react';
 import { motion } from 'framer-motion';
+import { CheckCircle2, FileText, Image as ImageIcon, Scissors, Search, Target, Upload } from 'lucide-react';
 
 interface PriorityAction {
     id: string;
@@ -17,12 +19,12 @@ interface PriorityActionsProps {
     onCreateNew?: () => void;
 }
 
-const ACTION_ICONS: Record<string, string> = {
-    script: '📝',
-    seo: '🔍',
-    thumbnail: '🖼️',
-    short: '✂️',
-    publish: '📤',
+const ACTION_ICONS: Record<string, ComponentType<{ className?: string }>> = {
+    script: FileText,
+    seo: Search,
+    thumbnail: ImageIcon,
+    short: Scissors,
+    publish: Upload,
 };
 
 const URGENCY_STYLES: Record<string, { dot: string; bg: string }> = {
@@ -55,15 +57,18 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
 
     return (
         <motion.div
-            className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden"
+            className="surface-card glow-hover overflow-hidden"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
         >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
-                <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">🎯 Acciones Pendientes</span>
-                <span className="text-sm text-slate-300">{actions.length} items</span>
+                <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] flex items-center gap-2">
+                    <Target className="w-4 h-4" />
+                    Acciones pendientes
+                </span>
+                <span className="text-xs text-slate-400">{actions.length} items</span>
             </div>
 
             {/* Action list */}
@@ -75,6 +80,8 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
             >
                 {displayActions.slice(0, 5).map((action) => {
                     const styles = URGENCY_STYLES[action.urgency];
+
+                    const Icon = ACTION_ICONS[action.type];
 
                     return (
                         <motion.div
@@ -92,7 +99,9 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                             />
 
                             {/* Icon */}
-                            <span className="text-xl flex-shrink-0">{ACTION_ICONS[action.type]}</span>
+                            <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                                <Icon className="w-4 h-4" />
+                            </span>
 
                             {/* Action text */}
                             <div className="flex-1 min-w-0">
@@ -102,7 +111,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
 
                             {/* Action button */}
                             <motion.span
-                                className="text-sm text-yellow-400 opacity-0 group-hover:opacity-100 font-medium flex items-center gap-1"
+                                className="text-xs text-yellow-400 opacity-0 group-hover:opacity-100 font-semibold flex items-center gap-1"
                                 initial={{ x: -10 }}
                                 whileHover={{ x: 0 }}
                             >
@@ -121,7 +130,9 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                         whileHover={{ x: 4 }}
                     >
                         <span className="w-3 h-3 rounded-full bg-green-500" />
-                        <span className="text-xl">✓</span>
+                        <span className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                            <CheckCircle2 className="w-4 h-4" />
+                        </span>
                         <div className="flex-1">
                             <span className="text-base text-slate-100">¡Todo al día!</span>
                             <span className="text-sm text-yellow-400 block hover:underline">Crear nuevo contenido</span>

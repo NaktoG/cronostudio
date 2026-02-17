@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { AlertTriangle, Bot, CheckCircle2, Loader2 } from 'lucide-react';
 
 export interface AutomationRun {
     id: string;
@@ -17,9 +18,9 @@ interface AutomationRunsProps {
 }
 
 const STATUS_CONFIG = {
-    running: { dot: 'bg-yellow-500 animate-pulse', icon: '⏳', label: 'En progreso' },
-    completed: { dot: 'bg-green-500', icon: '✅', label: 'Completado' },
-    error: { dot: 'bg-red-500', icon: '❌', label: 'Error' },
+    running: { dot: 'bg-yellow-500 animate-pulse', icon: Loader2, label: 'En progreso' },
+    completed: { dot: 'bg-emerald-500', icon: CheckCircle2, label: 'Completado' },
+    error: { dot: 'bg-red-500', icon: AlertTriangle, label: 'Error' },
 };
 
 function formatTimeAgo(dateString: string): string {
@@ -51,15 +52,15 @@ const itemVariants = {
 export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps) {
     return (
         <motion.div
-            className="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden"
+            className="surface-card glow-hover overflow-hidden"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
         >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/70">
-                <span className="text-sm font-semibold text-slate-200 uppercase tracking-wider">⚡ Automatizaciones</span>
-                <span className="text-sm text-slate-300">{runs.length} runs</span>
+                <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Automatizaciones</span>
+                <span className="text-xs text-slate-400">{runs.length} runs</span>
             </div>
 
             {/* Runs list */}
@@ -74,7 +75,9 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                         className="px-5 py-5 flex items-center gap-3 text-slate-200"
                         variants={itemVariants}
                     >
-                        <span className="text-2xl">🤖</span>
+                        <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                            <Bot className="w-4 h-4" />
+                        </span>
                         <div>
                             <span className="text-base block">Sin ejecuciones recientes</span>
                             <span className="text-sm text-slate-400">Los agentes están listos</span>
@@ -83,6 +86,7 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                 ) : (
                     runs.slice(0, 3).map((run) => {
                         const config = STATUS_CONFIG[run.status];
+                        const Icon = config.icon;
 
                         return (
                             <motion.div
@@ -97,7 +101,9 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                                     animate={run.status === 'running' ? { scale: [1, 1.2, 1] } : {}}
                                     transition={{ repeat: Infinity, duration: 1 }}
                                 />
-                                <span className="text-xl">{config.icon}</span>
+                                <span className="w-8 h-8 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                                    <Icon className={`w-4 h-4 ${run.status === 'running' ? 'animate-spin' : ''}`} />
+                                </span>
                                 <div className="flex-1 min-w-0">
                                     <span className="text-base text-white truncate block font-medium">{run.workflow_name}</span>
                                     <span className="text-sm text-slate-300">{config.label}</span>

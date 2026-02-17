@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
+import { BarChart3 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
@@ -132,15 +133,20 @@ function AnalyticsContent() {
                 animate={{ opacity: 1, y: 0 }}
             >
                 <BackToDashboard />
-                <h2 className="text-4xl font-bold text-white mb-2">Analytics</h2>
-                <p className="text-gray-400">
-                    Métricas de rendimiento de tus canales y videos
+                <div className="flex items-center gap-3 mb-2">
+                    <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                        <BarChart3 className="w-5 h-5" />
+                    </span>
+                    <h2 className="text-4xl font-semibold text-white">Analitica</h2>
+                </div>
+                <p className="text-slate-300">
+                    Metricas de rendimiento de tus canales y videos
                 </p>
             </motion.div>
 
             {/* Filtros */}
             <motion.div
-                className="bg-gray-900/50 backdrop-blur-xl border border-yellow-500/10 rounded-xl p-6 mb-8"
+                className="surface-panel glow-hover p-6 mb-8"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -269,7 +275,7 @@ function AnalyticsContent() {
 
             {/* Gráfico de barras */}
             <motion.div
-                className="bg-gray-900/50 backdrop-blur-xl border border-yellow-500/10 rounded-xl p-6"
+                className="surface-panel glow-hover p-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
@@ -346,7 +352,7 @@ function AnalyticsContent() {
 export default function AnalyticsPage() {
     return (
         <ProtectedRoute>
-            <div className="min-h-screen bg-black flex flex-col">
+            <div className="min-h-screen flex flex-col">
                 <Header />
                 <Suspense fallback={
                     <div className="flex-1 flex items-center justify-center">

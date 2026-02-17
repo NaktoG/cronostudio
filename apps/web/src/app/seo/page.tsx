@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Lightbulb, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
@@ -60,7 +61,7 @@ export default function SeoPage() {
 
     return (
         <ProtectedRoute>
-            <div className="min-h-screen bg-black flex flex-col">
+            <div className="min-h-screen flex flex-col">
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
                     <motion.div
@@ -69,18 +70,26 @@ export default function SeoPage() {
                         animate={{ opacity: 1, y: 0 }}
                     >
                         <BackToDashboard />
-                        <h2 className="text-4xl font-bold text-white mb-2">🔍 SEO</h2>
-                        <p className="text-gray-400">Optimización de títulos, descripciones y tags para YouTube</p>
+                        <div className="flex items-center gap-3 mb-2">
+                            <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                                <Search className="w-5 h-5" />
+                            </span>
+                            <h2 className="text-4xl font-semibold text-white">SEO</h2>
+                        </div>
+                        <p className="text-slate-300">Optimizacion de titulos, descripciones y tags para YouTube</p>
                     </motion.div>
 
                     {/* Tips Card */}
                     <motion.div
-                        className="bg-gradient-to-r from-yellow-500/10 to-yellow-600/5 border border-yellow-500/20 rounded-xl p-6 mb-8"
+                        className="surface-panel glow-hover p-6 mb-8"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
                     >
-                        <h3 className="text-lg font-semibold text-yellow-400 mb-3">💡 Consejos SEO para YouTube</h3>
+                        <h3 className="text-lg font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+                            <Lightbulb className="w-4 h-4" />
+                            Consejos SEO para YouTube
+                        </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                             <div>
                                 <p className="text-white font-medium mb-1">Título</p>
@@ -103,17 +112,19 @@ export default function SeoPage() {
                         </div>
                     ) : seoData.length === 0 ? (
                         <motion.div className="text-center py-20" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                            <div className="w-20 h-20 mx-auto mb-6 bg-gray-800 rounded-full flex items-center justify-center text-4xl">🔍</div>
-                            <h3 className="text-xl font-semibold text-white mb-2">No hay datos SEO todavía</h3>
-                            <p className="text-gray-400 mb-2">Los datos SEO se crean automáticamente cuando subes un video</p>
-                            <p className="text-gray-500 text-sm">También puedes usar n8n para generar SEO automáticamente</p>
+                            <div className="w-20 h-20 mx-auto mb-6 bg-gray-900/60 border border-gray-800 rounded-full flex items-center justify-center text-yellow-400">
+                                <Search className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-white mb-2">No hay datos SEO todavia</h3>
+                            <p className="text-slate-300 mb-2">Los datos SEO se crean automaticamente cuando subes un video</p>
+                            <p className="text-slate-500 text-sm">Tambien puedes usar n8n para generar SEO automaticamente</p>
                         </motion.div>
                     ) : (
                         <motion.div className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                             {seoData.map((item, index) => (
                                 <motion.div
                                     key={item.id}
-                                    className="bg-gray-900/50 border border-yellow-500/10 rounded-xl p-6 hover:border-yellow-500/30 transition-all"
+                                    className="surface-panel glow-hover p-6 transition-all"
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.05 }}

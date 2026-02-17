@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { Plus, Tv } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Header from '../components/Header';
@@ -103,7 +104,7 @@ export default function ChannelsPage() {
 
     return (
         <ProtectedRoute>
-            <div className="min-h-screen bg-black flex flex-col">
+            <div className="min-h-screen flex flex-col">
                 <Header />
 
                 <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
@@ -115,22 +116,29 @@ export default function ChannelsPage() {
                     >
                         <div>
                             <BackToDashboard />
-                            <h2 className="text-4xl font-bold text-white mb-2">Canales</h2>
-                            <p className="text-gray-400">
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                                    <Tv className="w-5 h-5" />
+                                </span>
+                                <h2 className="text-4xl font-semibold text-white">Canales</h2>
+                            </div>
+                            <p className="text-slate-300">
                                 Gestiona tus canales de YouTube conectados
                             </p>
                         </div>
 
                         <motion.button
                             onClick={() => setShowModal(true)}
-                            className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 hover:shadow-lg hover:shadow-yellow-400/25 transition-all flex items-center gap-2"
+                            className="px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
+                            style={{
+                                background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+                                boxShadow: '0 16px 32px rgba(246, 201, 69, 0.3)',
+                            }}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
-                            Añadir Canal
+                            <Plus className="w-4 h-4" />
+                            Anadir canal
                         </motion.button>
                     </motion.div>
 
@@ -207,7 +215,7 @@ export default function ChannelsPage() {
                                 <motion.div
                                     key={channel.id}
                                     variants={itemVariants}
-                                    className="bg-gray-900/50 backdrop-blur-xl border border-yellow-500/10 rounded-xl p-6 hover:border-yellow-500/30 transition-all group"
+                                    className="surface-panel glow-hover p-6 transition-all group"
                                     whileHover={{ y: -4 }}
                                 >
                                     <div className="flex items-start justify-between mb-4">
