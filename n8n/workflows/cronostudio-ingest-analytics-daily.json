@@ -169,7 +169,8 @@
         144
       ],
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
+      "typeVersion": 3,
+      "disabled": true
     },
     {
       "id": "0f188cac-b155-4480-be25-5d07990edbf7",
@@ -186,10 +187,6 @@
         "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Cookie",
-              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
-            },
             {
               "name": "x-cronostudio-webhook-secret",
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
@@ -214,10 +211,6 @@
         "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Cookie",
-              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
-            },
             {
               "name": "x-cronostudio-webhook-secret",
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
@@ -305,10 +298,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "Cookie",
-              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
-            },
-            {
               "name": "x-cronostudio-webhook-secret",
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
             }
@@ -338,10 +327,6 @@
         "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Cookie",
-              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
-            },
             {
               "name": "x-cronostudio-webhook-secret",
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
