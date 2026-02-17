@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Sparkles } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -53,7 +53,7 @@ function generatePriorityActions(productions: Production[]): PriorityAction[] {
   return actions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]).slice(0, 5);
 }
 
-export default function Dashboard() {
+function DashboardContent() {
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
   const searchParams = useSearchParams();
@@ -140,11 +140,10 @@ export default function Dashboard() {
   const activeProductions = productions.filter(p => p.status !== 'published');
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <PageTransition className="flex-1">
-          <main className="w-full px-4 md:px-8 lg:px-12 py-8">
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <PageTransition className="flex-1">
+        <main className="w-full px-4 md:px-8 lg:px-12 py-8">
             {/* Header */}
             <motion.div
               className="mb-10"
@@ -244,70 +243,88 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
-          </main>
-        </PageTransition>
-        <Footer />
+        </main>
+      </PageTransition>
+      <Footer />
 
-        <motion.button
-          onClick={() => setShowModal(true)}
-          className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 text-sm font-semibold text-black rounded-full"
-          style={{
-            background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-            boxShadow: '0 16px 32px rgba(246, 201, 69, 0.3)',
-          }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+      <motion.button
+        onClick={() => setShowModal(true)}
+        className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 text-sm font-semibold text-black rounded-full"
+        style={{
+          background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+          boxShadow: '0 16px 32px rgba(246, 201, 69, 0.3)',
+        }}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        <Plus className="w-4 h-4" />
+        Nuevo
+      </motion.button>
+
+      {/* Modal */}
+      {showModal && (
+        <motion.div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          onClick={() => setShowModal(false)}
         >
-          <Plus className="w-4 h-4" />
-          Nuevo
-        </motion.button>
-
-        {/* Modal */}
-        {showModal && (
           <motion.div
-            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            onClick={() => setShowModal(false)}
+            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <motion.div
-              className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-2xl font-semibold text-white mb-5">Nuevo contenido</h3>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Título del contenido..."
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-lg text-white placeholder-gray-500 focus:border-yellow-500 focus:outline-none mb-5"
-                autoFocus
-                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              />
-              <div className="flex gap-4">
-                <motion.button
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-5 py-3 text-base border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Cancelar
-                </motion.button>
-                <motion.button
-                  onClick={handleCreate}
-                  className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  Crear contenido
-                </motion.button>
-              </div>
-            </motion.div>
+            <h3 className="text-2xl font-semibold text-white mb-5">Nuevo contenido</h3>
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Título del contenido..."
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-lg text-white placeholder-gray-500 focus:border-yellow-500 focus:outline-none mb-5"
+              autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+            />
+            <div className="flex gap-4">
+              <motion.button
+                onClick={() => setShowModal(false)}
+                className="flex-1 px-5 py-3 text-base border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Cancelar
+              </motion.button>
+              <motion.button
+                onClick={handleCreate}
+                className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                Crear contenido
+              </motion.button>
+            </div>
           </motion.div>
-        )}
-      </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+              <p className="text-slate-300">Cargando dashboard...</p>
+            </div>
+          </div>
+        }
+      >
+        <DashboardContent />
+      </Suspense>
     </ProtectedRoute>
   );
 }
