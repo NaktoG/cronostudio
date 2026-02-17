@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateChannelSchema, CreateChannelInput } from '@/lib/validation';
-import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
+import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { requireRoles } from '@/middleware/rbac';
+import { authenticateUserOrService } from '@/middleware/serviceAuth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -19,13 +19,11 @@ export const dynamic = 'force-dynamic';
  * GET /api/channels
  * Lista los canales del usuario autenticado
  */
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
-
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        const authResult = await authenticateUserOrService(request);
+        if (authResult.response) return authResult.response;
+        const { userId } = authResult;
 
         const result = await query(
             `SELECT id, name, youtube_channel_id, subscribers, created_at, updated_at 
@@ -52,19 +50,17 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         );
     }
-}
+});
 
 /**
  * POST /api/channels
  * Crea un nuevo canal de YouTube vinculado al usuario
  */
-export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
-
-        if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
+        const authResult = await authenticateUserOrService(request, { ownerOnly: true });
+        if (authResult.response) return authResult.response;
+        const { userId } = authResult;
 
         const body = await request.json();
 
@@ -120,4 +116,4 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
             { status: 500 }
         );
     }
-}));
+});
