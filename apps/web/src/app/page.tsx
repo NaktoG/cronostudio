@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { Plus, Sparkles } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -54,6 +56,7 @@ function generatePriorityActions(productions: Production[]): PriorityAction[] {
 export default function Dashboard() {
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
+  const searchParams = useSearchParams();
   const [productions, setProductions] = useState<Production[]>([]);
   const [pipelineStats, setPipelineStats] = useState<PipelineStats>({
     idea: 0, scripting: 0, recording: 0, editing: 0, shorts: 0, publishing: 0, published: 0
@@ -110,6 +113,12 @@ export default function Dashboard() {
     else setLoading(false);
   }, [isAuthenticated, fetchData]);
 
+  useEffect(() => {
+    if (searchParams?.get('new') === '1') {
+      setShowModal(true);
+    }
+  }, [searchParams]);
+
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
     try {
@@ -132,19 +141,44 @@ export default function Dashboard() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-black flex flex-col">
+      <div className="min-h-screen flex flex-col">
         <Header />
         <PageTransition className="flex-1">
           <main className="w-full px-4 md:px-8 lg:px-12 py-8">
             {/* Header */}
             <motion.div
-              className="mb-8"
+              className="mb-10"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Hoy en tu producción</h1>
-              <p className="text-lg text-gray-400">Tu centro de control de contenido</p>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                <div>
+                  <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-yellow-400/90 mb-3">
+                    <Sparkles className="w-4 h-4" />
+                    Control de produccion
+                  </div>
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-white mb-3">
+                    Hoy en tu produccion
+                  </h1>
+                  <p className="text-base md:text-lg text-slate-300 max-w-2xl">
+                    Tu centro de comando para planificar, producir y publicar contenido con claridad.
+                  </p>
+                </div>
+                <motion.button
+                  onClick={() => setShowModal(true)}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-black rounded-lg"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+                    boxShadow: '0 16px 32px rgba(246, 201, 69, 0.3)',
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Plus className="w-4 h-4" />
+                  Nuevo contenido
+                </motion.button>
+              </div>
             </motion.div>
 
             {loading ? (
@@ -161,7 +195,7 @@ export default function Dashboard() {
                 <ProductionPipeline stats={pipelineStats} />
 
                 {/* Main grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                   <PriorityActions
                     actions={priorityActions}
                     onCreateNew={() => setShowModal(true)}
@@ -177,36 +211,32 @@ export default function Dashboard() {
 
                     {/* Stats */}
                     <motion.div
-                      className="bg-gray-900/50 border border-gray-800 rounded-xl p-6"
+                      className="surface-card glow-hover p-6"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.3 }}
                     >
-                      <div className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">📈 Resumen</div>
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">Resumen</div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                        >
-                          <div className="text-4xl font-bold text-white">{productions.length}</div>
-                          <div className="text-base text-gray-500">Total</div>
+                        <motion.div whileHover={{ scale: 1.05 }}>
+                          <div className="text-4xl font-semibold text-white">{productions.length}</div>
+                          <div className="text-sm text-slate-400">Total</div>
+                          <div className="text-xs text-slate-500 mt-1">+2 esta semana</div>
                         </motion.div>
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                        >
-                          <div className="text-4xl font-bold text-yellow-400">{activeProductions.length}</div>
-                          <div className="text-base text-gray-500">Activos</div>
+                        <motion.div whileHover={{ scale: 1.05 }}>
+                          <div className="text-4xl font-semibold text-yellow-400">{activeProductions.length}</div>
+                          <div className="text-sm text-slate-400">Activos</div>
+                          <div className="text-xs text-slate-500 mt-1">Prioridad alta</div>
                         </motion.div>
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                        >
-                          <div className="text-4xl font-bold text-blue-400">{ideasCount}</div>
-                          <div className="text-base text-gray-500">Ideas</div>
+                        <motion.div whileHover={{ scale: 1.05 }}>
+                          <div className="text-4xl font-semibold text-cyan-400">{ideasCount}</div>
+                          <div className="text-sm text-slate-400">Ideas</div>
+                          <div className="text-xs text-slate-500 mt-1">+3 nuevas</div>
                         </motion.div>
-                        <motion.div
-                          whileHover={{ scale: 1.05 }}
-                        >
-                          <div className="text-4xl font-bold text-green-400">{pipelineStats.published}</div>
-                          <div className="text-base text-gray-500">Publicados</div>
+                        <motion.div whileHover={{ scale: 1.05 }}>
+                          <div className="text-4xl font-semibold text-emerald-400">{pipelineStats.published}</div>
+                          <div className="text-sm text-slate-400">Publicados</div>
+                          <div className="text-xs text-slate-500 mt-1">Meta semanal</div>
                         </motion.div>
                       </div>
                     </motion.div>
@@ -217,6 +247,20 @@ export default function Dashboard() {
           </main>
         </PageTransition>
         <Footer />
+
+        <motion.button
+          onClick={() => setShowModal(true)}
+          className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 text-sm font-semibold text-black rounded-full"
+          style={{
+            background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+            boxShadow: '0 16px 32px rgba(246, 201, 69, 0.3)',
+          }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
+          <Plus className="w-4 h-4" />
+          Nuevo
+        </motion.button>
 
         {/* Modal */}
         {showModal && (
@@ -232,7 +276,7 @@ export default function Dashboard() {
               animate={{ scale: 1, opacity: 1 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-2xl font-bold text-white mb-5">🎬 Nuevo contenido</h3>
+              <h3 className="text-2xl font-semibold text-white mb-5">Nuevo contenido</h3>
               <input
                 type="text"
                 value={newTitle}

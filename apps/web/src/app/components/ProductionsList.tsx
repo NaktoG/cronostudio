@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { CheckCircle2, FileText, Film, Lightbulb, Smartphone, Scissors, Upload, Video } from 'lucide-react';
 
 export interface Production {
     id: string;
@@ -24,14 +25,14 @@ interface ProductionsListProps {
     onCreateNew?: () => void;
 }
 
-const STATUS_BADGE: Record<string, { label: string; color: string; icon: string }> = {
-    idea: { label: 'Idea', color: 'bg-gray-600', icon: '💡' },
-    scripting: { label: 'Guión', color: 'bg-blue-600', icon: '📝' },
-    recording: { label: 'Grabando', color: 'bg-purple-600', icon: '🎬' },
-    editing: { label: 'Editando', color: 'bg-orange-600', icon: '✂️' },
-    shorts: { label: 'Shorts', color: 'bg-cyan-600', icon: '📱' },
-    publishing: { label: 'Publicando', color: 'bg-yellow-600', icon: '📤' },
-    published: { label: 'Publicado', color: 'bg-green-600', icon: '✅' },
+const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
+    idea: { label: 'Idea', color: 'bg-slate-600', icon: Lightbulb },
+    scripting: { label: 'Guion', color: 'bg-blue-600', icon: FileText },
+    recording: { label: 'Grabando', color: 'bg-purple-600', icon: Video },
+    editing: { label: 'Editando', color: 'bg-orange-600', icon: Scissors },
+    shorts: { label: 'Shorts', color: 'bg-cyan-600', icon: Smartphone },
+    publishing: { label: 'Publicando', color: 'bg-yellow-600', icon: Upload },
+    published: { label: 'Publicado', color: 'bg-emerald-600', icon: CheckCircle2 },
 };
 
 const containerVariants = {
@@ -60,17 +61,17 @@ function getNextAction(prod: Production): string {
 export default function ProductionsList({ productions, onProductionClick, onCreateNew }: ProductionsListProps) {
     return (
         <motion.div
-            className="bg-gray-900/50 border border-gray-800 rounded-xl overflow-hidden"
+            className="surface-card glow-hover overflow-hidden"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
         >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
-                <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">📦 Contenidos Activos</span>
+                <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Contenidos activos</span>
                 <motion.button
                     onClick={onCreateNew}
-                    className="text-sm text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
+                    className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                 >
@@ -92,13 +93,16 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
                         variants={itemVariants}
                         whileHover={{ scale: 1.01 }}
                     >
-                        <span className="text-4xl block mb-3">🎬</span>
-                        <span className="text-base text-gray-400 block mb-1">Sin contenidos activos</span>
-                        <span className="text-base text-yellow-400 hover:underline font-medium">Crear tu primer contenido →</span>
+                        <span className="w-14 h-14 mx-auto mb-3 rounded-full bg-gray-900/70 border border-gray-800 flex items-center justify-center text-yellow-400">
+                            <Film className="w-6 h-6" />
+                        </span>
+                        <span className="text-base text-slate-300 block mb-1">Sin contenidos activos</span>
+                        <span className="text-sm text-yellow-400 hover:underline font-semibold">Crear tu primer contenido →</span>
                     </motion.div>
                 ) : (
                     productions.slice(0, 6).map((prod) => {
                         const badge = STATUS_BADGE[prod.status] || STATUS_BADGE.idea;
+                        const Icon = badge.icon;
                         const nextAction = getNextAction(prod);
 
                         return (
@@ -111,7 +115,9 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
                             >
                                 {/* Status badge with icon */}
                                 <div className="flex items-center gap-2">
-                                    <span className="text-lg">{badge.icon}</span>
+                                    <span className="w-8 h-8 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                                        <Icon className="w-4 h-4" />
+                                    </span>
                                     <span className={`text-xs px-2 py-1 rounded-md ${badge.color} text-white font-medium`}>
                                         {badge.label}
                                     </span>
@@ -120,7 +126,7 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
                                 {/* Title */}
                                 <div className="flex-1 min-w-0">
                                     <span className="text-base font-medium text-white truncate block">{prod.title}</span>
-                                    <span className="text-sm text-gray-500 truncate block">{nextAction}</span>
+                                    <span className="text-sm text-slate-400 truncate block">{nextAction}</span>
                                 </div>
 
                                 {/* Arrow */}

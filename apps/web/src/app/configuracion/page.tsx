@@ -143,7 +143,7 @@ export default function ConfiguracionPage() {
               type="text"
               value={perfil.name}
               onChange={(e) => setPerfil((prev) => ({ ...prev, name: e.target.value }))}
-              className="w-full mt-1 rounded-lg bg-black border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
+              className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
             />
           </div>
           <div>
@@ -152,7 +152,7 @@ export default function ConfiguracionPage() {
               type="email"
               value={perfil.email}
               onChange={(e) => setPerfil((prev) => ({ ...prev, email: e.target.value }))}
-              className="w-full mt-1 rounded-lg bg-black border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
+              className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
             />
           </div>
         </div>
@@ -175,7 +175,7 @@ export default function ConfiguracionPage() {
               type="password"
               value={passwordActual}
               onChange={(e) => setPasswordActual(e.target.value)}
-              className="w-full mt-1 rounded-lg bg-black border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
+              className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
             />
           </div>
           <div>
@@ -184,7 +184,7 @@ export default function ConfiguracionPage() {
               type="password"
               value={passwordNueva}
               onChange={(e) => setPasswordNueva(e.target.value)}
-              className="w-full mt-1 rounded-lg bg-black border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
+              className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
             />
           </div>
           <div>
@@ -193,7 +193,7 @@ export default function ConfiguracionPage() {
               type="password"
               value={passwordConfirmacion}
               onChange={(e) => setPasswordConfirmacion(e.target.value)}
-              className="w-full mt-1 rounded-lg bg-black border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
+              className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
             />
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function ConfiguracionPage() {
           type="text"
           value={textoConfirmacion}
           onChange={(e) => setTextoConfirmacion(e.target.value)}
-          className="w-full mt-1 rounded-lg bg-black border border-red-800 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
+          className="w-full mt-1 rounded-lg bg-gray-900/60 border border-red-800 px-3 py-2 text-white focus:border-red-500 focus:outline-none"
         />
         <motion.button
           onClick={eliminarCuenta}
@@ -244,7 +244,7 @@ export default function ConfiguracionPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-black flex flex-col">
+      <div className="min-h-screen flex flex-col">
         <Header />
         <PageTransition className="flex-1">
           <main className="w-full px-4 md:px-8 lg:px-12 py-8">

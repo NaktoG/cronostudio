@@ -1,5 +1,6 @@
 'use client';
 
+import { Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 
@@ -69,7 +70,7 @@ export default function ProductionCard({ production, onClick }: ProductionCardPr
 
     return (
         <motion.div
-            className="bg-gray-900/50 border border-gray-800 hover:border-yellow-500/30 rounded-xl p-4 cursor-pointer transition-all"
+            className="surface-panel glow-hover p-4 cursor-pointer"
             onClick={() => onClick?.(production)}
             whileHover={{ x: 4 }}
             initial={{ opacity: 0, x: -20 }}
@@ -117,8 +118,9 @@ export default function ProductionCard({ production, onClick }: ProductionCardPr
             {/* Footer */}
             <div className="mt-4 pt-3 border-t border-gray-800 flex items-center justify-between">
                 {production.target_date && (
-                    <span className="text-xs text-gray-500">
-                        📅 {new Date(production.target_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                    <span className="text-xs text-gray-500 flex items-center gap-2">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {new Date(production.target_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
                     </span>
                 )}
                 <Link

@@ -1,6 +1,15 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import {
+    CheckCircle2,
+    FileText,
+    Lightbulb,
+    Smartphone,
+    Scissors,
+    Upload,
+    Video,
+} from 'lucide-react';
 
 interface PipelineStats {
     idea: number;
@@ -17,14 +26,14 @@ interface ProductionPipelineProps {
     onStageClick?: (stage: keyof PipelineStats) => void;
 }
 
-const STAGES: { key: keyof PipelineStats; icon: string; label: string; color: string; bgColor: string }[] = [
-    { key: 'idea', icon: '💡', label: 'Ideas', color: 'text-gray-400', bgColor: 'bg-gray-600' },
-    { key: 'scripting', icon: '📝', label: 'Guión', color: 'text-blue-400', bgColor: 'bg-blue-500' },
-    { key: 'recording', icon: '🎬', label: 'Grabación', color: 'text-purple-400', bgColor: 'bg-purple-500' },
-    { key: 'editing', icon: '✂️', label: 'Edición', color: 'text-orange-400', bgColor: 'bg-orange-500' },
-    { key: 'shorts', icon: '📱', label: 'Shorts', color: 'text-cyan-400', bgColor: 'bg-cyan-500' },
-    { key: 'publishing', icon: '📤', label: 'Publicar', color: 'text-yellow-400', bgColor: 'bg-yellow-500' },
-    { key: 'published', icon: '✅', label: 'Publicado', color: 'text-green-400', bgColor: 'bg-green-500' },
+const STAGES: { key: keyof PipelineStats; icon: typeof Lightbulb; label: string; color: string; bgColor: string }[] = [
+    { key: 'idea', icon: Lightbulb, label: 'Ideas', color: 'text-slate-300', bgColor: 'bg-slate-700' },
+    { key: 'scripting', icon: FileText, label: 'Guion', color: 'text-blue-300', bgColor: 'bg-blue-500' },
+    { key: 'recording', icon: Video, label: 'Grabacion', color: 'text-purple-300', bgColor: 'bg-purple-500' },
+    { key: 'editing', icon: Scissors, label: 'Edicion', color: 'text-orange-300', bgColor: 'bg-orange-500' },
+    { key: 'shorts', icon: Smartphone, label: 'Shorts', color: 'text-cyan-300', bgColor: 'bg-cyan-500' },
+    { key: 'publishing', icon: Upload, label: 'Publicar', color: 'text-yellow-300', bgColor: 'bg-yellow-500' },
+    { key: 'published', icon: CheckCircle2, label: 'Publicado', color: 'text-emerald-300', bgColor: 'bg-emerald-500' },
 ];
 
 const containerVariants = {
@@ -47,15 +56,15 @@ export default function ProductionPipeline({ stats, onStageClick }: ProductionPi
 
     return (
         <motion.div
-            className="bg-gray-900/50 border border-gray-800 rounded-xl p-5"
+            className="surface-card glow-hover p-5"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
         >
             {/* Header row */}
             <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-semibold text-gray-400 uppercase tracking-wider">Pipeline de Producción</span>
-                <span className="text-sm text-gray-500">{total} contenidos</span>
+                <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Pipeline de produccion</span>
+                <span className="text-xs text-slate-400">{total} contenidos</span>
             </div>
 
             {/* Pipeline Container - Responsive Grid/Flex */}
@@ -86,7 +95,7 @@ export default function ProductionPipeline({ stats, onStageClick }: ProductionPi
                             whileTap={hasItems ? { scale: 0.97 } : {}}
                         >
                             {/* Icon */}
-                            <span className="text-2xl mb-2">{stage.icon}</span>
+                            <stage.icon className="w-6 h-6 mb-2 text-slate-200" />
 
                             {/* Counter badge */}
                             <motion.div
@@ -110,8 +119,8 @@ export default function ProductionPipeline({ stats, onStageClick }: ProductionPi
             <div className="hidden md:flex items-center justify-center gap-1 mt-4 text-gray-600">
                 {STAGES.map((stage, i) => (
                     <span key={stage.key} className="flex items-center">
-                        <span className="text-base">{stage.icon}</span>
-                        {i < STAGES.length - 1 && <span className="text-sm mx-1">→</span>}
+                        <stage.icon className="w-4 h-4 text-slate-500" />
+                        {i < STAGES.length - 1 && <span className="text-sm mx-1 text-slate-600">→</span>}
                     </span>
                 ))}
             </div>

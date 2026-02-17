@@ -5,16 +5,30 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import {
+  BarChart3,
+  FileText,
+  Image as ImageIcon,
+  LayoutDashboard,
+  Lightbulb,
+  LogOut,
+  Menu,
+  Plus,
+  Search,
+  Settings,
+  Tv,
+  X,
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: '🏠' },
-  { href: '/ideas', label: 'Ideas', icon: '💡' },
-  { href: '/scripts', label: 'Guiones', icon: '📝' },
-  { href: '/thumbnails', label: 'Miniaturas', icon: '🖼️' },
-  { href: '/seo', label: 'SEO', icon: '🔍' },
-  { href: '/channels', label: 'Canales', icon: '📺' },
-  { href: '/analytics', label: 'Analítica', icon: '📊' },
+  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/ideas', label: 'Ideas', icon: Lightbulb },
+  { href: '/scripts', label: 'Guiones', icon: FileText },
+  { href: '/thumbnails', label: 'Miniaturas', icon: ImageIcon },
+  { href: '/seo', label: 'SEO', icon: Search },
+  { href: '/channels', label: 'Canales', icon: Tv },
+  { href: '/analytics', label: 'Analítica', icon: BarChart3 },
 ];
 
 export default function Header() {
@@ -24,7 +38,7 @@ export default function Header() {
 
   return (
     <motion.header
-      className="sticky top-0 z-50 bg-black/95 backdrop-blur-xl border-b border-yellow-500/20"
+      className="sticky top-0 z-50 bg-black/85 backdrop-blur-xl border-b border-yellow-500/20"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -34,7 +48,11 @@ export default function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
             <motion.div
-              className="w-11 h-11 bg-yellow-400 rounded-xl flex items-center justify-center shadow-lg shadow-yellow-400/20"
+              className="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.9), rgba(246, 201, 69, 0.6))',
+                boxShadow: '0 10px 24px rgba(246, 201, 69, 0.3)',
+              }}
               whileHover={{ scale: 1.05, rotate: 2 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -47,7 +65,7 @@ export default function Header() {
                 priority
               />
             </motion.div>
-            <h1 className="text-2xl font-bold text-white hidden sm:block group-hover:text-yellow-400 transition-colors">
+            <h1 className="text-2xl font-semibold text-white hidden sm:block group-hover:text-yellow-400 transition-colors">
               CronoStudio
             </h1>
           </Link>
@@ -56,17 +74,18 @@ export default function Header() {
           <nav className="hidden lg:flex items-center gap-1">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href;
+              const Icon = item.icon;
               return (
                 <Link key={item.href} href={item.href}>
                   <motion.div
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-base font-medium transition-colors ${isActive
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
                         ? 'bg-yellow-400/10 text-yellow-400'
-                        : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                        : 'text-slate-300 hover:text-white hover:bg-gray-800/50'
                       }`}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <span className="text-lg">{item.icon}</span>
+                    <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
                   </motion.div>
                 </Link>
@@ -75,7 +94,7 @@ export default function Header() {
           </nav>
 
           {/* User / Auth */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {isLoading ? (
               <div className="w-24 h-10 bg-gray-800 rounded-lg animate-pulse" />
             ) : isAuthenticated ? (
@@ -90,21 +109,37 @@ export default function Header() {
                   </div>
                   <p className="text-base font-medium text-white">{user?.name}</p>
                 </motion.div>
-                <Link href="/configuracion">
+                <Link href="/?new=1" className="hidden md:block">
                   <motion.div
-                    className="px-4 py-2 text-base text-gray-400 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all"
+                    className="px-4 py-2 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+                      boxShadow: '0 12px 24px rgba(246, 201, 69, 0.3)',
+                    }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
+                    <Plus className="w-4 h-4" />
+                    Nuevo
+                  </motion.div>
+                </Link>
+                <Link href="/configuracion">
+                  <motion.div
+                    className="px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all flex items-center gap-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Settings className="w-4 h-4" />
                     Mi cuenta
                   </motion.div>
                 </Link>
                 <motion.button
                   onClick={logout}
-                  className="px-4 py-2 text-base text-gray-400 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all"
+                  className="px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all flex items-center gap-2"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
+                  <LogOut className="w-4 h-4" />
                   Salir
                 </motion.button>
               </div>
@@ -112,7 +147,7 @@ export default function Header() {
               <div className="flex items-center gap-3">
                 <Link href="/login">
                   <motion.button
-                    className="px-4 py-2 text-base text-gray-300 hover:text-yellow-400 transition-colors"
+                    className="px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 transition-colors"
                     whileHover={{ scale: 1.02 }}
                   >
                     Iniciar Sesión
@@ -120,7 +155,11 @@ export default function Header() {
                 </Link>
                 <Link href="/register">
                   <motion.button
-                    className="px-5 py-2.5 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 shadow-lg shadow-yellow-400/20"
+                    className="px-5 py-2.5 text-sm text-black font-semibold rounded-lg"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+                      boxShadow: '0 12px 24px rgba(246, 201, 69, 0.3)',
+                    }}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
@@ -132,17 +171,11 @@ export default function Header() {
 
             {/* Mobile Menu Button */}
             <motion.button
-              className="lg:hidden p-2.5 text-gray-400 hover:text-yellow-400 rounded-lg hover:bg-gray-800/50"
+              className="lg:hidden p-2.5 text-slate-300 hover:text-yellow-400 rounded-lg hover:bg-gray-800/50"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               whileTap={{ scale: 0.95 }}
             >
-              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {mobileMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </motion.button>
           </div>
         </div>
@@ -159,6 +192,7 @@ export default function Header() {
               <div className="grid grid-cols-2 gap-2">
                 {NAV_ITEMS.map((item, index) => {
                   const isActive = pathname === item.href;
+                  const Icon = item.icon;
                   return (
                     <motion.div
                       key={item.href}
@@ -170,11 +204,11 @@ export default function Header() {
                         href={item.href}
                         className={`flex items-center gap-3 py-3 px-4 rounded-lg transition-all text-base ${isActive
                             ? 'bg-yellow-400/10 text-yellow-400'
-                            : 'text-gray-400 hover:text-yellow-400 hover:bg-gray-800/50'
+                            : 'text-slate-300 hover:text-yellow-400 hover:bg-gray-800/50'
                           }`}
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        <span className="text-xl">{item.icon}</span>
+                        <Icon className="w-5 h-5" />
                         <span className="font-medium">{item.label}</span>
                       </Link>
                     </motion.div>
@@ -191,11 +225,11 @@ export default function Header() {
                       href="/configuracion"
                       className={`flex items-center gap-3 py-3 px-4 rounded-lg transition-all text-base ${pathname === '/configuracion'
                           ? 'bg-yellow-400/10 text-yellow-400'
-                          : 'text-gray-400 hover:text-yellow-400 hover:bg-gray-800/50'
+                          : 'text-slate-300 hover:text-yellow-400 hover:bg-gray-800/50'
                         }`}
                       onClick={() => setMobileMenuOpen(false)}
                     >
-                      <span className="text-xl">⚙️</span>
+                      <Settings className="w-5 h-5" />
                       <span className="font-medium">Mi cuenta</span>
                     </Link>
                   </motion.div>

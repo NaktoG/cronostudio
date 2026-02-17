@@ -4,7 +4,7 @@ import VerifyEmailClient from './VerifyEmailClient';
 export default function VerifyEmailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-black flex items-center justify-center text-gray-400">
+      <div className="min-h-screen flex items-center justify-center text-slate-400">
         Cargando...
       </div>
     }>
