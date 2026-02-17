@@ -437,10 +437,16 @@ Cache-Control: no-store
 
 ## 🤖 Automation Runs
 
-Los workflows de n8n registran ejecuciones en este endpoint. Si `CRONOSTUDIO_WEBHOOK_SECRET` está definido, enviar el header:
-```
-x-cronostudio-webhook-secret: <valor>
-```
+Los workflows de n8n registran ejecuciones en este endpoint.
+
+Autenticación aceptada:
+- Cookie/JWT válido (UI)
+- Service-secret con usuario de servicio configurado
+
+Para service-secret se requiere:
+- Header: `x-cronostudio-webhook-secret`
+- Env: `CRONOSTUDIO_WEBHOOK_SECRET`
+- Env (uno de los dos): `CRONOSTUDIO_SERVICE_USER_ID` o `CRONOSTUDIO_SERVICE_USER_EMAIL`
 
 #### GET `/automation-runs` 🔒
 Lista las últimas ejecuciones para el usuario autenticado.
