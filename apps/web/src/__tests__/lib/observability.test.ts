@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { withEnv } from '@/__tests__/utils/env';
 
 vi.mock('@/lib/logger', () => ({
   logger: {
@@ -26,22 +27,23 @@ describe('observability metrics', () => {
 
   it('envía alertas al logger cuando no hay webhook', async () => {
     vi.resetModules();
-    const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
-    delete process.env.OBS_ALERT_WEBHOOK;
-    const { emitAlert } = await import('@/lib/observability');
-    const { logger } = await import('@/lib/logger');
+    await withEnv({
+      NODE_ENV: 'development',
+      OBS_ALERT_WEBHOOK: undefined,
+    }, async () => {
+      const { emitAlert } = await import('@/lib/observability');
+      const { logger } = await import('@/lib/logger');
 
-    emitAlert(
-      {
-        title: 'DB down',
-        message: 'Pool exhausted',
-        severity: 'critical',
-      },
-      { cooldownMs: 0 }
-    );
+      emitAlert(
+        {
+          title: 'DB down',
+          message: 'Pool exhausted',
+          severity: 'critical',
+        },
+        { cooldownMs: 0 }
+      );
 
-    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('[Alert]'), expect.any(Object));
-    process.env.NODE_ENV = originalNodeEnv;
+      expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('[Alert]'), expect.any(Object));
+    });
   });
 });
