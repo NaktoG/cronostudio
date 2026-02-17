@@ -13,7 +13,6 @@ import {
   Lightbulb,
   LogOut,
   Menu,
-  Plus,
   Search,
   Settings,
   Tv,
@@ -99,38 +98,19 @@ export default function Header() {
               <div className="w-24 h-10 bg-gray-800 rounded-lg animate-pulse" />
             ) : isAuthenticated ? (
               <div className="flex items-center gap-4">
-                <motion.div
-                  className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900/50 border border-gray-800"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
-                    <span className="text-yellow-400 font-semibold text-sm">{user?.name?.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <p className="text-base font-medium text-white">{user?.name}</p>
-                </motion.div>
-                <Link href="/?new=1" className="hidden md:block">
+                <Link href="/configuracion" className="hidden sm:block">
                   <motion.div
-                    className="px-4 py-2 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
-                    style={{
-                      background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-                      boxShadow: '0 12px 24px rgba(246, 201, 69, 0.3)',
-                    }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-yellow-500/50 transition-all"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <Plus className="w-4 h-4" />
-                    Nuevo
-                  </motion.div>
-                </Link>
-                <Link href="/configuracion">
-                  <motion.div
-                    className="px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all flex items-center gap-2"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Settings className="w-4 h-4" />
-                    Mi cuenta
+                    <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                      <span className="text-yellow-400 font-semibold text-sm">{user?.name?.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <p className="text-base font-medium text-white">{user?.name}</p>
+                    <Settings className="w-4 h-4 text-slate-400" />
                   </motion.div>
                 </Link>
                 <motion.button
@@ -189,6 +169,22 @@ export default function Header() {
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
             >
+              {isAuthenticated && (
+                <Link
+                  href="/configuracion"
+                  className="mb-4 flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 text-slate-200"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <div className="w-9 h-9 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                    <span className="text-yellow-400 font-semibold text-sm">{user?.name?.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">{user?.name}</p>
+                    <p className="text-xs text-slate-400">Mi cuenta</p>
+                  </div>
+                  <Settings className="w-4 h-4 text-slate-400" />
+                </Link>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 {NAV_ITEMS.map((item, index) => {
                   const isActive = pathname === item.href;
@@ -214,26 +210,6 @@ export default function Header() {
                     </motion.div>
                   );
                 })}
-                {isAuthenticated && (
-                  <motion.div
-                    key="/configuracion"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: NAV_ITEMS.length * 0.05 }}
-                  >
-                    <Link
-                      href="/configuracion"
-                      className={`flex items-center gap-3 py-3 px-4 rounded-lg transition-all text-base ${pathname === '/configuracion'
-                          ? 'bg-yellow-400/10 text-yellow-400'
-                          : 'text-slate-300 hover:text-yellow-400 hover:bg-gray-800/50'
-                        }`}
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <Settings className="w-5 h-5" />
-                      <span className="font-medium">Mi cuenta</span>
-                    </Link>
-                  </motion.div>
-                )}
               </div>
             </motion.nav>
           )}
