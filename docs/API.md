@@ -437,7 +437,13 @@ Cache-Control: no-store
 
 ## 🤖 Automation Runs
 
-Los workflows de n8n registran ejecuciones en este endpoint. Si `CRONOSTUDIO_WEBHOOK_SECRET` está definido, enviar el header:
+Los workflows de n8n registran ejecuciones en este endpoint.
+
+Autenticación aceptada:
+- Cookie/sesión válida (UI)
+- Header secreto de servicio (`CRONOSTUDIO_WEBHOOK_SECRET`)
+
+Header requerido para service-to-service:
 ```
 x-cronostudio-webhook-secret: <valor>
 ```
@@ -448,5 +454,21 @@ Lista las últimas ejecuciones para el usuario autenticado.
 #### POST `/automation-runs` 🔒
 Crea una nueva ejecución (usado por n8n).
 
+Ejemplo (service-to-service):
+```bash
+curl -X POST https://<cronostudio>/api/automation-runs \
+  -H "Content-Type: application/json" \
+  -H "x-cronostudio-webhook-secret: $CRONOSTUDIO_WEBHOOK_SECRET" \
+  -d '{"workflowName":"sync-videos","status":"running"}'
+```
+
 #### PUT `/automation-runs?id=<uuid>` 🔒
 Actualiza el estado/error de una ejecución.
+
+Ejemplo (service-to-service):
+```bash
+curl -X PUT "https://<cronostudio>/api/automation-runs?id=<uuid>" \
+  -H "Content-Type: application/json" \
+  -H "x-cronostudio-webhook-secret: $CRONOSTUDIO_WEBHOOK_SECRET" \
+  -d '{"status":"completed"}'
+```
