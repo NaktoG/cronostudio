@@ -27,3 +27,7 @@ n8n/credentials/
 # Logs
 *.log
 logs/
+
+# Local n8n exports (never commit)
+n8n/workflows/_exports/
+n8n/workflows/workflows_dump.json
