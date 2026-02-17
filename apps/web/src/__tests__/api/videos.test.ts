@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
+import { makeApiRequest } from '@/__tests__/utils/requests';
+import { makeTestId } from '@/__tests__/utils/testIds';
 
 type MockRouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<Response> | Response;
 
@@ -35,15 +37,20 @@ describe('Videos API', () => {
     vi.clearAllMocks();
   });
 
-  const ownerUser = { userId: 'user-1', email: 'demo@example.com', role: 'owner' } as JWTPayload;
+  const ownerUser = {
+    userId: makeTestId('user'),
+    email: `${makeTestId('email')}@example.test`,
+    role: 'owner',
+  } as JWTPayload;
 
   describe('GET /api/videos/[id]', () => {
     it('returns 401 when request lacks auth', async () => {
       vi.mocked(getAuthUser).mockReturnValue(null);
       const { GET } = await import('@/app/api/videos/[id]/route');
 
-      const request = new NextRequest('http://localhost:3000/api/videos/video-1');
-      const response = await GET(request, { params: Promise.resolve({ id: 'video-1' }) });
+      const videoId = makeTestId('video');
+      const request = makeApiRequest(`/api/videos/${videoId}`);
+      const response = await GET(request, { params: Promise.resolve({ id: videoId }) });
       expect(response.status).toBe(401);
     });
 
@@ -51,17 +58,19 @@ describe('Videos API', () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
       vi.mocked(query).mockResolvedValue({ rows: [], rowCount: 0 });
       const { GET } = await import('@/app/api/videos/[id]/route');
-      const request = new NextRequest('http://localhost:3000/api/videos/video-1');
-      const response = await GET(request, { params: Promise.resolve({ id: 'video-1' }) });
+      const videoId = makeTestId('video');
+      const request = makeApiRequest(`/api/videos/${videoId}`);
+      const response = await GET(request, { params: Promise.resolve({ id: videoId }) });
       expect(response.status).toBe(404);
     });
 
     it('returns video when owner matches', async () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
-      vi.mocked(query).mockResolvedValue({ rows: [{ id: 'video-1', title: 'Demo' }], rowCount: 1 });
+      const videoId = makeTestId('video');
+      vi.mocked(query).mockResolvedValue({ rows: [{ id: videoId, title: 'Demo' }], rowCount: 1 });
       const { GET } = await import('@/app/api/videos/[id]/route');
-      const request = new NextRequest('http://localhost:3000/api/videos/video-1');
-      const response = await GET(request, { params: Promise.resolve({ id: 'video-1' }) });
+      const request = makeApiRequest(`/api/videos/${videoId}`);
+      const response = await GET(request, { params: Promise.resolve({ id: videoId }) });
       expect(response.status).toBe(200);
     });
   });
@@ -71,12 +80,13 @@ describe('Videos API', () => {
       vi.mocked(getAuthUser).mockReturnValue(null);
       const { PUT } = await import('@/app/api/videos/[id]/route');
 
-      const request = new NextRequest('http://localhost:3000/api/videos/video-123', {
+      const videoId = makeTestId('video');
+      const request = makeApiRequest(`/api/videos/${videoId}`, {
         method: 'PUT',
         body: JSON.stringify({ title: 'New title' }),
       });
 
-      const response = await PUT(request, { params: Promise.resolve({ id: 'video-123' }) });
+      const response = await PUT(request, { params: Promise.resolve({ id: videoId }) });
       expect(response.status).toBe(401);
     });
 
@@ -86,29 +96,31 @@ describe('Videos API', () => {
       vi.mocked(query).mockResolvedValueOnce({ rows: [], rowCount: 0 });
       const { PUT } = await import('@/app/api/videos/[id]/route');
 
-      const request = new NextRequest('http://localhost:3000/api/videos/video-123', {
+      const videoId = makeTestId('video');
+      const request = makeApiRequest(`/api/videos/${videoId}`, {
         method: 'PUT',
         body: JSON.stringify({ title: 'Updated title' }),
       });
 
-      const response = await PUT(request, { params: Promise.resolve({ id: 'video-123' }) });
+      const response = await PUT(request, { params: Promise.resolve({ id: videoId }) });
       expect(response.status).toBe(404);
     });
 
     it('updates video when payload is valid', async () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
       vi.mocked(validateInput).mockReturnValue({ title: 'Updated title', views: 42 } as { title?: string; views?: number });
+      const videoId = makeTestId('video');
       vi.mocked(query)
-        .mockResolvedValueOnce({ rows: [{ id: 'video-123' }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: 'video-123', title: 'Updated title' }], rowCount: 1 });
+        .mockResolvedValueOnce({ rows: [{ id: videoId }], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{ id: videoId, title: 'Updated title' }], rowCount: 1 });
       const { PUT } = await import('@/app/api/videos/[id]/route');
 
-      const request = new NextRequest('http://localhost:3000/api/videos/video-123', {
+      const request = makeApiRequest(`/api/videos/${videoId}`, {
         method: 'PUT',
         body: JSON.stringify({ title: 'Updated title', views: 42 }),
       });
 
-      const response = await PUT(request, { params: Promise.resolve({ id: 'video-123' }) });
+      const response = await PUT(request, { params: Promise.resolve({ id: videoId }) });
       expect(response.status).toBe(200);
       expect(vi.mocked(query)).toHaveBeenCalledTimes(2);
     });
@@ -118,10 +130,11 @@ describe('Videos API', () => {
     it('returns 401 when user is not authenticated', async () => {
       vi.mocked(getAuthUser).mockReturnValue(null);
       const { DELETE } = await import('@/app/api/videos/[id]/route');
-      const request = new NextRequest('http://localhost:3000/api/videos/video-123', {
+      const videoId = makeTestId('video');
+      const request = makeApiRequest(`/api/videos/${videoId}`, {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'video-123' }) });
+      const response = await DELETE(request, { params: Promise.resolve({ id: videoId }) });
       expect(response.status).toBe(401);
     });
 
@@ -129,21 +142,23 @@ describe('Videos API', () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
       vi.mocked(query).mockResolvedValueOnce({ rows: [], rowCount: 0 });
       const { DELETE } = await import('@/app/api/videos/[id]/route');
-      const request = new NextRequest('http://localhost:3000/api/videos/video-123', {
+      const videoId = makeTestId('video');
+      const request = makeApiRequest(`/api/videos/${videoId}`, {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'video-123' }) });
+      const response = await DELETE(request, { params: Promise.resolve({ id: videoId }) });
       expect(response.status).toBe(404);
     });
 
     it('returns 204 when video is deleted', async () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
-      vi.mocked(query).mockResolvedValueOnce({ rows: [{ id: 'video-123', title: 'Demo' }], rowCount: 1 });
+      const videoId = makeTestId('video');
+      vi.mocked(query).mockResolvedValueOnce({ rows: [{ id: videoId, title: 'Demo' }], rowCount: 1 });
       const { DELETE } = await import('@/app/api/videos/[id]/route');
-      const request = new NextRequest('http://localhost:3000/api/videos/video-123', {
+      const request = makeApiRequest(`/api/videos/${videoId}`, {
         method: 'DELETE',
       });
-      const response = await DELETE(request, { params: Promise.resolve({ id: 'video-123' }) });
+      const response = await DELETE(request, { params: Promise.resolve({ id: videoId }) });
       expect(response.status).toBe(204);
     });
   });

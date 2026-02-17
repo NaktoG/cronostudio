@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { makeApiRequest } from '@/__tests__/utils/requests';
+import { makeTestId } from '@/__tests__/utils/testIds';
 
 vi.mock('@/lib/observability', () => ({
     emitMetric: vi.fn(),
@@ -55,11 +56,11 @@ describe('Auth API', () => {
 
             const { POST } = await import('@/app/api/auth/login/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/login', {
+            const request = makeApiRequest('/api/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({
-                    email: 'nonexistent@example.com',
-                    password: 'password123',
+                    email: `${makeTestId('email')}@example.test`,
+                    password: makeTestId('password'),
                 }),
             });
 
@@ -74,11 +75,11 @@ describe('Auth API', () => {
         it('should return 400 for invalid email format', async () => {
             const { POST } = await import('@/app/api/auth/login/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/login', {
+            const request = makeApiRequest('/api/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({
                     email: 'invalid-email',
-                    password: 'password123',
+                    password: makeTestId('password'),
                 }),
             });
 
@@ -92,12 +93,12 @@ describe('Auth API', () => {
         it('should return 400 for weak password', async () => {
             const { POST } = await import('@/app/api/auth/register/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/register', {
+            const request = makeApiRequest('/api/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({
-                    email: 'test@example.com',
+                    email: `${makeTestId('email')}@example.test`,
                     password: 'weak',
-                    name: 'Test User',
+                    name: makeTestId('name'),
                 }),
             });
 
@@ -109,18 +110,18 @@ describe('Auth API', () => {
         it('should return 409 for duplicate email', async () => {
             // Mock existing user
             vi.mocked(query).mockResolvedValueOnce({
-                rows: [{ id: 'existing-user' }],
+                rows: [{ id: makeTestId('user') }],
                 rowCount: 1
             });
 
             const { POST } = await import('@/app/api/auth/register/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/register', {
+            const request = makeApiRequest('/api/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({
-                    email: 'existing@example.com',
-                    password: 'Password123',
-                    name: 'Test User',
+                    email: `${makeTestId('email')}@example.test`,
+                    password: makeTestId('password'),
+                    name: makeTestId('name'),
                 }),
             });
 
