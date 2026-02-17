@@ -132,7 +132,7 @@ export default function ChannelsPage() {
                             className="px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
                             style={{
                                 background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-                                boxShadow: '0 16px 32px rgba(246, 201, 69, 0.3)',
+                                boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
                             }}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
