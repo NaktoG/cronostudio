@@ -3,8 +3,7 @@ import { z } from 'zod';
 import { query } from '@/lib/db';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { requireRoles } from '@/middleware/rbac';
-import { requireWebhookSecret } from '@/middleware/webhook';
+import { requireServiceSecret, logWebhookAuthAttempt } from '@/middleware/webhook';
 import { logger } from '@/lib/logger';
 import { emitMetric } from '@/lib/observability';
 
@@ -48,14 +47,48 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-  try {
-    const webhookGuard = requireWebhookSecret(request);
-    if (webhookGuard) return webhookGuard;
+async function resolveServiceUserId(): Promise<string | null> {
+  const automationUser = await query(
+    `SELECT id
+     FROM app_users
+     WHERE role = 'automation'
+     ORDER BY created_at ASC
+     LIMIT 1`
+  );
+  if (automationUser.rows.length > 0) {
+    return automationUser.rows[0].id as string;
+  }
 
-    const userId = getAuthUser(request)?.userId;
+  const ownerUser = await query(
+    `SELECT id
+     FROM app_users
+     WHERE role = 'owner'
+     ORDER BY created_at ASC
+     LIMIT 1`
+  );
+  if (ownerUser.rows.length > 0) {
+    return ownerUser.rows[0].id as string;
+  }
+
+  return null;
+}
+
+export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+  try {
+    const authUser = getAuthUser(request);
+    const webhookGuard = requireServiceSecret(request, Boolean(authUser));
+    if (webhookGuard.response) return webhookGuard.response;
+
+    if (authUser && authUser.role !== 'owner' && !webhookGuard.viaServiceSecret) {
+      const response = withSecurityHeaders(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
+      logWebhookAuthAttempt(request, response.status);
+      return response;
+    }
+
+    const userId = authUser?.userId ?? (await resolveServiceUserId());
     if (!userId) {
-      return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+      logger.error('automation_runs.create.missing_user', { path: request.nextUrl.pathname });
+      return withSecurityHeaders(NextResponse.json({ error: 'Usuario no encontrado' }, { status: 500 }));
     }
 
     const body = await request.json();
@@ -86,16 +119,24 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
     emitMetric({ name: 'automation.run.create_error', value: 1 });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al crear ejecución' }, { status: 500 }));
   }
-}));
+});
 
-export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const webhookGuard = requireWebhookSecret(request);
-    if (webhookGuard) return webhookGuard;
+    const authUser = getAuthUser(request);
+    const webhookGuard = requireServiceSecret(request, Boolean(authUser));
+    if (webhookGuard.response) return webhookGuard.response;
 
-    const userId = getAuthUser(request)?.userId;
+    if (authUser && authUser.role !== 'owner' && !webhookGuard.viaServiceSecret) {
+      const response = withSecurityHeaders(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
+      logWebhookAuthAttempt(request, response.status);
+      return response;
+    }
+
+    const userId = authUser?.userId ?? (await resolveServiceUserId());
     if (!userId) {
-      return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+      logger.error('automation_runs.update.missing_user', { path: request.nextUrl.pathname });
+      return withSecurityHeaders(NextResponse.json({ error: 'Usuario no encontrado' }, { status: 500 }));
     }
 
     const { searchParams } = new URL(request.url);
@@ -151,4 +192,4 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
     emitMetric({ name: 'automation.run.update_error', value: 1 });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar ejecución' }, { status: 500 }));
   }
-}));
+});

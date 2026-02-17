@@ -41,8 +41,14 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
    ```bash
    ansible vps -m shell -a "docker exec postgres_platform psql -U n8n_user -d n8n_db -At -c "SELECT row_to_json(t) FROM workflow_entity t;"" > n8n/workflows/workflows_dump.json
    ```
-2. Convertir cada línea del dump en archivos individuales (ya hay un script auxiliar en `n8n/workflows` que hace este parseo, ver `export_workflows` pasos en README del repositorio).
-3. Sustituir los JSON existentes si hubo cambios y eliminar `workflows_dump.json`.
+2. El dump se guarda en `n8n/workflows/workflows_dump.json` (ignorado por git).
+3. Convertir cada línea del dump en archivos individuales:
+   ```bash
+   node scripts/n8n/export_workflows_from_dump.mjs
+   ```
+   - Los workflows conocidos actualizan los JSON versionados en `n8n/workflows/`.
+   - Los desconocidos se guardan en `n8n/workflows/_exports/` (ignorado por git).
+4. Sustituir los JSON existentes si hubo cambios y eliminar `workflows_dump.json` cuando termines.
 
 > También puedes usar la UI de n8n (`Download` en cada workflow), pero el método anterior garantiza export completo con IDs y metadatos.
 

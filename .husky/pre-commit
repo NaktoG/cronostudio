@@ -1,6 +1,9 @@
 #!/bin/sh
 . "$(dirname "$0")/_/husky.sh"
 
+# Guardrail: prevent workflow export JSONs in repo root
+sh scripts/git/deny-root-json.sh
+
 # Run lint-staged for staged files
 npx lint-staged
 

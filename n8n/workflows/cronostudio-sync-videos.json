@@ -158,7 +158,8 @@
         0
       ],
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
+      "typeVersion": 3,
+      "disabled": true
     },
     {
       "id": "35e38399-f7f6-4c4b-989c-ad15e7389ee6",
@@ -175,10 +176,6 @@
         "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Cookie",
-              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
-            },
             {
               "name": "x-cronostudio-webhook-secret",
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
@@ -203,10 +200,6 @@
         "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Cookie",
-              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
-            },
             {
               "name": "x-cronostudio-webhook-secret",
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
@@ -257,10 +250,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "Cookie",
-              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
-            },
-            {
               "name": "x-cronostudio-webhook-secret",
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
             }
@@ -297,10 +286,6 @@
         "headerParameters": {
           "parameters": [
             {
-              "name": "Cookie",
-              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
-            },
-            {
               "name": "x-cronostudio-webhook-secret",
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
             }
@@ -330,10 +315,6 @@
         "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
-            {
-              "name": "Cookie",
-              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
-            },
             {
               "name": "x-cronostudio-webhook-secret",
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
