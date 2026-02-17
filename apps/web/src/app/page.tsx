@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Instagram, Music2, Plus, Sparkles } from 'lucide-react';
+import { Instagram, Linkedin, Music2, Plus, Sparkles } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -215,8 +215,8 @@ function DashboardContent() {
                       transition={{ delay: 0.2 }}
                     >
                       <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">Redes sociales</div>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
+                      <div className="space-y-3">
+                        <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-3">
                             <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                               <Instagram className="w-4 h-4" />
@@ -226,9 +226,9 @@ function DashboardContent() {
                               <p className="text-xs text-slate-400">Reels, posts y stories</p>
                             </div>
                           </div>
-                          <button className="text-xs font-semibold text-yellow-400 hover:text-yellow-300">Conectar</button>
+                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">Conectar</button>
                         </div>
-                        <div className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
+                        <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-3">
                             <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                               <Music2 className="w-4 h-4" />
@@ -238,7 +238,19 @@ function DashboardContent() {
                               <p className="text-xs text-slate-400">Clips cortos y trends</p>
                             </div>
                           </div>
-                          <button className="text-xs font-semibold text-yellow-400 hover:text-yellow-300">Conectar</button>
+                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">Conectar</button>
+                        </div>
+                        <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                              <Linkedin className="w-4 h-4" />
+                            </span>
+                            <div>
+                              <p className="text-sm font-semibold text-white">LinkedIn</p>
+                              <p className="text-xs text-slate-400">Posts, clips y branding</p>
+                            </div>
+                          </div>
+                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">Conectar</button>
                         </div>
                       </div>
                     </motion.div>
