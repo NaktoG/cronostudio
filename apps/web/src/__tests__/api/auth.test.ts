@@ -70,7 +70,7 @@ describe('Auth API', () => {
                 }),
             });
 
-            const response = await POST(request);
+            const response = await POST(request, { params: Promise.resolve({}) });
             const data = await response.json();
 
             expect(response.status).toBe(401);
@@ -89,7 +89,7 @@ describe('Auth API', () => {
                 }),
             });
 
-            const response = await POST(request);
+            const response = await POST(request, { params: Promise.resolve({}) });
             expect(response.status).toBe(400);
             expect(emitMetricMock).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.login.success' }));
         });
@@ -108,7 +108,7 @@ describe('Auth API', () => {
                 }),
             });
 
-            const response = await POST(request);
+            const response = await POST(request, { params: Promise.resolve({}) });
             expect(response.status).toBe(400);
             expect(emitMetricMock).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.register.success' }));
         });
@@ -128,7 +128,7 @@ describe('Auth API', () => {
                 }),
             });
 
-            const response = await POST(request);
+            const response = await POST(request, { params: Promise.resolve({}) });
             expect(response.status).toBe(409);
             expect(emitMetricMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.register.failure' }));
         });
