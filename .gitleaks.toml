@@ -1,0 +1,7 @@
+[allowlist]
+paths = [
+  ".agentes.LOCAL_BACKUP/",
+  "n8n/workflows/_exports/",
+  "_inbox/",
+  "_import/"
+]
