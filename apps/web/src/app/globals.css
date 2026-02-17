@@ -10,7 +10,7 @@
   --border-color: rgba(255, 255, 255, 0.08);
   --accent: #f6c945;
   --accent-soft: rgba(246, 201, 69, 0.15);
-  --glow: 0 0 12px rgba(246, 201, 69, 0.12);
+  --glow: 0 0 8px rgba(246, 201, 69, 0.08);
 }
 
 [data-theme='light'] {
@@ -32,7 +32,7 @@
   --border-color: rgba(255, 255, 255, 0.08);
   --accent: #f6c945;
   --accent-soft: rgba(246, 201, 69, 0.15);
-  --glow: 0 0 12px rgba(246, 201, 69, 0.12);
+  --glow: 0 0 8px rgba(246, 201, 69, 0.08);
 }
 
 @theme inline {
@@ -79,5 +79,5 @@ body {
 .glow-hover:hover {
   transform: translateY(-1px);
   box-shadow: var(--glow);
-  border-color: rgba(246, 201, 69, 0.16);
+  border-color: rgba(246, 201, 69, 0.12);
 }
