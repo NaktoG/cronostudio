@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
 import { makeApiRequest } from '@/__tests__/utils/requests';
 import { makeTestId } from '@/__tests__/utils/testIds';
+import { makeQueryResult } from '@/__tests__/utils/db';
 
 type MockRouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<Response> | Response;
 
@@ -56,7 +57,7 @@ describe('Videos API', () => {
 
     it('returns 404 when video belongs to another user', async () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
-      vi.mocked(query).mockResolvedValue({ rows: [], rowCount: 0 });
+      vi.mocked(query).mockResolvedValue(makeQueryResult([]));
       const { GET } = await import('@/app/api/videos/[id]/route');
       const videoId = makeTestId('video');
       const request = makeApiRequest(`/api/videos/${videoId}`);
@@ -67,7 +68,7 @@ describe('Videos API', () => {
     it('returns video when owner matches', async () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
       const videoId = makeTestId('video');
-      vi.mocked(query).mockResolvedValue({ rows: [{ id: videoId, title: 'Demo' }], rowCount: 1 });
+      vi.mocked(query).mockResolvedValue(makeQueryResult([{ id: videoId, title: 'Demo' }]));
       const { GET } = await import('@/app/api/videos/[id]/route');
       const request = makeApiRequest(`/api/videos/${videoId}`);
       const response = await GET(request, { params: Promise.resolve({ id: videoId }) });
@@ -93,7 +94,7 @@ describe('Videos API', () => {
     it('returns 404 when video is missing for user', async () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
       vi.mocked(validateInput).mockReturnValue({ title: 'Updated title' } as { title?: string });
-      vi.mocked(query).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      vi.mocked(query).mockResolvedValueOnce(makeQueryResult([]));
       const { PUT } = await import('@/app/api/videos/[id]/route');
 
       const videoId = makeTestId('video');
@@ -111,8 +112,8 @@ describe('Videos API', () => {
       vi.mocked(validateInput).mockReturnValue({ title: 'Updated title', views: 42 } as { title?: string; views?: number });
       const videoId = makeTestId('video');
       vi.mocked(query)
-        .mockResolvedValueOnce({ rows: [{ id: videoId }], rowCount: 1 })
-        .mockResolvedValueOnce({ rows: [{ id: videoId, title: 'Updated title' }], rowCount: 1 });
+        .mockResolvedValueOnce(makeQueryResult([{ id: videoId }]))
+        .mockResolvedValueOnce(makeQueryResult([{ id: videoId, title: 'Updated title' }]));
       const { PUT } = await import('@/app/api/videos/[id]/route');
 
       const request = makeApiRequest(`/api/videos/${videoId}`, {
@@ -140,7 +141,7 @@ describe('Videos API', () => {
 
     it('returns 404 when video is missing', async () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
-      vi.mocked(query).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+      vi.mocked(query).mockResolvedValueOnce(makeQueryResult([]));
       const { DELETE } = await import('@/app/api/videos/[id]/route');
       const videoId = makeTestId('video');
       const request = makeApiRequest(`/api/videos/${videoId}`, {
@@ -153,7 +154,7 @@ describe('Videos API', () => {
     it('returns 204 when video is deleted', async () => {
       vi.mocked(getAuthUser).mockReturnValue(ownerUser);
       const videoId = makeTestId('video');
-      vi.mocked(query).mockResolvedValueOnce({ rows: [{ id: videoId, title: 'Demo' }], rowCount: 1 });
+      vi.mocked(query).mockResolvedValueOnce(makeQueryResult([{ id: videoId, title: 'Demo' }]));
       const { DELETE } = await import('@/app/api/videos/[id]/route');
       const request = makeApiRequest(`/api/videos/${videoId}`, {
         method: 'DELETE',

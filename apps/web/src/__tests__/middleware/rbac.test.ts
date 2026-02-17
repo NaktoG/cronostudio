@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
+import { makeApiRequest } from '@/__tests__/utils/requests';
+import { makeTestId } from '@/__tests__/utils/testIds';
 
 type MockRouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<Response> | Response;
 
@@ -9,9 +11,9 @@ vi.mock('@/middleware/auth', () => ({
     if (!role) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
-    (request as { user: { userId: string; email: string; role: string } }).user = {
-      userId: 'user-1',
-      email: 'test@example.com',
+    (request as unknown as { user: { userId: string; email: string; role: string } }).user = {
+      userId: makeTestId('user'),
+      email: `${makeTestId('email')}@example.test`,
       role,
     };
     return handler(request, ...args);
@@ -28,11 +30,11 @@ describe('requireRoles middleware', () => {
     const handler = vi.fn(() => NextResponse.json({ ok: true }));
     const secured = requireRoles(['owner'])(handler);
 
-    const request = new NextRequest('http://localhost/api/secure', {
+    const request = makeApiRequest('/api/secure', {
       headers: { 'x-role': 'owner' },
     });
 
-    const response = await secured(request);
+    const response = await secured(request, { params: Promise.resolve({}) });
     expect(response.status).toBe(200);
   });
 
@@ -41,11 +43,11 @@ describe('requireRoles middleware', () => {
     const handler = vi.fn(() => NextResponse.json({ ok: true }));
     const secured = requireRoles(['owner'])(handler);
 
-    const request = new NextRequest('http://localhost/api/secure', {
+    const request = makeApiRequest('/api/secure', {
       headers: { 'x-role': 'collaborator' },
     });
 
-    const response = await secured(request);
+    const response = await secured(request, { params: Promise.resolve({}) });
     expect(response.status).toBe(403);
   });
 });

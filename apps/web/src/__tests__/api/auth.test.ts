@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { makeApiRequest } from '@/__tests__/utils/requests';
 import { makeTestId } from '@/__tests__/utils/testIds';
+import { makeQueryResult } from '@/__tests__/utils/db';
+
+const VALID_TOKEN = makeTestId('token');
+const EXPIRED_TOKEN = makeTestId('token_expired');
+const JWT_USER_ID = makeTestId('user');
+const JWT_EMAIL = `${makeTestId('email')}@example.test`;
 
 vi.mock('@/lib/observability', () => ({
     emitMetric: vi.fn(),
@@ -11,10 +17,10 @@ vi.mock('jsonwebtoken', () => ({
     default: {
         sign: vi.fn(() => 'mock-token'),
         verify: vi.fn((token: string) => {
-            if (token === 'valid-token') {
-                return { userId: 'user-123', email: 'test@example.com' };
+            if (token === VALID_TOKEN) {
+                return { userId: JWT_USER_ID, email: JWT_EMAIL };
             }
-            if (token === 'expired-token') {
+            if (token === EXPIRED_TOKEN) {
                 const error = new Error('Token expired');
                 error.name = 'TokenExpiredError';
                 throw error;
@@ -52,7 +58,7 @@ describe('Auth API', () => {
     describe('POST /api/auth/login', () => {
         it('should return 401 for invalid credentials', async () => {
             // Mock no user found
-            vi.mocked(query).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            vi.mocked(query).mockResolvedValueOnce(makeQueryResult([]));
 
             const { POST } = await import('@/app/api/auth/login/route');
 
@@ -109,10 +115,7 @@ describe('Auth API', () => {
 
         it('should return 409 for duplicate email', async () => {
             // Mock existing user
-            vi.mocked(query).mockResolvedValueOnce({
-                rows: [{ id: makeTestId('user') }],
-                rowCount: 1
-            });
+            vi.mocked(query).mockResolvedValueOnce(makeQueryResult([{ id: makeTestId('user') }]));
 
             const { POST } = await import('@/app/api/auth/register/route');
 

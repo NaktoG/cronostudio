@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { makeTestId } from '@/__tests__/utils/testIds';
 import { withEnv } from '@/__tests__/utils/env';
 import { makeApiRequest, WEBHOOK_HEADER } from '@/__tests__/utils/requests';
+import { makeQueryResult } from '@/__tests__/utils/db';
 
 vi.mock('@/lib/db', () => ({
   query: vi.fn(),
@@ -81,7 +82,7 @@ describe('authenticateUserOrService', () => {
   it('returns userId when service secret is valid and user configured', async () => {
     vi.mocked(getAuthUser).mockReturnValue(null);
     const serviceUserId = makeTestId('user');
-    vi.mocked(query).mockResolvedValueOnce({ rows: [{ id: serviceUserId }], rowCount: 1 });
+    vi.mocked(query).mockResolvedValueOnce(makeQueryResult([{ id: serviceUserId }]))
 
     await withEnv({
       CRONOSTUDIO_SERVICE_USER_ID: serviceUserId,
@@ -105,7 +106,7 @@ describe('authenticateUserOrService', () => {
     const memberUser = {
       userId: makeTestId('user'),
       email: `${makeTestId('email')}@example.test`,
-      role: 'member',
+      role: 'collaborator',
     } as JWTPayload;
     vi.mocked(getAuthUser).mockReturnValue(memberUser);
 

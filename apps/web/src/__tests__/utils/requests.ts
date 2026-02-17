@@ -1,4 +1,4 @@
-import { NextRequest, type RequestInit } from 'next/server';
+import { NextRequest } from 'next/server';
 
 const BASE_URL = 'http://cronostudio.test';
 export const WEBHOOK_HEADER = 'x-cronostudio-webhook-secret';
