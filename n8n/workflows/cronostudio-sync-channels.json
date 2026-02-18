@@ -6,12 +6,12 @@
       "main": [
         [
           {
-            "index": 0,
             "node": "Fetch CronoStudio Channels",
-            "type": "main"
+            "type": "main",
+            "index": 0
           },
           {
-            "node": "Demo Channel Payload",
+            "node": "Resolve Mode",
             "type": "main",
             "index": 0
           },
@@ -27,9 +27,9 @@
       "main": [
         [
           {
-            "index": 0,
             "node": "Complete Automation Run",
-            "type": "main"
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -38,7 +38,7 @@
       "main": [
         [
           {
-            "node": "Demo Channel Payload",
+            "node": "Is Demo Mode?",
             "type": "main",
             "index": 0
           }
@@ -60,7 +60,7 @@
       "main": [
         [
           {
-            "node": "Map Channels",
+            "node": "Normalize YouTube Channels",
             "type": "main",
             "index": 0
           }
@@ -79,6 +79,46 @@
       ]
     },
     "Demo Channel Payload": {
+      "main": [
+        [
+          {
+            "node": "Create Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Mode": {
+      "main": [
+        [
+          {
+            "node": "Is Demo Mode?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Demo Mode?": {
+      "main": [
+        [
+          {
+            "node": "Demo Channel Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch YouTube Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize YouTube Channels": {
       "main": [
         [
           {
@@ -176,17 +216,6 @@
       "typeVersion": 3
     },
     {
-      "id": "8155c812-e668-4ac4-9a4b-2912139d6645",
-      "name": "Map Channels",
-      "parameters": {},
-      "position": [
-        336,
-        208
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
-    },
-    {
       "continueOnFail": true,
       "id": "3c6bb37f-61c9-4ab8-9b2b-b966cc9aaff6",
       "name": "Create Channel",
@@ -257,6 +286,53 @@
       ],
       "parameters": {
         "jsCode": "// Demo Channel Payload\nreturn [{\n  json: {\n    youtubeChannelId: \"UC_DEMO_CHANNEL_999\",\n    name: \"Demo Channel 999\",\n    refreshToken: null\n  }\n}];"
+      }
+    },
+    {
+      "id": "25f1dccf-d6ea-4bef-9b8f-c0813dadc487",
+      "name": "Resolve Mode",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        80
+      ],
+      "parameters": {
+        "jsCode": "const mode = ($env.CRONOSTUDIO_N8N_MODE || 'demo').toLowerCase();\nreturn [{ json: { mode } }];"
+      }
+    },
+    {
+      "id": "c9ee6ee0-0c93-4010-b4b1-0f0cea47014d",
+      "name": "Is Demo Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        304,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$items(\"Resolve Mode\")[0].json.mode}}",
+              "operation": "equal",
+              "value2": "demo"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7de35cd2-3a3a-403a-8d16-653ef2c75c16",
+      "name": "Normalize YouTube Channels",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        80
+      ],
+      "parameters": {
+        "jsCode": "const existing = $items('Fetch CronoStudio Channels', 0).map(i => i.json);\nconst existingIds = new Set(existing.map(c => c.youtube_channel_id).filter(Boolean));\nconst ytRaw = $items('Fetch YouTube Channels', 0).map(i => i.json);\nlet ytChannels = [];\nif (Array.isArray(ytRaw) && ytRaw.length > 0) {\n  if (ytRaw.length === 1 && ytRaw[0]?.items && Array.isArray(ytRaw[0].items)) {\n    ytChannels = ytRaw[0].items;\n  } else if (ytRaw.length === 1 && ytRaw[0]?.data?.items && Array.isArray(ytRaw[0].data.items)) {\n    ytChannels = ytRaw[0].data.items;\n  } else {\n    ytChannels = ytRaw;\n  }\n}\nconst payloads = ytChannels.map(ch => {\n  const id = ch.id || ch.youtube_channel_id || ch.snippet?.channelId;\n  const name = ch.snippet?.title || ch.name || '';\n  if (!id || !name) return null;\n  return {\n    youtubeChannelId: id,\n    name,\n    refreshToken: null\n  };\n}).filter(Boolean).filter(ch => !existingIds.has(ch.youtubeChannelId));\nreturn payloads.map(ch => ({ json: ch }));"
       }
     }
   ],

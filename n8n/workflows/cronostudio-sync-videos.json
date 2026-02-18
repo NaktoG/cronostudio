@@ -9,6 +9,21 @@
             "node": "Fetch CronoStudio Channels",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Fetch CronoStudio Videos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Resolve Mode",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Complete Automation Run",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -17,9 +32,9 @@
       "main": [
         [
           {
-            "index": 0,
             "node": "Complete Automation Run",
-            "type": "main"
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -61,9 +76,9 @@
       "main": [
         [
           {
-            "index": 0,
-            "node": "Fetch CronoStudio Videos",
-            "type": "main"
+            "node": "Normalize YouTube Videos",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -72,7 +87,7 @@
       "main": [
         [
           {
-            "node": "Demo Video Payload",
+            "node": "Is Demo Mode?",
             "type": "main",
             "index": 0
           }
@@ -113,6 +128,46 @@
       ]
     },
     "Demo Video Payload": {
+      "main": [
+        [
+          {
+            "node": "Create Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Mode": {
+      "main": [
+        [
+          {
+            "node": "Is Demo Mode?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Demo Mode?": {
+      "main": [
+        [
+          {
+            "node": "Demo Video Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch YouTube Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize YouTube Videos": {
       "main": [
         [
           {
@@ -226,17 +281,6 @@
       "typeVersion": 3
     },
     {
-      "id": "73f727c0-4d8b-4296-a57e-7ab8d7bfbd9b",
-      "name": "Map Channels",
-      "parameters": {},
-      "position": [
-        432,
-        -32
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
-    },
-    {
       "id": "60180c9e-2cd2-4b2a-948d-bc3c70f4ec46",
       "name": "Fetch YouTube Videos",
       "parameters": {
@@ -273,17 +317,6 @@
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3
-    },
-    {
-      "id": "ef96ce48-e7c6-46a5-9d3c-b6a5e6667035",
-      "name": "Map Videos",
-      "parameters": {},
-      "position": [
-        1152,
-        -32
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
     },
     {
       "continueOnFail": true,
@@ -356,6 +389,53 @@
       ],
       "parameters": {
         "jsCode": "// Demo Video Payload\n// Requiere que ya exista al menos 1 channel en CronoStudio (ya lo creamos en el paso anterior).\nconst channels = $items(\"Fetch CronoStudio Channels\", 0).map(i => i.json);\nif (!channels.length) {\n  throw new Error(\"No channels found in CronoStudio. Run Sync YouTube Channels first.\");\n}\nconst ch = channels[0];\n\nconst suffix = new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14);\n\nreturn [{\n  json: {\n    channelId: ch.id,\n    youtubeVideoId: `VID_DEMO_${suffix}`,\n    title: `Demo Video ${suffix}`,\n    description: \"demo\",\n    publishedAt: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "21b3fc4c-08c8-4637-a96d-9a21841fab0b",
+      "name": "Resolve Mode",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -304
+      ],
+      "parameters": {
+        "jsCode": "const mode = ($env.CRONOSTUDIO_N8N_MODE || 'demo').toLowerCase();\nreturn [{ json: { mode } }];"
+      }
+    },
+    {
+      "id": "8c653be5-7faa-4282-b78d-af904dd6646c",
+      "name": "Is Demo Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        304,
+        -304
+      ],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$items(\"Resolve Mode\")[0].json.mode}}",
+              "operation": "equal",
+              "value2": "demo"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "84eebdbf-621f-47aa-891e-1629611a0cc9",
+      "name": "Normalize YouTube Videos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -304
+      ],
+      "parameters": {
+        "jsCode": "const channels = $items('Fetch CronoStudio Channels', 0).map(i => i.json);\nconst channelMap = new Map(channels.map(ch => [ch.youtube_channel_id, ch.id]));\nconst existing = $items('Fetch CronoStudio Videos', 0).map(i => i.json);\nconst existingIds = new Set(existing.map(v => v.youtube_video_id).filter(Boolean));\nconst ytRaw = $items('Fetch YouTube Videos', 0).map(i => i.json);\nlet ytVideos = [];\nif (Array.isArray(ytRaw) && ytRaw.length > 0) {\n  if (ytRaw.length === 1 && ytRaw[0]?.items && Array.isArray(ytRaw[0].items)) {\n    ytVideos = ytRaw[0].items;\n  } else if (ytRaw.length === 1 && ytRaw[0]?.data?.items && Array.isArray(ytRaw[0].data.items)) {\n    ytVideos = ytRaw[0].data.items;\n  } else {\n    ytVideos = ytRaw;\n  }\n}\nconst payloads = ytVideos.map(v => {\n  const youtubeId = v.id?.videoId || v.id || v.youtube_video_id;\n  const snippet = v.snippet || {};\n  const channelId = snippet.channelId || v.youtube_channel_id;\n  const internalChannelId = channelMap.get(channelId);\n  if (!youtubeId || !internalChannelId) return null;\n  return {\n    channelId: internalChannelId,\n    youtubeVideoId: youtubeId,\n    title: snippet.title || v.title || '',\n    description: snippet.description || v.description || null,\n    publishedAt: snippet.publishedAt || v.published_at || null\n  };\n}).filter(Boolean).filter(v => !existingIds.has(v.youtubeVideoId));\nreturn payloads.map(v => ({ json: v }));"
       }
     }
   ],

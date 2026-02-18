@@ -6,9 +6,9 @@
       "main": [
         [
           {
-            "index": 0,
             "node": "Complete Automation Run",
-            "type": "main"
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -18,6 +18,16 @@
         [
           {
             "node": "Fetch CronoStudio Videos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Resolve Mode",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Complete Automation Run",
             "type": "main",
             "index": 0
           }
@@ -61,18 +71,19 @@
       "main": [
         [
           {
-            "index": 0,
             "node": "Fetch YouTube Analytics",
-            "type": "main"
+            "type": "main",
+            "index": 0
           }
-        ]
+        ],
+        []
       ]
     },
     "Fetch CronoStudio Videos": {
       "main": [
         [
           {
-            "node": "Demo Analytics Payload",
+            "node": "Is Demo Mode?",
             "type": "main",
             "index": 0
           }
@@ -105,7 +116,7 @@
       "main": [
         [
           {
-            "node": "Map Analytics",
+            "node": "Normalize YouTube Analytics",
             "type": "main",
             "index": 0
           }
@@ -124,6 +135,46 @@
       ]
     },
     "Demo Analytics Payload": {
+      "main": [
+        [
+          {
+            "node": "Create Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Mode": {
+      "main": [
+        [
+          {
+            "node": "Is Demo Mode?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Demo Mode?": {
+      "main": [
+        [
+          {
+            "node": "Demo Analytics Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Date Range",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize YouTube Analytics": {
       "main": [
         [
           {
@@ -237,17 +288,6 @@
       "typeVersion": 3
     },
     {
-      "id": "3f154b2a-cd08-4d39-884b-dfa56d6bbf39",
-      "name": "Map Videos",
-      "parameters": {},
-      "position": [
-        -224,
-        144
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
-    },
-    {
       "id": "e0527668-6beb-45ea-86d0-8b2837ddc94a",
       "name": "Build Date Range",
       "parameters": {},
@@ -285,17 +325,6 @@
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3
-    },
-    {
-      "id": "8b1c9d91-e0cb-4a0c-9248-bc701e24ee94",
-      "name": "Map Analytics",
-      "parameters": {},
-      "position": [
-        320,
-        144
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
     },
     {
       "continueOnFail": true,
@@ -368,6 +397,53 @@
       ],
       "parameters": {
         "jsCode": "// Demo Analytics Payload\n// Requiere que ya exista al menos 1 video en CronoStudio (ya lo creamos con Sync Videos demo).\nconst res = $items(\"Fetch CronoStudio Videos\", 0).map(i => i.json);\n\nlet videos = [];\nif (res.length === 1 && res[0]?.data && Array.isArray(res[0].data)) videos = res[0].data;\nelse videos = res;\n\nif (!videos.length) {\n  throw new Error(\"No videos found in CronoStudio. Run Sync YouTube Videos first.\");\n}\n\nconst v = videos[0];\nconst today = new Date();\nconst yyyy = today.getUTCFullYear();\nconst mm = String(today.getUTCMonth()+1).padStart(2,'0');\nconst dd = String(today.getUTCDate()).padStart(2,'0');\nconst date = `${yyyy}-${mm}-${dd}`;\n\nreturn [{\n  json: {\n    videoId: v.id,\n    date,\n    views: 12,\n    watchTimeMinutes: 3,\n    avgViewDurationSeconds: 15\n  }\n}];"
+      }
+    },
+    {
+      "id": "e0c9045e-b7fa-47e8-aad5-1563d29885a6",
+      "name": "Resolve Mode",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        -304
+      ],
+      "parameters": {
+        "jsCode": "const mode = ($env.CRONOSTUDIO_N8N_MODE || 'demo').toLowerCase();\nreturn [{ json: { mode } }];"
+      }
+    },
+    {
+      "id": "9c50149a-3696-4761-ae6e-b57e6308305f",
+      "name": "Is Demo Mode?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        80,
+        -304
+      ],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$items(\"Resolve Mode\")[0].json.mode}}",
+              "operation": "equal",
+              "value2": "demo"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "01d5022a-39c2-4b05-a17c-f32eb58d4e6c",
+      "name": "Normalize YouTube Analytics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        -304
+      ],
+      "parameters": {
+        "jsCode": "const videos = $items('Fetch CronoStudio Videos', 0).map(i => i.json);\nconst videoMap = new Map(videos.map(v => [v.youtube_video_id, v.id]));\nconst ytRaw = $items('Fetch YouTube Analytics', 0).map(i => i.json);\nlet rows = [];\nif (Array.isArray(ytRaw) && ytRaw.length > 0) {\n  if (ytRaw.length === 1 && ytRaw[0]?.rows && Array.isArray(ytRaw[0].rows)) rows = ytRaw[0].rows;\n  else if (ytRaw.length === 1 && ytRaw[0]?.data?.rows && Array.isArray(ytRaw[0].data.rows)) rows = ytRaw[0].data.rows;\n  else rows = ytRaw;\n}\nconst payloads = rows.map(row => {\n  const date = row[0];\n  const views = Number(row[1] ?? 0);\n  const watchTimeMinutes = Number(row[2] ?? 0);\n  const avgViewDurationSeconds = Number(row[3] ?? 0);\n  const youtubeVideoId = row[4] || row.videoId || row.youtube_video_id;\n  const videoId = videoMap.get(youtubeVideoId);\n  if (!videoId || !date) return null;\n  return { videoId, date, views, watchTimeMinutes, avgViewDurationSeconds };\n}).filter(Boolean);\nreturn payloads.map(p => ({ json: p }));"
       }
     }
   ],
