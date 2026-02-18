@@ -14,6 +14,11 @@
             "node": "Demo Channel Payload",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Complete Automation Run",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
