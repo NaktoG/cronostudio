@@ -251,7 +251,7 @@
         260
       ],
       "parameters": {
-        "jsCode": "// Demo Channel Payload\nreturn [{\n  json: {\n    youtube_channel_id: \"UC_DEMO_CHANNEL_123\",\n    name: \"Demo Channel\",\n    description: \"demo\",\n    thumbnail_url: \"https://example.com/t.jpg\",\n    subscribers: 100,\n    videos_count: 10,\n    views: 999\n  }\n}];"
+        "jsCode": "// Demo Channel 999 Payload\nreturn [{\n  json: {\n    youtube_channel_id: \"UC_DEMO_CHANNEL_999\",\n    name: \"Demo Channel 999\",\n    description: \"demo\",\n    thumbnail_url: \"https://example.com/t.jpg\",\n    subscribers: 100,\n    videos_count: 10,\n    views: 999\n  }\n}];"
       }
     }
   ],
