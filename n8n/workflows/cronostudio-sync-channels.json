@@ -9,6 +9,11 @@
             "index": 0,
             "node": "Fetch CronoStudio Channels",
             "type": "main"
+          },
+          {
+            "node": "Demo Channel Payload",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
