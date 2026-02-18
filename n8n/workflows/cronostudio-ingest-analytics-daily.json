@@ -35,6 +35,17 @@
         ]
       ]
     },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Create Automation Run",
+            "type": "main"
+          }
+        ]
+      ]
+    },
     "Split Videos": {
       "main": [
         [
@@ -126,6 +137,17 @@
         144
       ],
       "type": "n8n-nodes-base.cron",
+      "typeVersion": 1
+    },
+    {
+      "id": "b3f3150f-90dc-45a1-a379-e16cf028ef5b",
+      "name": "Manual Trigger",
+      "parameters": {},
+      "position": [
+        -928,
+        0
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1
     },
     {

@@ -35,6 +35,17 @@
         ]
       ]
     },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Create Automation Run",
+            "type": "main"
+          }
+        ]
+      ]
+    },
     "Fetch YouTube Videos": {
       "main": [
         [
@@ -115,6 +126,17 @@
         0
       ],
       "type": "n8n-nodes-base.cron",
+      "typeVersion": 1
+    },
+    {
+      "id": "de31a2f4-b74c-4ff0-8aa8-5052939778cb",
+      "name": "Manual Trigger",
+      "parameters": {},
+      "position": [
+        -480,
+        -176
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1
     },
     {
