@@ -301,7 +301,12 @@
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
             }
           ]
-        }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}"
       },
       "position": [
         1392,
