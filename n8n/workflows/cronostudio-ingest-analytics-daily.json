@@ -425,7 +425,7 @@
         "conditions": {
           "string": [
             {
-              "value1": "={{$items(\"Resolve Mode\")[0].json.mode}}",
+              "value1": "={{($env.CRONOSTUDIO_N8N_MODE || 'demo').toLowerCase()}}",
               "operation": "equal",
               "value2": "demo"
             }
