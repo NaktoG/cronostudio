@@ -6,9 +6,9 @@
       "main": [
         [
           {
-            "index": 0,
             "node": "Fetch CronoStudio Channels",
-            "type": "main"
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -72,7 +72,7 @@
       "main": [
         [
           {
-            "node": "Map Channels",
+            "node": "Demo Video Payload",
             "type": "main",
             "index": 0
           }
@@ -102,6 +102,17 @@
       ]
     },
     "Map Videos": {
+      "main": [
+        [
+          {
+            "node": "Create Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demo Video Payload": {
       "main": [
         [
           {
@@ -328,6 +339,19 @@
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3
+    },
+    {
+      "id": "2b25c054-ddb2-496e-864a-0e7ed70eb503",
+      "name": "Demo Video Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        260
+      ],
+      "parameters": {
+        "jsCode": "// Demo Video Payload\n// Requiere que ya exista al menos 1 channel en CronoStudio (ya lo creamos en el paso anterior).\nconst channels = $items(\"Fetch CronoStudio Channels\", 0).map(i => i.json);\nif (!channels.length) {\n  throw new Error(\"No channels found in CronoStudio. Run Sync YouTube Channels first.\");\n}\nconst ch = channels[0];\n\n// IMPORTANTE: ajusta keys si tu Create Video node espera otras.\n// Emite un item con campos comunes (id del channel + ids de YouTube).\nconst suffix = new Date().toISOString().replace(/[-:.TZ]/g,'').slice(0,14);\n\nreturn [{\n  json: {\n    channelId: ch.id,                           // id interno CronoStudio\n    youtube_channel_id: ch.youtube_channel_id,  // por si el endpoint lo usa\n    youtube_video_id: `VID_DEMO_${suffix}`,\n    title: `Demo Video ${suffix}`,\n    description: \"demo\",\n    published_at: new Date().toISOString(),\n    thumbnail_url: \"https://example.com/v.jpg\",\n    views: 0,\n    likes: 0,\n    comments: 0,\n    duration_seconds: 60\n  }\n}];"
+      }
     }
   ],
   "parentFolderId": "gxbXukDSOK73dF3N",
