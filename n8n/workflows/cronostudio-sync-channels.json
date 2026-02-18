@@ -28,9 +28,9 @@
       "main": [
         [
           {
-            "index": 0,
-            "node": "Fetch YouTube Channels",
-            "type": "main"
+            "node": "Demo Channel Payload",
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -58,6 +58,17 @@
       ]
     },
     "Map Channels": {
+      "main": [
+        [
+          {
+            "node": "Create Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demo Channel Payload": {
       "main": [
         [
           {
@@ -219,6 +230,19 @@
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3
+    },
+    {
+      "id": "a9c18e97-deea-4946-b82b-f299e5c6bdd5",
+      "name": "Demo Channel Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        260
+      ],
+      "parameters": {
+        "jsCode": "// Demo Channel Payload\nreturn [{\n  json: {\n    youtube_channel_id: \"UC_DEMO_CHANNEL_123\",\n    name: \"Demo Channel\",\n    description: \"demo\",\n    thumbnail_url: \"https://example.com/t.jpg\",\n    subscribers: 100,\n    videos_count: 10,\n    views: 999\n  }\n}];"
+      }
     }
   ],
   "parentFolderId": "gxbXukDSOK73dF3N",
