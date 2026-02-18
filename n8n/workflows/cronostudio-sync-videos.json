@@ -46,6 +46,17 @@
         ]
       ]
     },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Create Automation Run",
+            "type": "main"
+          }
+        ]
+      ]
+    },
     "Fetch YouTube Videos": {
       "main": [
         [
@@ -137,6 +148,17 @@
         -176
       ],
       "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "9f44dd5a-a606-4420-b8cc-4fcf008c5747",
+      "name": "Execute Workflow Trigger",
+      "parameters": {},
+      "position": [
+        -480,
+        -304
+      ],
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1
     },
     {

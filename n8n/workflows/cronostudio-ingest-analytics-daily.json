@@ -46,6 +46,17 @@
         ]
       ]
     },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Create Automation Run",
+            "type": "main"
+          }
+        ]
+      ]
+    },
     "Split Videos": {
       "main": [
         [
@@ -148,6 +159,17 @@
         0
       ],
       "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "e5fe7d57-d1de-44a0-a52a-f7b3aa4f5e9f",
+      "name": "Execute Workflow Trigger",
+      "parameters": {},
+      "position": [
+        -928,
+        -128
+      ],
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1
     },
     {
