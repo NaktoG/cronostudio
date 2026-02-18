@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { NextRequest } from 'next/server';
+import { createRequest } from '@/__tests__/utils/testConstants';
 
 describe('CORS middleware', () => {
   beforeEach(() => {
@@ -9,7 +9,7 @@ describe('CORS middleware', () => {
 
   it('permite preflight desde origen permitido', async () => {
     const { middleware } = await import('../../../middleware');
-    const request = new NextRequest('http://localhost/api/channels', {
+    const request = createRequest('/api/channels', {
       method: 'OPTIONS',
       headers: {
         origin: 'http://allowed.test',
@@ -23,7 +23,7 @@ describe('CORS middleware', () => {
 
   it('bloquea preflight desde origen no permitido', async () => {
     const { middleware } = await import('../../../middleware');
-    const request = new NextRequest('http://localhost/api/channels', {
+    const request = createRequest('/api/channels', {
       method: 'OPTIONS',
       headers: {
         origin: 'http://evil.test',
@@ -36,7 +36,7 @@ describe('CORS middleware', () => {
 
   it('agrega headers CORS en requests normales con origen permitido', async () => {
     const { middleware } = await import('../../../middleware');
-    const request = new NextRequest('http://localhost/api/channels', {
+    const request = createRequest('/api/channels', {
       headers: {
         origin: 'http://allowed.test',
       },

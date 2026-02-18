@@ -1,17 +1,16 @@
 # Workflows n8n (CronoStudio)
 
 ## Requisitos
-- n8n corriendo en Docker (`http://localhost:5678`).
-- API de CronoStudio levantada en `http://localhost:3000`.
+- n8n corriendo en Docker (`$N8N_BASE_URL`).
+- API de CronoStudio levantada en `$CRONOSTUDIO_API_BASE_URL`.
 - YouTube Data API v3 key (para datos publicos).
 
 ## Variables de entorno (contenedor n8n)
 Configurar en `infra/docker/.env` y reiniciar n8n:
 
 - `CRONOSTUDIO_API_BASE_URL` (ej: `http://host.docker.internal:3000/api`)
-- `CRONOSTUDIO_EMAIL`
-- `CRONOSTUDIO_PASSWORD`
-- `CRONOSTUDIO_WEBHOOK_SECRET` (opcional, recomendado)
+- `CRONOSTUDIO_WEBHOOK_SECRET` (requerido)
+- En CronoStudio, definir `CRONOSTUDIO_SERVICE_USER_ID` o `CRONOSTUDIO_SERVICE_USER_EMAIL`
 - `YOUTUBE_API_KEY`
 - `YOUTUBE_ANALYTICS_ACCESS_TOKEN` (Bearer token OAuth2)
 - `YOUTUBE_CHANNEL_IDS` (IDs separados por coma)
@@ -59,7 +58,7 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 ## Tracking de ejecuciones
 Los workflows registran ejecuciones en `automation_runs` para mostrarlas en el dashboard y ahora emiten métricas (`automation.run.*`) para observabilidad.
 
-Si `CRONOSTUDIO_WEBHOOK_SECRET` está definido en CronoStudio, los requests a la API deben incluir el header:
+Los requests a la API deben incluir el header:
 ```
 x-cronostudio-webhook-secret: <valor>
 ```

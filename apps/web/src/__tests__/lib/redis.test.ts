@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { TEST_REDIS_URL } from '@/__tests__/utils/testConstants';
 
 const mockRedisClass = vi.fn().mockImplementation(function MockRedis() {
   this.on = vi.fn();
@@ -16,7 +17,7 @@ describe('lib/redis', () => {
   });
 
   it('instancia cliente cuando REDIS_URL existe', async () => {
-    process.env.REDIS_URL = 'redis://localhost:6379';
+    process.env.REDIS_URL = TEST_REDIS_URL;
     const { getRedisClient } = await import('@/lib/redis');
     expect(getRedisClient()).not.toBeNull();
     expect(mockRedisClass).toHaveBeenCalled();

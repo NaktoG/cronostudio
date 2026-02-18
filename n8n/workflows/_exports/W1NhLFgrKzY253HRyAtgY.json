@@ -1,6 +1,173 @@
 {
+  "updatedAt": "2026-01-31T08:01:06.914Z",
+  "createdAt": "2026-01-29T13:23:12.087Z",
+  "id": "W1NhLFgrKzY253HRyAtgY",
+  "name": "CronoStudio - Sync YouTube Channels",
+  "description": null,
   "active": false,
-  "activeVersionId": null,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "471703ef-b7ac-4969-bb10-7e50341af6c1",
+      "name": "Manual Trigger",
+      "parameters": {},
+      "position": [
+        -448,
+        112
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "92d1d48e-b735-4864-9322-4d1480665b97",
+      "name": "Create Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs",
+        "sendHeaders": true,
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"workflowName\":\"sync-channels\",\"status\":\"running\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        -160,
+        -32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "8b66e577-6b07-45e2-bbda-44435b41cec7",
+      "name": "Fetch CronoStudio Channels",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/channels",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        32,
+        -32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "e0995451-42c5-4902-98d8-c331d0a1509d",
+      "name": "Fetch YouTube Channels",
+      "parameters": {
+        "options": {},
+        "url": "https://www.googleapis.com/youtube/v3/channels"
+      },
+      "position": [
+        80,
+        208
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "8155c812-e668-4ac4-9a4b-2912139d6645",
+      "name": "Map Channels",
+      "parameters": {},
+      "position": [
+        336,
+        208
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "continueOnFail": true,
+      "id": "3c6bb37f-61c9-4ab8-9b2b-b966cc9aaff6",
+      "name": "Create Channel",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/channels",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        528,
+        208
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "continueOnFail": true,
+      "id": "93994b35-0b69-47c1-91ac-afbd6d3b3303",
+      "name": "Complete Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
+        "sendHeaders": true,
+        "method": "PUT",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        720,
+        208
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    }
+  ],
   "connections": {
     "Create Automation Run": {
       "main": [
@@ -69,167 +236,35 @@
       ]
     }
   },
-  "createdAt": "2026-01-29T13:23:12.087+00:00",
-  "description": null,
-  "id": "W1NhLFgrKzY253HRyAtgY",
-  "isArchived": false,
-  "meta": null,
-  "name": "CronoStudio - Sync YouTube Channels",
-  "nodes": [
-    {
-      "id": "471703ef-b7ac-4969-bb10-7e50341af6c1",
-      "name": "Manual Trigger",
-      "parameters": {},
-      "position": [
-        -448,
-        112
-      ],
-      "type": "n8n-nodes-base.manualTrigger",
-      "typeVersion": 1
-    },
-    {
-      "id": "92d1d48e-b735-4864-9322-4d1480665b97",
-      "name": "Create Automation Run",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs",
-        "sendHeaders": true,
-        "method": "POST",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={\"workflowName\":\"sync-channels\",\"status\":\"running\"}",
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        -160,
-        -32
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "8b66e577-6b07-45e2-bbda-44435b41cec7",
-      "name": "Fetch CronoStudio Channels",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/channels",
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        32,
-        -32
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "e0995451-42c5-4902-98d8-c331d0a1509d",
-      "name": "Fetch YouTube Channels",
-      "parameters": {
-        "options": {},
-        "url": "https://www.googleapis.com/youtube/v3/channels"
-      },
-      "position": [
-        80,
-        208
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "8155c812-e668-4ac4-9a4b-2912139d6645",
-      "name": "Map Channels",
-      "parameters": {},
-      "position": [
-        336,
-        208
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
-    },
-    {
-      "continueOnFail": true,
-      "id": "3c6bb37f-61c9-4ab8-9b2b-b966cc9aaff6",
-      "name": "Create Channel",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/channels",
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        528,
-        208
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "continueOnFail": true,
-      "id": "93994b35-0b69-47c1-91ac-afbd6d3b3303",
-      "name": "Complete Automation Run",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
-        "sendHeaders": true,
-        "method": "PUT",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={\"status\":\"completed\"}",
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        720,
-        208
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    }
-  ],
-  "parentFolderId": "gxbXukDSOK73dF3N",
-  "pinData": {},
   "settings": {
     "availableInMCP": false,
     "executionOrder": "v1"
   },
   "staticData": null,
-  "triggerCount": 0,
-  "updatedAt": "2026-01-31T08:01:06.914+00:00",
+  "meta": null,
+  "pinData": {},
+  "versionId": "08dd7700-e029-4c0f-95ea-a29d0d95e12e",
+  "activeVersionId": null,
   "versionCounter": 9,
-  "versionId": "5abcd74f-2825-43f6-b3db-e248e92efcc6"
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-01-31T07:41:19.132Z",
+      "createdAt": "2026-01-31T07:41:19.132Z",
+      "role": "workflow:owner",
+      "workflowId": "W1NhLFgrKzY253HRyAtgY",
+      "projectId": "yqqGUot5isZpip8G",
+      "project": {
+        "updatedAt": "2026-01-30T16:45:10.812Z",
+        "createdAt": "2026-01-30T15:48:00.172Z",
+        "id": "yqqGUot5isZpip8G",
+        "name": "Nakto naktog@protonmail.com <naktog@protonmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "4052088d-8c6d-4073-a4ef-3d1135e56280"
+      }
+    }
+  ]
 }

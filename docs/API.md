@@ -1,6 +1,6 @@
 # API Documentation - CronoStudio
 
-**Base URL**: `http://localhost:3000/api`
+**Base URL**: `$CRONOSTUDIO_API_BASE_URL`
 
 ---
 
@@ -11,6 +11,15 @@ Opcionalmente se puede enviar un JWT en el header:
 ```
 Authorization: Bearer <token>
 ```
+
+Para service-to-service (n8n, workers) se acepta el header secreto:
+```
+x-cronostudio-webhook-secret: <valor>
+```
+
+Cuando se use el secreto, se requiere configurar un usuario de servicio determinista:
+- `CRONOSTUDIO_SERVICE_USER_ID` o
+- `CRONOSTUDIO_SERVICE_USER_EMAIL`
 
 **Public routes:** `/health`, `/auth/login`, `/auth/register`, `/auth/refresh`, `/auth/request-password-reset`, `/auth/reset-password`, `/auth/verify-email`, `/auth/resend-verification`
 **Protected routes:** todos los endpoints de datos (ideas, scripts, channels, videos, analytics, etc.) salvo que se indique lo contrario.
@@ -447,6 +456,8 @@ Header requerido para service-to-service:
 ```
 x-cronostudio-webhook-secret: <valor>
 ```
+
+Endpoints que aceptan service-secret sin cookie: `/automation-runs`, `/channels`, `/videos`, `/analytics`.
 
 #### GET `/automation-runs` 🔒
 Lista las últimas ejecuciones para el usuario autenticado.

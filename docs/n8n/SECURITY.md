@@ -9,17 +9,18 @@ Objetivo: evitar que los workflows expongan credenciales o accedan a CronoStudio
 
 ## 2. Variables sensibles
 - Usar credenciales nativas de n8n (se almacenan cifradas con `N8N_ENCRYPTION_KEY`).
-- Tokens como `CRONOSTUDIO_EMAIL`/`PASSWORD`, `YOUTUBE_API_KEY`, `YOUTUBE_ANALYTICS_ACCESS_TOKEN` deben configurarse vía env vars (ver `n8n/workflows/README.md`).
+- Tokens como `YOUTUBE_API_KEY`, `YOUTUBE_ANALYTICS_ACCESS_TOKEN` deben configurarse vía env vars (ver `n8n/workflows/README.md`).
 - Revisar los JSON exportados antes de commit: si contienen valores reales, rotar las credenciales inmediatamente.
 
 ## 3. Roles y permisos
 - Crear una cuenta dedicada de CronoStudio para n8n (rol “Automation”) con permisos mínimos.
+- Configurar un usuario de servicio determinista con `CRONOSTUDIO_SERVICE_USER_ID` o `CRONOSTUDIO_SERVICE_USER_EMAIL`.
 - Limitar `APP_BASE_URL` a HTTPS y validar que el token de sesión tiene vencimientos cortos.
 
 ## 3.1 Webhook secret (recomendado)
 - Configurar `CRONOSTUDIO_WEBHOOK_SECRET` en el entorno de CronoStudio.
 - En los requests desde n8n hacia la API, enviar el header `x-cronostudio-webhook-secret` con ese valor.
-- Esto agrega una capa de protección adicional aunque el workflow use login/password.
+- No usar cookies en los workflows; el secreto de servicio es suficiente para las rutas de automatización.
 
 ## 4. Auditoría
 - Habilitar logging de ejecuciones en la base de datos (`automation_runs`); los workflows incluidos ya lo hacen.

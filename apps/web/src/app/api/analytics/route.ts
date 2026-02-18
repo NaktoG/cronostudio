@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateAnalyticsSchema, AnalyticsQuerySchema } from '@/lib/validation';
-import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
+import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { requireRoles } from '@/middleware/rbac';
+import { requireServiceOrOwner } from '@/middleware/serviceAuth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -17,11 +17,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
     try {
-        // Autenticación requerida
-        const userId = getAuthUser(request)?.userId;
+        const authResult = await requireServiceOrOwner(request);
+        if (authResult.response) return authResult.response;
 
+        const userId = authResult.userId;
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { searchParams } = new URL(request.url);
@@ -160,12 +161,14 @@ export async function GET(request: NextRequest) {
  * POST /api/analytics
  * Registra métricas de analytics (requiere autenticación)
  */
-export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const authResult = await requireServiceOrOwner(request);
+        if (authResult.response) return authResult.response;
 
+        const userId = authResult.userId;
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const body = await request.json();
@@ -211,7 +214,6 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
             id: result.rows[0].id,
             videoId: validatedData.videoId,
             date: validatedData.date,
-            userId: userId,
         });
 
         const response = NextResponse.json(result.rows[0], { status: 201 });
@@ -231,4 +233,4 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
             { status: 500 }
         );
     }
-}));
+});

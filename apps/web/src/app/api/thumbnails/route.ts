@@ -5,6 +5,7 @@ import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRoles } from '@/middleware/rbac';
 import { z } from 'zod';
 import { validateInput } from '@/lib/validation';
+import { USER_ROLE_OWNER } from '@/domain/value-objects/UserRole';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -76,7 +77,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
     }
 }));
 
-export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const PUT = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -120,7 +121,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
     }
 }));
 
-export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const DELETE = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 

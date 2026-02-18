@@ -1,6 +1,220 @@
 {
+  "updatedAt": "2026-01-31T08:01:10.030Z",
+  "createdAt": "2026-01-29T13:23:31.930Z",
+  "id": "VhFo0V9gSXrbj0gC1Cq0o",
+  "name": "CronoStudio - Sync YouTube Videos",
+  "description": null,
   "active": false,
-  "activeVersionId": null,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "af687e90-53ac-4cbf-b554-81d7f481a7f4",
+      "name": "Daily Trigger",
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 2
+            }
+          ]
+        }
+      },
+      "position": [
+        -480,
+        0
+      ],
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1
+    },
+    {
+      "id": "35e38399-f7f6-4c4b-989c-ad15e7389ee6",
+      "name": "Create Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs",
+        "sendHeaders": true,
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"workflowName\":\"sync-videos\",\"status\":\"running\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        0,
+        -176
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "0417b999-2214-454c-a985-bd29a8e131ed",
+      "name": "Fetch CronoStudio Channels",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/channels",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        192,
+        -32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "73f727c0-4d8b-4296-a57e-7ab8d7bfbd9b",
+      "name": "Map Channels",
+      "parameters": {},
+      "position": [
+        432,
+        -32
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "id": "60180c9e-2cd2-4b2a-948d-bc3c70f4ec46",
+      "name": "Fetch YouTube Videos",
+      "parameters": {
+        "options": {},
+        "url": "https://www.googleapis.com/youtube/v3/search"
+      },
+      "position": [
+        672,
+        -32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "543ef0ee-ff4f-4b65-9bf7-537ebc25de55",
+      "name": "Fetch CronoStudio Videos",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/videos?channelId={{$json.channelId}}&limit=100&offset=0",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        912,
+        -32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "ef96ce48-e7c6-46a5-9d3c-b6a5e6667035",
+      "name": "Map Videos",
+      "parameters": {},
+      "position": [
+        1152,
+        -32
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "continueOnFail": true,
+      "id": "bee0fd03-dc98-4b6a-bd52-04a6025f8406",
+      "name": "Create Video",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/videos",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        1392,
+        -32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "continueOnFail": true,
+      "id": "bf5710eb-847a-42f6-b6dd-dca3e1a18b95",
+      "name": "Complete Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
+        "sendHeaders": true,
+        "method": "PUT",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        1584,
+        -32
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    }
+  ],
   "connections": {
     "Create Automation Run": {
       "main": [
@@ -91,210 +305,35 @@
       ]
     }
   },
-  "createdAt": "2026-01-29T13:23:31.93+00:00",
-  "description": null,
-  "id": "VhFo0V9gSXrbj0gC1Cq0o",
-  "isArchived": false,
-  "meta": null,
-  "name": "CronoStudio - Sync YouTube Videos",
-  "nodes": [
-    {
-      "id": "af687e90-53ac-4cbf-b554-81d7f481a7f4",
-      "name": "Daily Trigger",
-      "parameters": {
-        "triggerTimes": {
-          "item": [
-            {
-              "hour": 2
-            }
-          ]
-        }
-      },
-      "position": [
-        -480,
-        0
-      ],
-      "type": "n8n-nodes-base.cron",
-      "typeVersion": 1
-    },
-    {
-      "id": "35e38399-f7f6-4c4b-989c-ad15e7389ee6",
-      "name": "Create Automation Run",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs",
-        "sendHeaders": true,
-        "method": "POST",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={\"workflowName\":\"sync-videos\",\"status\":\"running\"}",
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        0,
-        -176
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "0417b999-2214-454c-a985-bd29a8e131ed",
-      "name": "Fetch CronoStudio Channels",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/channels",
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        192,
-        -32
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "73f727c0-4d8b-4296-a57e-7ab8d7bfbd9b",
-      "name": "Map Channels",
-      "parameters": {},
-      "position": [
-        432,
-        -32
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
-    },
-    {
-      "id": "60180c9e-2cd2-4b2a-948d-bc3c70f4ec46",
-      "name": "Fetch YouTube Videos",
-      "parameters": {
-        "options": {},
-        "url": "https://www.googleapis.com/youtube/v3/search"
-      },
-      "position": [
-        672,
-        -32
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "543ef0ee-ff4f-4b65-9bf7-537ebc25de55",
-      "name": "Fetch CronoStudio Videos",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/videos?channelId={{$json.channelId}}&limit=100&offset=0",
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        912,
-        -32
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "ef96ce48-e7c6-46a5-9d3c-b6a5e6667035",
-      "name": "Map Videos",
-      "parameters": {},
-      "position": [
-        1152,
-        -32
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
-    },
-    {
-      "continueOnFail": true,
-      "id": "bee0fd03-dc98-4b6a-bd52-04a6025f8406",
-      "name": "Create Video",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/videos",
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        1392,
-        -32
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "continueOnFail": true,
-      "id": "bf5710eb-847a-42f6-b6dd-dca3e1a18b95",
-      "name": "Complete Automation Run",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
-        "sendHeaders": true,
-        "method": "PUT",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={\"status\":\"completed\"}",
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        1584,
-        -32
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    }
-  ],
-  "parentFolderId": "gxbXukDSOK73dF3N",
-  "pinData": {},
   "settings": {
     "availableInMCP": false,
     "executionOrder": "v1"
   },
   "staticData": null,
-  "triggerCount": 0,
-  "updatedAt": "2026-01-31T08:01:10.03+00:00",
+  "meta": null,
+  "pinData": {},
+  "versionId": "c004e05d-5451-4a4f-988e-eb6816551c94",
+  "activeVersionId": null,
   "versionCounter": 8,
-  "versionId": "8a1fd989-5ec2-40d9-b28a-2bdc779d5ae0"
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-01-31T07:41:19.132Z",
+      "createdAt": "2026-01-31T07:41:19.132Z",
+      "role": "workflow:owner",
+      "workflowId": "VhFo0V9gSXrbj0gC1Cq0o",
+      "projectId": "yqqGUot5isZpip8G",
+      "project": {
+        "updatedAt": "2026-01-30T16:45:10.812Z",
+        "createdAt": "2026-01-30T15:48:00.172Z",
+        "id": "yqqGUot5isZpip8G",
+        "name": "Nakto naktog@protonmail.com <naktog@protonmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "4052088d-8c6d-4073-a4ef-3d1135e56280"
+      }
+    }
+  ]
 }

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import type { User as DomainUser } from '@/domain/entities/User';
+import { USER_ROLE_OWNER } from '@/domain/value-objects/UserRole';
 
 type UserRole = DomainUser['role'];
 
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const saveSession = useCallback((newUser: User) => {
         const normalizedUser: User = {
             ...newUser,
-            role: newUser.role ?? 'owner',
+            role: newUser.role ?? USER_ROLE_OWNER,
         };
         localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
         setUser(normalizedUser);

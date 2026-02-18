@@ -8,6 +8,7 @@ import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRoles } from '@/middleware/rbac';
 import { validateInput } from '@/lib/validation';
 import { logger } from '@/lib/logger';
+import { USER_ROLE_OWNER } from '@/domain/value-objects/UserRole';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
  * POST /api/ideas
  * Create a new idea
  */
-export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getUserId(request);
         if (!userId) {
@@ -112,7 +113,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
  * PUT /api/ideas?id=<uuid>
  * Update an existing idea
  */
-export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const PUT = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getUserId(request);
         if (!userId) {
@@ -162,7 +163,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
  * DELETE /api/ideas?id=<uuid>
  * Delete an idea
  */
-export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const DELETE = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getUserId(request);
         if (!userId) {

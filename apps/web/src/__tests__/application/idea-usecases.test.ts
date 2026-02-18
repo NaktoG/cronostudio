@@ -11,6 +11,7 @@ vi.mock('@/lib/observability', () => ({
 
 import { emitMetric } from '@/lib/observability';
 import { IdeaStatus } from '@/domain/value-objects/IdeaStatus';
+import { TEST_IDS } from '@/__tests__/utils/testConstants';
 
 // Mock repository
 const createMockRepository = (): IdeaRepository => ({
@@ -23,8 +24,8 @@ const createMockRepository = (): IdeaRepository => ({
 });
 
 const mockIdea: Idea = {
-    id: 'idea-123',
-    userId: 'user-456',
+    id: TEST_IDS.ideaId,
+    userId: TEST_IDS.userId,
     channelId: null,
     title: 'Test Idea',
     description: null,
@@ -52,33 +53,33 @@ describe('CreateIdeaUseCase', () => {
         vi.mocked(repository.create).mockResolvedValue(mockIdea);
 
         const result = await useCase.execute({
-            userId: 'user-456',
+            userId: TEST_IDS.userId,
             title: 'Test Idea',
             priority: 5,
         });
 
         expect(repository.create).toHaveBeenCalledWith({
-            userId: 'user-456',
+            userId: TEST_IDS.userId,
             title: 'Test Idea',
             description: undefined,
             channelId: undefined,
             priority: 5,
             tags: [],
         });
-        expect(result.id).toBe('idea-123');
+        expect(result.id).toBe(TEST_IDS.ideaId);
         expect(emitMetricMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'idea.created' }));
     });
 
     it('should reject empty title', async () => {
         await expect(useCase.execute({
-            userId: 'user-456',
+            userId: TEST_IDS.userId,
             title: '   ',
         })).rejects.toThrow('Title cannot be empty');
     });
 
     it('should reject invalid priority', async () => {
         await expect(useCase.execute({
-            userId: 'user-456',
+            userId: TEST_IDS.userId,
             title: 'Test',
             priority: 15,
         })).rejects.toThrow('Priority must be between 0 and 10');
@@ -98,8 +99,8 @@ describe('UpdateIdeaUseCase', () => {
         vi.mocked(repository.update).mockResolvedValue({ ...mockIdea, status: 'approved' });
 
         const result = await useCase.execute({
-            ideaId: 'idea-123',
-            userId: 'user-456',
+            ideaId: TEST_IDS.ideaId,
+            userId: TEST_IDS.userId,
             updates: { status: 'approved' },
         });
 
@@ -108,8 +109,8 @@ describe('UpdateIdeaUseCase', () => {
 
     it('should reject invalid status', async () => {
         await expect(useCase.execute({
-            ideaId: 'idea-123',
-            userId: 'user-456',
+            ideaId: TEST_IDS.ideaId,
+            userId: TEST_IDS.userId,
             updates: { status: 'invalid' as unknown as IdeaStatus },
         })).rejects.toThrow('Invalid status');
     });
@@ -118,8 +119,8 @@ describe('UpdateIdeaUseCase', () => {
         vi.mocked(repository.update).mockResolvedValue(null);
 
         await expect(useCase.execute({
-            ideaId: 'idea-123',
-            userId: 'user-456',
+            ideaId: TEST_IDS.ideaId,
+            userId: TEST_IDS.userId,
             updates: { title: 'New Title' },
         })).rejects.toThrow('Idea not found or access denied');
     });
@@ -138,19 +139,19 @@ describe('DeleteIdeaUseCase', () => {
         vi.mocked(repository.delete).mockResolvedValue(true);
 
         await expect(useCase.execute({
-            ideaId: 'idea-123',
-            userId: 'user-456',
+            ideaId: TEST_IDS.ideaId,
+            userId: TEST_IDS.userId,
         })).resolves.toBeUndefined();
 
-        expect(repository.delete).toHaveBeenCalledWith('idea-123', 'user-456');
+        expect(repository.delete).toHaveBeenCalledWith(TEST_IDS.ideaId, TEST_IDS.userId);
     });
 
     it('should throw when idea not found', async () => {
         vi.mocked(repository.delete).mockResolvedValue(false);
 
         await expect(useCase.execute({
-            ideaId: 'idea-123',
-            userId: 'user-456',
+            ideaId: TEST_IDS.ideaId,
+            userId: TEST_IDS.userId,
         })).rejects.toThrow('Idea not found or access denied');
     });
 });

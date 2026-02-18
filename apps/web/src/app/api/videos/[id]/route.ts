@@ -4,6 +4,7 @@ import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRoles } from '@/middleware/rbac';
 import { query } from '@/lib/db';
+import { USER_ROLE_OWNER } from '@/domain/value-objects/UserRole';
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  * PUT /api/videos/[id]
  * Actualiza un video (requiere autenticación)
  */
-export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
+export const PUT = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
     if (!context?.params) {
         return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
     }
@@ -160,7 +161,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
  * DELETE /api/videos/[id]
  * Elimina un video (requiere autenticación)
  */
-export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
+export const DELETE = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
     if (!context?.params) {
         return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
     }

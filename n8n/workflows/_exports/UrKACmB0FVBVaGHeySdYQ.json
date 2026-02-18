@@ -1,6 +1,217 @@
 {
+  "updatedAt": "2026-02-02T08:03:05.083Z",
+  "createdAt": "2026-01-29T13:22:47.053Z",
+  "id": "UrKACmB0FVBVaGHeySdYQ",
+  "name": "CronoStudio - Ingest Analytics Daily",
+  "description": null,
   "active": false,
-  "activeVersionId": null,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "180c057b-7f6d-431f-bbab-53ad539b9143",
+      "name": "Daily Trigger",
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 3
+            }
+          ]
+        }
+      },
+      "position": [
+        -928,
+        144
+      ],
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1
+    },
+    {
+      "id": "0f188cac-b155-4480-be25-5d07990edbf7",
+      "name": "Create Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs",
+        "sendHeaders": true,
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"workflowName\":\"ingest-analytics\",\"status\":\"running\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        -656,
+        416
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "302fd78a-ca40-4ec8-97d0-de8a37e4a247",
+      "name": "Fetch CronoStudio Videos",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/videos?limit=100&offset=0",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        -432,
+        144
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "3f154b2a-cd08-4d39-884b-dfa56d6bbf39",
+      "name": "Map Videos",
+      "parameters": {},
+      "position": [
+        -224,
+        144
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "id": "e0527668-6beb-45ea-86d0-8b2837ddc94a",
+      "name": "Build Date Range",
+      "parameters": {},
+      "position": [
+        -80,
+        -16
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "id": "19223740-90bc-4f37-ae4f-b373dec3f65a",
+      "name": "Split Videos",
+      "parameters": {
+        "batchSize": 25,
+        "options": {}
+      },
+      "position": [
+        -80,
+        144
+      ],
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2
+    },
+    {
+      "id": "b0cb6c0a-8c34-44ca-b105-edd5ba477d3d",
+      "name": "Fetch YouTube Analytics",
+      "parameters": {
+        "options": {},
+        "url": "https://youtubeanalytics.googleapis.com/v2/reports"
+      },
+      "position": [
+        112,
+        144
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "8b1c9d91-e0cb-4a0c-9248-bc701e24ee94",
+      "name": "Map Analytics",
+      "parameters": {},
+      "position": [
+        320,
+        144
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "continueOnFail": true,
+      "id": "9eb0dff4-2db5-4494-b57c-e20a898bebb5",
+      "name": "Create Analytics",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/analytics",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        560,
+        144
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "continueOnFail": true,
+      "id": "516c58fa-d56e-4557-b327-e95a7081a3f6",
+      "name": "Complete Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
+        "sendHeaders": true,
+        "method": "PUT",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        752,
+        144
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    }
+  ],
   "connections": {
     "Create Analytics": {
       "main": [
@@ -102,211 +313,35 @@
       ]
     }
   },
-  "createdAt": "2026-01-29T13:22:47.053+00:00",
-  "description": null,
-  "id": "UrKACmB0FVBVaGHeySdYQ",
-  "isArchived": false,
-  "meta": null,
-  "name": "CronoStudio - Ingest Analytics Daily",
-  "nodes": [
-    {
-      "id": "180c057b-7f6d-431f-bbab-53ad539b9143",
-      "name": "Daily Trigger",
-      "parameters": {
-        "triggerTimes": {
-          "item": [
-            {
-              "hour": 3
-            }
-          ]
-        }
-      },
-      "position": [
-        -928,
-        144
-      ],
-      "type": "n8n-nodes-base.cron",
-      "typeVersion": 1
-    },
-    {
-      "id": "0f188cac-b155-4480-be25-5d07990edbf7",
-      "name": "Create Automation Run",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs",
-        "sendHeaders": true,
-        "method": "POST",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={\"workflowName\":\"ingest-analytics\",\"status\":\"running\"}",
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        -656,
-        416
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "302fd78a-ca40-4ec8-97d0-de8a37e4a247",
-      "name": "Fetch CronoStudio Videos",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/videos?limit=100&offset=0",
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        -432,
-        144
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "3f154b2a-cd08-4d39-884b-dfa56d6bbf39",
-      "name": "Map Videos",
-      "parameters": {},
-      "position": [
-        -224,
-        144
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
-    },
-    {
-      "id": "e0527668-6beb-45ea-86d0-8b2837ddc94a",
-      "name": "Build Date Range",
-      "parameters": {},
-      "position": [
-        -80,
-        -16
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
-    },
-    {
-      "id": "19223740-90bc-4f37-ae4f-b373dec3f65a",
-      "name": "Split Videos",
-      "parameters": {
-        "batchSize": 25,
-        "options": {}
-      },
-      "position": [
-        -80,
-        144
-      ],
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 2
-    },
-    {
-      "id": "b0cb6c0a-8c34-44ca-b105-edd5ba477d3d",
-      "name": "Fetch YouTube Analytics",
-      "parameters": {
-        "options": {},
-        "url": "https://youtubeanalytics.googleapis.com/v2/reports"
-      },
-      "position": [
-        112,
-        144
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "id": "8b1c9d91-e0cb-4a0c-9248-bc701e24ee94",
-      "name": "Map Analytics",
-      "parameters": {},
-      "position": [
-        320,
-        144
-      ],
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 2
-    },
-    {
-      "continueOnFail": true,
-      "id": "9eb0dff4-2db5-4494-b57c-e20a898bebb5",
-      "name": "Create Analytics",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/analytics",
-        "sendHeaders": true,
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        560,
-        144
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    },
-    {
-      "continueOnFail": true,
-      "id": "516c58fa-d56e-4557-b327-e95a7081a3f6",
-      "name": "Complete Automation Run",
-      "parameters": {
-        "options": {},
-        "url": "={{$env.CRONOSTUDIO_API_BASE_URL}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
-        "sendHeaders": true,
-        "method": "PUT",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={\"status\":\"completed\"}",
-        "specifyHeaders": "keypair",
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "x-cronostudio-webhook-secret",
-              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
-            }
-          ]
-        }
-      },
-      "position": [
-        752,
-        144
-      ],
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 3
-    }
-  ],
-  "parentFolderId": "gxbXukDSOK73dF3N",
-  "pinData": {},
   "settings": {
     "availableInMCP": false,
     "executionOrder": "v1"
   },
   "staticData": null,
-  "triggerCount": 0,
-  "updatedAt": "2026-02-02T08:03:05.083+00:00",
+  "meta": null,
+  "pinData": {},
+  "versionId": "ac2e43bd-4027-4838-835e-6c2285c6dfa1",
+  "activeVersionId": null,
   "versionCounter": 9,
-  "versionId": "8134579c-7949-4a0a-80bd-d8f382009111"
+  "triggerCount": 0,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-01-31T07:41:19.132Z",
+      "createdAt": "2026-01-31T07:41:19.132Z",
+      "role": "workflow:owner",
+      "workflowId": "UrKACmB0FVBVaGHeySdYQ",
+      "projectId": "yqqGUot5isZpip8G",
+      "project": {
+        "updatedAt": "2026-01-30T16:45:10.812Z",
+        "createdAt": "2026-01-30T15:48:00.172Z",
+        "id": "yqqGUot5isZpip8G",
+        "name": "Nakto naktog@protonmail.com <naktog@protonmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "4052088d-8c6d-4073-a4ef-3d1135e56280"
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { rateLimit } from '@/middleware/rateLimit';
-import { NextRequest } from 'next/server';
+import { createRequest } from '@/__tests__/utils/testConstants';
 
 vi.mock('@/lib/redis', () => ({
   getRedisClient: () => null,
@@ -21,7 +21,7 @@ describe('rateLimit middleware', () => {
   it('permitir solicitudes dentro del límite', async () => {
     const handler = vi.fn(() => new Response('ok'));
     const limited = rateLimit({ maxRequests: 2, windowMs: 1000 })(handler);
-    const req = new NextRequest('http://localhost/api/test');
+    const req = createRequest('/api/test');
 
     const res1 = await limited(req);
     const res2 = await limited(req);
@@ -35,12 +35,12 @@ describe('rateLimit middleware', () => {
     const handler = vi.fn(() => new Response('ok'));
     const limited = rateLimit({ maxRequests: 1, windowMs: 1000 })(handler);
 
-    const firstReq = new NextRequest('http://localhost/api/test', {
+    const firstReq = createRequest('/api/test', {
       headers: {
         'x-forwarded-for': '1.1.1.1',
       },
     });
-    const secondReq = new NextRequest('http://localhost/api/test', {
+    const secondReq = createRequest('/api/test', {
       headers: {
         'x-forwarded-for': '1.1.1.1',
       },

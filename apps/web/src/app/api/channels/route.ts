@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateChannelSchema, CreateChannelInput } from '@/lib/validation';
-import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
+import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { requireRoles } from '@/middleware/rbac';
+import { requireServiceOrOwner } from '@/middleware/serviceAuth';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -21,10 +21,12 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const authResult = await requireServiceOrOwner(request);
+        if (authResult.response) return authResult.response;
 
+        const userId = authResult.userId;
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const result = await query(
@@ -58,12 +60,14 @@ export async function GET(request: NextRequest) {
  * POST /api/channels
  * Crea un nuevo canal de YouTube vinculado al usuario
  */
-export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const authResult = await requireServiceOrOwner(request);
+        if (authResult.response) return authResult.response;
 
+        const userId = authResult.userId;
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const body = await request.json();
@@ -82,7 +86,6 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         // Log seguro (sin refresh_token)
         console.log('[POST /api/channels] Created:', {
             id: result.rows[0].id,
-            userId: userId, // Logueamos quien lo creó
             name: validatedData.name,
             youtubeChannelId: validatedData.youtubeChannelId,
         });
@@ -120,4 +123,4 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
             { status: 500 }
         );
     }
-}));
+});

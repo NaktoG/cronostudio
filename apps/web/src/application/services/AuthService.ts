@@ -9,6 +9,7 @@ import { UserRepository } from '@/domain/repositories/UserRepository';
 import { SessionRepository } from '@/domain/repositories/SessionRepository';
 import { User, CreateUserInput } from '@/domain/entities/User';
 import { emitMetric } from '@/lib/observability';
+import { USER_ROLE_OWNER } from '@/domain/value-objects/UserRole';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -45,7 +46,7 @@ export class AuthService {
         const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
 
         // Create user
-        const user = await this.userRepository.create({ ...input, role: input.role ?? 'owner' }, passwordHash);
+        const user = await this.userRepository.create({ ...input, role: input.role ?? USER_ROLE_OWNER }, passwordHash);
 
         // Generate token
         const token = this.generateAccessToken(user);
@@ -66,7 +67,7 @@ export class AuthService {
         }
 
         const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
-        const user = await this.userRepository.create({ ...input, role: input.role ?? 'owner' }, passwordHash);
+        const user = await this.userRepository.create({ ...input, role: input.role ?? USER_ROLE_OWNER }, passwordHash);
         this.trackMetric('auth.register.success');
         return user;
     }

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { createRequest, TEST_IDS } from '@/__tests__/utils/testConstants';
+import { USER_ROLE_COLLABORATOR, USER_ROLE_OWNER } from '@/domain/value-objects/UserRole';
 
 type MockRouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<Response> | Response;
 
@@ -10,7 +12,7 @@ vi.mock('@/middleware/auth', () => ({
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
     (request as { user: { userId: string; email: string; role: string } }).user = {
-      userId: 'user-1',
+      userId: TEST_IDS.userId,
       email: 'test@example.com',
       role,
     };
@@ -26,10 +28,10 @@ describe('requireRoles middleware', () => {
   it('permite acceso cuando el rol es owner', async () => {
     const { requireRoles } = await import('@/middleware/rbac');
     const handler = vi.fn(() => NextResponse.json({ ok: true }));
-    const secured = requireRoles(['owner'])(handler);
+    const secured = requireRoles([USER_ROLE_OWNER])(handler);
 
-    const request = new NextRequest('http://localhost/api/secure', {
-      headers: { 'x-role': 'owner' },
+    const request = createRequest('/api/secure', {
+      headers: { 'x-role': USER_ROLE_OWNER },
     });
 
     const response = await secured(request);
@@ -39,10 +41,10 @@ describe('requireRoles middleware', () => {
   it('bloquea acceso cuando el rol no coincide', async () => {
     const { requireRoles } = await import('@/middleware/rbac');
     const handler = vi.fn(() => NextResponse.json({ ok: true }));
-    const secured = requireRoles(['owner'])(handler);
+    const secured = requireRoles([USER_ROLE_OWNER])(handler);
 
-    const request = new NextRequest('http://localhost/api/secure', {
-      headers: { 'x-role': 'collaborator' },
+    const request = createRequest('/api/secure', {
+      headers: { 'x-role': USER_ROLE_COLLABORATOR },
     });
 
     const response = await secured(request);

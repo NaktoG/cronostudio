@@ -77,6 +77,11 @@ export const config = {
         secret: process.env.CRONOSTUDIO_WEBHOOK_SECRET,
     },
 
+    serviceUser: {
+        id: process.env.CRONOSTUDIO_SERVICE_USER_ID,
+        email: process.env.CRONOSTUDIO_SERVICE_USER_EMAIL,
+    },
+
     // Rate Limiting
     rateLimit: {
         api: {
@@ -118,6 +123,9 @@ export function validateConfig(): void {
         }
         if (config.redis.skipTlsVerify) {
             throw new Error('CRITICAL: Disable REDIS_SKIP_TLS_VERIFY in production to avoid MITM vulnerabilities.');
+        }
+        if (config.webhooks.secret && !config.serviceUser.id && !config.serviceUser.email) {
+            throw new Error('CRITICAL: Configure CRONOSTUDIO_SERVICE_USER_ID or CRONOSTUDIO_SERVICE_USER_EMAIL when using CRONOSTUDIO_WEBHOOK_SECRET.');
         }
     }
 }

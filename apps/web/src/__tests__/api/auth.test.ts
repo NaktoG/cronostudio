@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { createRequest, TEST_IDS } from '@/__tests__/utils/testConstants';
 
 vi.mock('@/lib/observability', () => ({
     emitMetric: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock('jsonwebtoken', () => ({
         sign: vi.fn(() => 'mock-token'),
         verify: vi.fn((token: string) => {
             if (token === 'valid-token') {
-                return { userId: 'user-123', email: 'test@example.com' };
+                return { userId: TEST_IDS.userId, email: 'test@example.com' };
             }
             if (token === 'expired-token') {
                 const error = new Error('Token expired');
@@ -55,7 +55,7 @@ describe('Auth API', () => {
 
             const { POST } = await import('@/app/api/auth/login/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/login', {
+            const request = createRequest('/api/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({
                     email: 'nonexistent@example.com',
@@ -74,7 +74,7 @@ describe('Auth API', () => {
         it('should return 400 for invalid email format', async () => {
             const { POST } = await import('@/app/api/auth/login/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/login', {
+            const request = createRequest('/api/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({
                     email: 'invalid-email',
@@ -92,7 +92,7 @@ describe('Auth API', () => {
         it('should return 400 for weak password', async () => {
             const { POST } = await import('@/app/api/auth/register/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/register', {
+            const request = createRequest('/api/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({
                     email: 'test@example.com',
@@ -109,13 +109,13 @@ describe('Auth API', () => {
         it('should return 409 for duplicate email', async () => {
             // Mock existing user
             vi.mocked(query).mockResolvedValueOnce({
-                rows: [{ id: 'existing-user' }],
+                rows: [{ id: TEST_IDS.existingUserId }],
                 rowCount: 1
             });
 
             const { POST } = await import('@/app/api/auth/register/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/register', {
+            const request = createRequest('/api/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({
                     email: 'existing@example.com',

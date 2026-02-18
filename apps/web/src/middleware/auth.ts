@@ -7,6 +7,7 @@ import { config } from '@/lib/config';
 import { logger } from '@/lib/logger';
 import { getAccessCookie } from '@/lib/authCookies';
 import type { User } from '@/domain/entities/User';
+import { USER_ROLE_OWNER } from '@/domain/value-objects/UserRole';
 
 const JWT_SECRET = config.jwt.secret;
 
@@ -48,7 +49,7 @@ export function withAuth<Context = RouteContext>(handler: RouteHandler<Context>)
       (request as AuthenticatedRequest).user = {
           userId: decoded.userId,
           email: decoded.email,
-          role: decoded.role ?? 'owner',
+          role: decoded.role ?? USER_ROLE_OWNER,
       };
       return handler(request, context);
     } catch (error) {
@@ -71,7 +72,7 @@ export function withOptionalAuth<Context = RouteContext>(handler: RouteHandler<C
         (request as AuthenticatedRequest).user = {
           userId: decoded.userId,
           email: decoded.email,
-          role: decoded.role ?? 'owner',
+          role: decoded.role ?? USER_ROLE_OWNER,
         };
       } catch {
         // Opcional, ignorar errores
@@ -126,7 +127,7 @@ export function getAuthUser(request: NextRequest): JWTPayload | null {
     return {
       userId: payload.userId,
       email: payload.email,
-      role: payload.role ?? 'owner',
+      role: payload.role ?? USER_ROLE_OWNER,
     };
   } catch {
     return null;

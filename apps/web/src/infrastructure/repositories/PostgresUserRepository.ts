@@ -4,6 +4,7 @@
 import { query } from '@/lib/db';
 import { UserRepository } from '@/domain/repositories/UserRepository';
 import { User, CreateUserInput, UserWithPassword } from '@/domain/entities/User';
+import { USER_ROLE_OWNER } from '@/domain/value-objects/UserRole';
 
 export class PostgresUserRepository implements UserRepository {
 
@@ -42,7 +43,7 @@ export class PostgresUserRepository implements UserRepository {
             `INSERT INTO app_users (email, password_hash, name, role)
        VALUES ($1, $2, $3, $4)
        RETURNING id, email, name, role, email_verified_at, created_at, updated_at`,
-            [input.email.toLowerCase(), passwordHash, input.name, input.role ?? 'owner']
+            [input.email.toLowerCase(), passwordHash, input.name, input.role ?? USER_ROLE_OWNER]
         );
 
         return this.toDomain(result.rows[0]);
