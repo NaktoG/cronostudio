@@ -17,9 +17,9 @@
       "main": [
         [
           {
-            "index": 0,
             "node": "Fetch CronoStudio Videos",
-            "type": "main"
+            "type": "main",
+            "index": 0
           }
         ]
       ]
@@ -72,7 +72,7 @@
       "main": [
         [
           {
-            "node": "Map Videos",
+            "node": "Demo Analytics Payload",
             "type": "main",
             "index": 0
           }
@@ -113,6 +113,17 @@
       ]
     },
     "Map Analytics": {
+      "main": [
+        [
+          {
+            "node": "Create Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Demo Analytics Payload": {
       "main": [
         [
           {
@@ -302,7 +313,12 @@
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
             }
           ]
-        }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}"
       },
       "position": [
         560,
@@ -340,6 +356,19 @@
       ],
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3
+    },
+    {
+      "id": "f9d26b39-09fd-44ee-b0c8-0d53e645bbdb",
+      "name": "Demo Analytics Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        260
+      ],
+      "parameters": {
+        "jsCode": "// Demo Analytics Payload\n// Requiere que ya exista al menos 1 video en CronoStudio (ya lo creamos con Sync Videos demo).\nconst res = $items(\"Fetch CronoStudio Videos\", 0).map(i => i.json);\n\nlet videos = [];\nif (res.length === 1 && res[0]?.data && Array.isArray(res[0].data)) videos = res[0].data;\nelse videos = res;\n\nif (!videos.length) {\n  throw new Error(\"No videos found in CronoStudio. Run Sync YouTube Videos first.\");\n}\n\nconst v = videos[0];\nconst today = new Date();\nconst yyyy = today.getUTCFullYear();\nconst mm = String(today.getUTCMonth()+1).padStart(2,'0');\nconst dd = String(today.getUTCDate()).padStart(2,'0');\nconst date = `${yyyy}-${mm}-${dd}`;\n\nreturn [{\n  json: {\n    videoId: v.id,\n    date,\n    views: 12,\n    watchTimeMinutes: 3,\n    avgViewDurationSeconds: 15\n  }\n}];"
+      }
     }
   ],
   "parentFolderId": "gxbXukDSOK73dF3N",
