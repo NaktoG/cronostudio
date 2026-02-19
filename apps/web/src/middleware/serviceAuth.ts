@@ -1,46 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthUser, withSecurityHeaders, type JWTPayload } from '@/middleware/auth';
-import { requireServiceSecret, logWebhookAuthAttempt } from '@/middleware/webhook';
-import { resolveServiceUserId } from '@/lib/serviceUser';
+import { getAuthUser, type JWTPayload, withSecurityHeaders } from '@/middleware/auth';
+import { hasValidServiceSecret, logWebhookAuthAttempt } from '@/middleware/webhook';
 import { logger } from '@/lib/logger';
-import { USER_ROLE_OWNER } from '@/domain/value-objects/UserRole';
+import { resolveServiceUserId } from '@/lib/serviceUser';
 
-export type ServiceAuthResult = {
-    response: NextResponse | null;
-    userId: string | null;
-    viaServiceSecret: boolean;
-    authUser: JWTPayload | null;
+type ServiceAuthOptions = {
+  ownerOnly?: boolean;
+  requireAuth?: boolean;
 };
 
-export async function requireServiceOrOwner(request: NextRequest): Promise<ServiceAuthResult> {
-    const authUser = getAuthUser(request);
-    const webhookGuard = requireServiceSecret(request, Boolean(authUser));
+type ServiceAuthSuccess = {
+  response: null;
+  userId: string;
+  via: 'user' | 'service';
+  authUser?: JWTPayload;
+};
 
-    if (webhookGuard.response) {
-        return { response: webhookGuard.response, userId: null, viaServiceSecret: false, authUser: authUser ?? null };
+type ServiceAuthFailure = {
+  response: NextResponse;
+};
+
+export type ServiceAuthResult = ServiceAuthSuccess | ServiceAuthFailure;
+
+function buildErrorResponse(status: number, error: string): NextResponse {
+  return withSecurityHeaders(NextResponse.json({ error }, { status }));
+}
+
+export async function authenticateUserOrService(request: NextRequest, options: ServiceAuthOptions = {}): Promise<ServiceAuthResult> {
+  const ownerOnly = options.ownerOnly ?? false;
+  const requireAuth = options.requireAuth ?? true;
+
+  const authUser = getAuthUser(request);
+  if (authUser) {
+    if (ownerOnly && authUser.role !== 'owner') {
+      const response = buildErrorResponse(403, 'Forbidden');
+      logWebhookAuthAttempt(request, response.status);
+      return { response };
     }
+    return { response: null, userId: authUser.userId, via: 'user', authUser };
+  }
 
-    if (authUser && authUser.role !== USER_ROLE_OWNER && !webhookGuard.viaServiceSecret) {
-        const response = withSecurityHeaders(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
-        logWebhookAuthAttempt(request, response.status);
-        return { response, userId: null, viaServiceSecret: false, authUser };
-    }
+  if (!requireAuth) {
+    return { response: buildErrorResponse(401, 'No autorizado') };
+  }
 
-    if (webhookGuard.viaServiceSecret) {
-        const serviceUserId = await resolveServiceUserId();
-        if (!serviceUserId) {
-            logger.error('service_user.resolve.failed', { path: request.nextUrl.pathname });
-            const response = withSecurityHeaders(NextResponse.json({ error: 'Service user misconfigured' }, { status: 500 }));
-            return { response, userId: null, viaServiceSecret: true, authUser: authUser ?? null };
-        }
+  if (!hasValidServiceSecret(request)) {
+    const response = buildErrorResponse(401, 'No autorizado');
+    logWebhookAuthAttempt(request, response.status);
+    return { response };
+  }
 
-        return { response: null, userId: serviceUserId, viaServiceSecret: true, authUser: authUser ?? null };
-    }
+  const serviceUserId = await resolveServiceUserId();
+  if (!serviceUserId) {
+    logger.error('service_auth.resolve_user_failed', {
+      reason: 'misconfigured',
+      path: request.nextUrl.pathname,
+    });
+    return { response: buildErrorResponse(500, 'Service user misconfigured') };
+  }
 
-    if (!authUser) {
-        const response = withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
-        return { response, userId: null, viaServiceSecret: false, authUser: null };
-    }
-
-    return { response: null, userId: authUser.userId, viaServiceSecret: false, authUser };
+  return { response: null, userId: serviceUserId, via: 'service' };
 }
