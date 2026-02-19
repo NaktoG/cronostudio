@@ -22,11 +22,6 @@
             "index": 0
           },
           {
-            "node": "Resolve Mode",
-            "type": "main",
-            "index": 0
-          },
-          {
             "node": "Complete Automation Run",
             "type": "main",
             "index": 0
@@ -139,17 +134,6 @@
         [
           {
             "node": "Create Analytics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Resolve Mode": {
-      "main": [
-        [
-          {
-            "node": "Is Demo Mode?",
             "type": "main",
             "index": 0
           }
