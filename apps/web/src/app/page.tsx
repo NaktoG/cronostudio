@@ -10,10 +10,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { PageTransition } from './components/Animations';
 import PriorityActions from './components/PriorityActions';
 import ProductionPipeline from './components/ProductionPipeline';
-import ProductionsList from './components/ProductionsList';
+import ActiveContentList from './components/ActiveContentList';
 import AutomationRuns from './components/AutomationRuns';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
-import type { Production } from '@/domain/types';
 import { UI_COPY } from '@/config/uiCopy';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { productionsService } from '@/services/productionsService';
@@ -21,11 +20,8 @@ import { buildPendingActions } from '@/domain/mappers/pendingActions';
 import { usePipelineFilter } from '@/hooks/usePipelineFilter';
 import type { PendingActionItem } from '@/domain/types/actions';
 import { PIPELINE_STAGE_CONFIG_BY_ID } from '@/domain/configs/pipeline';
-
-const filterProductionsByStage = (productions: Production[], stage: Production['status'] | null): Production[] => {
-  if (!stage) return productions;
-  return productions.filter((production) => production.status === stage);
-};
+import { buildActiveContentItems } from '@/domain/mappers/activeContent';
+import { IDEA_FOCUS_ROUTE, STAGE_ROUTES } from '@/config/routes';
 
 function DashboardContent() {
   const { isAuthenticated } = useAuth();
@@ -75,9 +71,9 @@ function DashboardContent() {
 
   const priorityActions = useMemo<PendingActionItem[]>(() => buildPendingActions(data.productions), [data.productions]);
   const activeProductions = useMemo(() => data.productions.filter(p => p.status !== 'published'), [data.productions]);
-  const filteredProductions = useMemo(
-    () => filterProductionsByStage(activeProductions, activeStage),
-    [activeProductions, activeStage]
+  const activeItems = useMemo(
+    () => buildActiveContentItems({ stage: activeStage, productions: data.productions, ideas: data.ideas }),
+    [activeStage, data.ideas, data.productions]
   );
 
   return (
@@ -165,9 +161,13 @@ function DashboardContent() {
                     onCreateNew={openCreateContent}
                   />
 
-                  <ProductionsList
-                    productions={filteredProductions}
-                    onProductionClick={(production) => router.push(`/productions/${production.id}`)}
+                  <ActiveContentList
+                    items={activeItems}
+                    activeStage={activeStage}
+                    onProductionClick={(id) => router.push(`/productions/${id}`)}
+                    onIdeaClick={(id) => router.push(IDEA_FOCUS_ROUTE(id))}
+                    onCreateIdea={() => router.push(STAGE_ROUTES.idea)}
+                    onViewAllIdeas={() => router.push(STAGE_ROUTES.idea)}
                   />
 
                   <div className="space-y-6">

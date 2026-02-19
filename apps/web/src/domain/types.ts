@@ -71,6 +71,23 @@ export interface IdeaUpdatePayload {
   priority?: number;
 }
 
+export type ActiveContentItem =
+  | {
+      kind: 'idea';
+      id: string;
+      title: string;
+      description?: string | null;
+      status: IdeaStatus;
+      score?: number;
+    }
+  | {
+      kind: 'production';
+      id: string;
+      title: string;
+      stage: ProductionStatus;
+      description?: string | null;
+    };
+
 export interface AutomationRun {
   id: string;
   workflow_name: string;

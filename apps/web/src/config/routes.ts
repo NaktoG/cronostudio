@@ -27,3 +27,5 @@ export const STATUS_ROUTES: Record<ProductionStatus, string> = {
   publishing: '/seo',
   published: '/analytics',
 };
+
+export const IDEA_FOCUS_ROUTE = (id: string): string => `/ideas?focus=${encodeURIComponent(id)}`;

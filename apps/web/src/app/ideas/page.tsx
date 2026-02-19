@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, FormEvent, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Lightbulb, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
@@ -21,9 +22,10 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     archived: { label: UI_COPY.ideas.statusLabels.archived, color: 'bg-gray-800' },
 };
 
-export default function IdeasPage() {
+function IdeasContent() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
+    const searchParams = useSearchParams();
     const { ideas, loading, fetchIdeas, createIdea, updateIdea, deleteIdea } = useIdeas(authFetch, isAuthenticated);
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState<IdeaFormData>({ title: '', description: '', priority: 0 });
@@ -36,6 +38,15 @@ export default function IdeasPage() {
     const [editDescription, setEditDescription] = useState('');
     const [editSubmitting, setEditSubmitting] = useState(false);
     const [editSuccessId, setEditSuccessId] = useState<string | null>(null);
+    const [focusHandled, setFocusHandled] = useState(false);
+
+    const startEdit = useCallback((idea: Idea) => {
+        setEditingId(idea.id);
+        setEditTitle(idea.title);
+        setEditDescription(idea.description ?? '');
+        setLocalError(null);
+        setEditSuccessId(null);
+    }, []);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -43,6 +54,22 @@ export default function IdeasPage() {
         }
         fetchIdeas();
     }, [isAuthenticated, fetchIdeas]);
+
+    useEffect(() => {
+        if (focusHandled) return;
+        const focusId = searchParams?.get('focus');
+        if (!focusId || ideas.length === 0) return;
+
+        const target = ideas.find((idea) => idea.id === focusId);
+        if (!target) return;
+
+        startEdit(target);
+        requestAnimationFrame(() => {
+            const element = document.getElementById(`idea-card-${focusId}`);
+            element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+        setFocusHandled(true);
+    }, [focusHandled, ideas, searchParams, startEdit]);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -68,14 +95,6 @@ export default function IdeasPage() {
 
     const parseIdeaStatus = (value: string): Idea['status'] | null => {
         return IDEA_STATUSES.includes(value as Idea['status']) ? (value as Idea['status']) : null;
-    };
-
-    const startEdit = (idea: Idea) => {
-        setEditingId(idea.id);
-        setEditTitle(idea.title);
-        setEditDescription(idea.description ?? '');
-        setLocalError(null);
-        setEditSuccessId(null);
     };
 
     const cancelEdit = () => {
@@ -129,10 +148,9 @@ export default function IdeasPage() {
     };
 
     return (
-        <ProtectedRoute>
-            <div className="min-h-screen flex flex-col">
-                <Header />
-                <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
+        <div className="min-h-screen flex flex-col">
+            <Header />
+            <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
                     <motion.div
                         className="flex items-center justify-between mb-8"
                         initial={{ opacity: 0, y: -20 }}
@@ -184,6 +202,7 @@ export default function IdeasPage() {
                             {ideas.map((idea) => (
                                 <motion.div
                                     key={idea.id}
+                                    id={`idea-card-${idea.id}`}
                                     className="surface-panel glow-hover p-6 transition-all group"
                                     whileHover={{ y: -4 }}
                                 >
@@ -386,7 +405,25 @@ export default function IdeasPage() {
                         </motion.div>
                     )}
                 </AnimatePresence>
-            </div>
+        </div>
+    );
+}
+
+export default function IdeasPage() {
+    return (
+        <ProtectedRoute>
+            <Suspense
+                fallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+                            <p className="text-slate-300">{UI_COPY.ideas.loading}</p>
+                        </div>
+                    </div>
+                }
+            >
+                <IdeasContent />
+            </Suspense>
         </ProtectedRoute>
     );
 }

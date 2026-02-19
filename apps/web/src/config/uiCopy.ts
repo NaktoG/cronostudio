@@ -69,6 +69,14 @@ export const UI_COPY = {
     emptyDescription: 'Usa “Nuevo contenido” para comenzar.',
     openLabel: 'Abrir contenido',
   },
+  activeContent: {
+    ideasEmptyTitle: 'Sin ideas activas',
+    ideasEmptyDescription: 'Crea tu primera idea para empezar.',
+    createIdea: 'Crear idea',
+    viewAllIdeas: 'Ver todas',
+    openIdea: 'Abrir idea',
+    ideaFallbackDescription: 'Sin descripción disponible',
+  },
   automationRuns: {
     title: 'Automatizaciones',
     itemsLabel: 'runs',
@@ -101,6 +109,7 @@ export const UI_COPY = {
     title: 'Ideas',
     description: 'Apunta y gestiona tus ideas para videos',
     createLabel: 'Nueva Idea',
+    loading: 'Cargando ideas...',
     emptyTitle: 'No hay ideas todavia',
     emptyDescription: 'Apunta tu primera idea para un video.',
     form: {
