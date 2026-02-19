@@ -2,15 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { AlertTriangle, Bot, CheckCircle2, Loader2 } from 'lucide-react';
-
-export interface AutomationRun {
-    id: string;
-    workflow_name: string;
-    status: 'running' | 'completed' | 'error';
-    started_at: string;
-    completed_at?: string;
-    error_message?: string;
-}
+import type { AutomationRun } from '@/domain/types';
+import { UI_COPY } from '@/config/uiCopy';
 
 interface AutomationRunsProps {
     runs: AutomationRun[];
@@ -18,10 +11,14 @@ interface AutomationRunsProps {
 }
 
 const STATUS_CONFIG = {
-    running: { dot: 'bg-yellow-500 animate-pulse', icon: Loader2, label: 'En progreso' },
-    completed: { dot: 'bg-emerald-500', icon: CheckCircle2, label: 'Completado' },
-    error: { dot: 'bg-red-500', icon: AlertTriangle, label: 'Error' },
+    running: { dot: 'bg-yellow-500 animate-pulse', icon: Loader2, label: UI_COPY.automationRuns.statusLabels.running },
+    completed: { dot: 'bg-emerald-500', icon: CheckCircle2, label: UI_COPY.automationRuns.statusLabels.completed },
+    error: { dot: 'bg-red-500', icon: AlertTriangle, label: UI_COPY.automationRuns.statusLabels.error },
 };
+
+type AutomationRunStatus = keyof typeof STATUS_CONFIG;
+
+const isAutomationRunStatus = (value: string): value is AutomationRunStatus => value in STATUS_CONFIG;
 
 function formatTimeAgo(dateString: string): string {
     const date = new Date(dateString);
@@ -29,10 +26,10 @@ function formatTimeAgo(dateString: string): string {
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return 'ahora';
-    if (diffMins < 60) return `hace ${diffMins}m`;
+    if (diffMins < 1) return UI_COPY.automationRuns.time.now;
+    if (diffMins < 60) return UI_COPY.automationRuns.time.minutesAgo.replace('{minutes}', String(diffMins));
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `hace ${diffHours}h`;
+    if (diffHours < 24) return UI_COPY.automationRuns.time.hoursAgo.replace('{hours}', String(diffHours));
     return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
 }
 
@@ -59,8 +56,8 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
         >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/70">
-                <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Automatizaciones</span>
-                <span className="text-xs text-slate-400">{runs.length} runs</span>
+                <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{UI_COPY.automationRuns.title}</span>
+                <span className="text-xs text-slate-400">{runs.length} {UI_COPY.automationRuns.itemsLabel}</span>
             </div>
 
             {/* Runs list */}
@@ -79,13 +76,14 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                             <Bot className="w-4 h-4" />
                         </span>
                         <div>
-                            <span className="text-base block">Sin ejecuciones recientes</span>
-                            <span className="text-sm text-slate-400">Los agentes están listos</span>
+                            <span className="text-base block">{UI_COPY.automationRuns.emptyTitle}</span>
+                            <span className="text-sm text-slate-400">{UI_COPY.automationRuns.emptyDescription}</span>
                         </div>
                     </motion.div>
                 ) : (
                     runs.slice(0, 3).map((run) => {
-                        const config = STATUS_CONFIG[run.status];
+                        const statusKey = isAutomationRunStatus(run.status) ? run.status : 'running';
+                        const config = STATUS_CONFIG[statusKey];
                         const Icon = config.icon;
 
                         return (

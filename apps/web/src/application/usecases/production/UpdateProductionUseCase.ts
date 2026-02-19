@@ -32,6 +32,10 @@ export class UpdateProductionUseCase {
             throw new Error('SEO score must be between 0 and 100');
         }
 
+        if (updates.scheduledPublishAt && isNaN(updates.scheduledPublishAt.getTime())) {
+            throw new Error('Invalid scheduled publish date format');
+        }
+
         const production = await this.productionRepository.update(productionId, userId, updates);
 
         if (!production) {

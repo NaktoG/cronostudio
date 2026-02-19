@@ -13,6 +13,7 @@ export interface Production {
     readonly status: ProductionStatus;
     readonly priority: number;
     readonly targetDate: Date | null;
+    readonly scheduledPublishAt: Date | null;
     readonly publishedAt: Date | null;
     readonly scriptStatus: string | null;
     readonly thumbnailStatus: string | null;
@@ -33,6 +34,7 @@ export interface CreateProductionInput {
     ideaId?: string | null;
     priority?: number;
     targetDate?: Date | null;
+    scheduledPublishAt?: Date | null;
 }
 
 export interface UpdateProductionInput {
@@ -41,6 +43,7 @@ export interface UpdateProductionInput {
     status?: ProductionStatus;
     priority?: number;
     targetDate?: Date | null;
+    scheduledPublishAt?: Date | null;
     scriptStatus?: string | null;
     thumbnailStatus?: string | null;
     seoScore?: number | null;
@@ -57,6 +60,7 @@ export function createProduction(input: CreateProductionInput): Omit<Production,
         status: 'idea',
         priority: input.priority ?? 0,
         targetDate: input.targetDate ?? null,
+        scheduledPublishAt: input.scheduledPublishAt ?? null,
         publishedAt: null,
         scriptStatus: null,
         thumbnailStatus: null,

@@ -101,8 +101,8 @@ export class PostgresProductionRepository implements ProductionRepository {
 
     async create(input: CreateProductionInput): Promise<Production> {
         const result = await query(
-            `INSERT INTO productions (user_id, channel_id, idea_id, title, description, priority, target_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `INSERT INTO productions (user_id, channel_id, idea_id, title, description, priority, target_date, scheduled_publish_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
             [
                 input.userId,
@@ -111,7 +111,8 @@ export class PostgresProductionRepository implements ProductionRepository {
                 input.title,
                 input.description ?? null,
                 input.priority ?? 0,
-                input.targetDate ?? null
+                input.targetDate ?? null,
+                input.scheduledPublishAt ?? null
             ]
         );
 
@@ -129,6 +130,7 @@ export class PostgresProductionRepository implements ProductionRepository {
             status: 'status',
             priority: 'priority',
             targetDate: 'target_date',
+            scheduledPublishAt: 'scheduled_publish_at',
             scriptStatus: 'script_status',
             thumbnailStatus: 'thumbnail_status',
             seoScore: 'seo_score',
@@ -238,6 +240,7 @@ export class PostgresProductionRepository implements ProductionRepository {
             status: row.status as ProductionStatus,
             priority: row.priority as number,
             targetDate: row.target_date ? new Date(row.target_date as string) : null,
+            scheduledPublishAt: row.scheduled_publish_at ? new Date(row.scheduled_publish_at as string) : null,
             publishedAt: row.published_at ? new Date(row.published_at as string) : null,
             scriptStatus: row.script_status as string | null,
             thumbnailStatus: row.thumbnail_status as string | null,

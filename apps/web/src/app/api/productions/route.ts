@@ -28,6 +28,7 @@ const CreateProductionSchema = z.object({
     channelId: z.string().uuid().optional(),
     ideaId: z.string().uuid().optional(),
     targetDate: z.string().optional(),
+    scheduledPublishAt: z.string().nullable().optional(),
     priority: z.number().int().min(0).max(10).optional(),
 });
 
@@ -37,6 +38,7 @@ const UpdateProductionSchema = z.object({
     status: z.enum(PRODUCTION_STATUSES).optional(),
     priority: z.number().int().min(0).max(10).optional(),
     targetDate: z.string().optional().nullable(),
+    scheduledPublishAt: z.string().optional().nullable(),
 });
 
 // Helper to extract userId
@@ -115,6 +117,7 @@ export const POST = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(as
             ideaId: data.ideaId,
             priority: data.priority,
             targetDate: data.targetDate,
+            scheduledPublishAt: data.scheduledPublishAt ?? null,
         });
 
         return withSecurityHeaders(NextResponse.json(production, { status: 201 }));
@@ -162,6 +165,7 @@ export const PUT = requireRoles([USER_ROLE_OWNER])(rateLimit(API_RATE_LIMIT)(asy
                 status: data.status as ProductionStatus | undefined,
                 priority: data.priority,
                 targetDate: data.targetDate ? new Date(data.targetDate) : undefined,
+                scheduledPublishAt: data.scheduledPublishAt ? new Date(data.scheduledPublishAt) : undefined,
             },
         });
 

@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   BarChart3,
+  Calendar,
   FileText,
   Image as ImageIcon,
   LayoutDashboard,
@@ -19,15 +20,17 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { UI_COPY } from '@/config/uiCopy';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/ideas', label: 'Ideas', icon: Lightbulb },
-  { href: '/scripts', label: 'Guiones', icon: FileText },
-  { href: '/thumbnails', label: 'Miniaturas', icon: ImageIcon },
-  { href: '/seo', label: 'SEO', icon: Search },
-  { href: '/channels', label: 'Canales', icon: Tv },
-  { href: '/analytics', label: 'Analítica', icon: BarChart3 },
+  { href: '/', label: UI_COPY.navigation.dashboard, icon: LayoutDashboard },
+  { href: '/ideas', label: UI_COPY.navigation.ideas, icon: Lightbulb },
+  { href: '/scripts', label: UI_COPY.navigation.scripts, icon: FileText },
+  { href: '/thumbnails', label: UI_COPY.navigation.thumbnails, icon: ImageIcon },
+  { href: '/seo', label: UI_COPY.navigation.seo, icon: Search },
+  { href: '/calendar', label: UI_COPY.navigation.calendar, icon: Calendar },
+  { href: '/channels', label: UI_COPY.navigation.channels, icon: Tv },
+  { href: '/analytics', label: UI_COPY.navigation.analytics, icon: BarChart3 },
 ];
 
 export default function Header() {
@@ -120,7 +123,7 @@ export default function Header() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <LogOut className="w-4 h-4" />
-                  Salir
+                  {UI_COPY.auth.logout}
                 </motion.button>
               </div>
             ) : (
@@ -130,7 +133,7 @@ export default function Header() {
                     className="px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 transition-colors"
                     whileHover={{ scale: 1.02 }}
                   >
-                    Iniciar Sesión
+                    {UI_COPY.auth.login}
                   </motion.button>
                 </Link>
                 <Link href="/register">
@@ -143,7 +146,7 @@ export default function Header() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    Registrarse
+                    {UI_COPY.auth.register}
                   </motion.button>
                 </Link>
               </div>
@@ -180,7 +183,7 @@ export default function Header() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold">{user?.name}</p>
-                    <p className="text-xs text-slate-400">Mi cuenta</p>
+                    <p className="text-xs text-slate-400">{UI_COPY.auth.accountLabel}</p>
                   </div>
                   <Settings className="w-4 h-4 text-slate-400" />
                 </Link>

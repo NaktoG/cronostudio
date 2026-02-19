@@ -12,6 +12,7 @@ export interface CreateProductionRequest {
     ideaId?: string;
     priority?: number;
     targetDate?: string;
+    scheduledPublishAt?: string | null;
 }
 
 export class CreateProductionUseCase {
@@ -36,6 +37,14 @@ export class CreateProductionUseCase {
             }
         }
 
+        let scheduledPublishAt: Date | null = null;
+        if (request.scheduledPublishAt) {
+            scheduledPublishAt = new Date(request.scheduledPublishAt);
+            if (isNaN(scheduledPublishAt.getTime())) {
+                throw new Error('Invalid scheduled publish date format');
+            }
+        }
+
         // Create production
         const production = await this.productionRepository.create({
             userId: request.userId,
@@ -45,6 +54,7 @@ export class CreateProductionUseCase {
             ideaId: request.ideaId,
             priority: request.priority ?? 0,
             targetDate,
+            scheduledPublishAt,
         });
 
         return production;

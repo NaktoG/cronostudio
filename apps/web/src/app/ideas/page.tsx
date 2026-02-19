@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { Lightbulb, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
@@ -8,63 +8,37 @@ import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
-
-interface Idea {
-    id: string;
-    title: string;
-    description: string | null;
-    status: 'draft' | 'approved' | 'in_production' | 'completed' | 'archived';
-    priority: number;
-    tags: string[];
-    channel_name: string | null;
-    created_at: string;
-}
+import type { Idea, IdeaFormData, IdeaUpdatePayload } from '@/domain/types';
+import { IDEA_STATUSES } from '@/domain/types';
+import { UI_COPY } from '@/config/uiCopy';
+import { useIdeas } from '@/hooks/useIdeas';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    draft: { label: 'Borrador', color: 'bg-gray-600' },
-    approved: { label: 'Aprobada', color: 'bg-green-600' },
-    in_production: { label: 'En Producción', color: 'bg-yellow-600' },
-    completed: { label: 'Completada', color: 'bg-blue-600' },
-    archived: { label: 'Archivada', color: 'bg-gray-800' },
+    draft: { label: UI_COPY.ideas.statusLabels.draft, color: 'bg-gray-600' },
+    approved: { label: UI_COPY.ideas.statusLabels.approved, color: 'bg-green-600' },
+    in_production: { label: UI_COPY.ideas.statusLabels.in_production, color: 'bg-yellow-600' },
+    completed: { label: UI_COPY.ideas.statusLabels.completed, color: 'bg-blue-600' },
+    archived: { label: UI_COPY.ideas.statusLabels.archived, color: 'bg-gray-800' },
 };
 
 export default function IdeasPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
-    const [ideas, setIdeas] = useState<Idea[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { ideas, loading, fetchIdeas, createIdea, updateIdea, deleteIdea } = useIdeas(authFetch, isAuthenticated);
     const [showModal, setShowModal] = useState(false);
-    const [formData, setFormData] = useState({ title: '', description: '', priority: 0 });
+    const [formData, setFormData] = useState<IdeaFormData>({ title: '', description: '', priority: 0 });
     const [submitting, setSubmitting] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [localError, setLocalError] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editTitle, setEditTitle] = useState('');
     const [editDescription, setEditDescription] = useState('');
     const [editSubmitting, setEditSubmitting] = useState(false);
-
-    const fetchIdeas = useCallback(async () => {
-        try {
-            setLoading(true);
-            if (!isAuthenticated) {
-                setIdeas([]);
-                return;
-            }
-            const response = await authFetch('/api/ideas');
-            if (response.ok) {
-                setIdeas(await response.json());
-            }
-        } catch (err) {
-            console.error('Error:', err);
-        } finally {
-            setLoading(false);
-        }
-    }, [isAuthenticated, authFetch]);
+    const [editSuccessId, setEditSuccessId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!isAuthenticated) {
-            setLoading(false);
             return;
         }
         fetchIdeas();
@@ -73,77 +47,69 @@ export default function IdeasPage() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
-        setError(null);
+        setLocalError(null);
         try {
-            const response = await authFetch('/api/ideas', {
-                method: 'POST',
-                body: JSON.stringify(formData),
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Error al crear idea');
-            }
+            await createIdea(formData);
             setShowModal(false);
             setFormData({ title: '', description: '', priority: 0 });
             await fetchIdeas();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Error');
+            setLocalError(err instanceof Error ? err.message : UI_COPY.ideas.form.submitError);
         } finally {
             setSubmitting(false);
         }
     };
 
-    const updateStatus = async (id: string, status: string) => {
-        await authFetch(`/api/ideas?id=${id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ status }),
-        });
+    const updateStatus = async (id: string, status: Idea['status']) => {
+        const payload: IdeaUpdatePayload = { status };
+        await updateIdea(id, payload);
         await fetchIdeas();
+    };
+
+    const parseIdeaStatus = (value: string): Idea['status'] | null => {
+        return IDEA_STATUSES.includes(value as Idea['status']) ? (value as Idea['status']) : null;
     };
 
     const startEdit = (idea: Idea) => {
         setEditingId(idea.id);
         setEditTitle(idea.title);
         setEditDescription(idea.description ?? '');
-        setError(null);
+        setLocalError(null);
+        setEditSuccessId(null);
     };
 
     const cancelEdit = () => {
         setEditingId(null);
         setEditTitle('');
         setEditDescription('');
-        setError(null);
+        setLocalError(null);
+        setEditSuccessId(null);
     };
 
     const saveEdit = async (idea: Idea) => {
         if (!editTitle.trim()) {
-            setError('El título es obligatorio');
+            setLocalError(UI_COPY.ideas.edit.requiredTitle);
             return;
         }
         setEditSubmitting(true);
-        setError(null);
+        setLocalError(null);
         try {
-            const response = await authFetch(`/api/ideas?id=${idea.id}`, {
-                method: 'PUT',
-                body: JSON.stringify({
-                    title: editTitle.trim(),
-                    description: editDescription.trim() ? editDescription.trim() : null,
-                }),
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Error al actualizar idea');
-            }
+            const payload: IdeaUpdatePayload = {
+                title: editTitle.trim(),
+                description: editDescription.trim() ? editDescription.trim() : null,
+            };
+            await updateIdea(idea.id, payload);
             cancelEdit();
+            setEditSuccessId(idea.id);
             await fetchIdeas();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Error');
+            setLocalError(err instanceof Error ? err.message : UI_COPY.ideas.edit.updateError);
         } finally {
             setEditSubmitting(false);
         }
     };
 
-    const deleteIdea = async (id: string) => {
+    const requestDelete = async (id: string) => {
         const target = ideas.find((idea) => idea.id === id) || null;
         setDeleteTarget(target);
     };
@@ -152,17 +118,11 @@ export default function IdeasPage() {
         if (!deleteTarget) return;
         setDeleteSubmitting(true);
         try {
-            const response = await authFetch(`/api/ideas?id=${deleteTarget.id}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Error al eliminar idea');
-            }
+            await deleteIdea(deleteTarget.id);
             setDeleteTarget(null);
             await fetchIdeas();
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Error');
+            setLocalError(err instanceof Error ? err.message : UI_COPY.ideas.form.submitError);
         } finally {
             setDeleteSubmitting(false);
         }
@@ -184,9 +144,9 @@ export default function IdeasPage() {
                                 <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                     <Lightbulb className="w-5 h-5" />
                                 </span>
-                                <h2 className="text-4xl font-semibold text-white">Ideas</h2>
+                                <h2 className="text-4xl font-semibold text-white">{UI_COPY.ideas.title}</h2>
                             </div>
-                            <p className="text-slate-300">Apunta y gestiona tus ideas para videos</p>
+                            <p className="text-slate-300">{UI_COPY.ideas.description}</p>
                         </div>
                         <motion.button
                             onClick={() => setShowModal(true)}
@@ -199,7 +159,7 @@ export default function IdeasPage() {
                             whileTap={{ scale: 0.98 }}
                         >
                             <Plus className="w-4 h-4" />
-                            Nueva Idea
+                            {UI_COPY.ideas.createLabel}
                         </motion.button>
                     </motion.div>
 
@@ -212,8 +172,8 @@ export default function IdeasPage() {
                             <div className="w-20 h-20 mx-auto mb-6 bg-gray-900/60 border border-gray-800 rounded-full flex items-center justify-center text-yellow-400">
                                 <Lightbulb className="w-8 h-8" />
                             </div>
-                            <h3 className="text-xl font-semibold text-white mb-2">No hay ideas todavia</h3>
-                            <p className="text-slate-300">Apunta tu primera idea para un video.</p>
+                            <h3 className="text-xl font-semibold text-white mb-2">{UI_COPY.ideas.emptyTitle}</h3>
+                            <p className="text-slate-300">{UI_COPY.ideas.emptyDescription}</p>
                         </motion.div>
                     ) : (
                         <motion.div
@@ -245,7 +205,7 @@ export default function IdeasPage() {
                                                 value={editDescription}
                                                 onChange={(e) => setEditDescription(e.target.value)}
                                                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-yellow-400 focus:outline-none h-20"
-                                                placeholder="Descripción (opcional)"
+                                                placeholder={UI_COPY.ideas.form.descriptionLabel}
                                             />
                                         </div>
                                     ) : (
@@ -256,19 +216,29 @@ export default function IdeasPage() {
                                             {idea.description && (
                                                 <p className="text-gray-400 text-sm mb-4 line-clamp-2">{idea.description}</p>
                                             )}
+                                            {editSuccessId === idea.id && (
+                                                <p className="text-xs text-emerald-400" aria-live="polite">
+                                                    {UI_COPY.ideas.edit.successLabel}
+                                                </p>
+                                            )}
                                         </>
                                     )}
                                     <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-800">
                                         <select
                                             value={idea.status}
-                                            onChange={(e) => updateStatus(idea.id, e.target.value)}
+                                            onChange={(e) => {
+                                                const nextStatus = parseIdeaStatus(e.target.value);
+                                                if (nextStatus) {
+                                                    updateStatus(idea.id, nextStatus);
+                                                }
+                                            }}
                                             className="flex-1 text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white"
                                         >
-                                            <option value="draft">Borrador</option>
-                                            <option value="approved">Aprobada</option>
-                                            <option value="in_production">En Producción</option>
-                                            <option value="completed">Completada</option>
-                                            <option value="archived">Archivada</option>
+                                            <option value="draft">{UI_COPY.ideas.statusLabels.draft}</option>
+                                            <option value="approved">{UI_COPY.ideas.statusLabels.approved}</option>
+                                            <option value="in_production">{UI_COPY.ideas.statusLabels.in_production}</option>
+                                            <option value="completed">{UI_COPY.ideas.statusLabels.completed}</option>
+                                            <option value="archived">{UI_COPY.ideas.statusLabels.archived}</option>
                                         </select>
                                         {editingId === idea.id ? (
                                             <>
@@ -277,13 +247,13 @@ export default function IdeasPage() {
                                                     disabled={editSubmitting}
                                                     className="text-yellow-400 hover:text-yellow-300 text-xs px-2 disabled:opacity-50"
                                                 >
-                                                    Guardar
+                                                    {UI_COPY.ideas.edit.saveLabel}
                                                 </button>
                                                 <button
                                                     onClick={cancelEdit}
                                                     className="text-slate-400 hover:text-slate-300 text-xs px-2"
                                                 >
-                                                    Cancelar
+                                                    {UI_COPY.ideas.edit.cancelLabel}
                                                 </button>
                                             </>
                                         ) : (
@@ -292,13 +262,13 @@ export default function IdeasPage() {
                                                     onClick={() => startEdit(idea)}
                                                     className="text-yellow-400 hover:text-yellow-300 text-xs px-2"
                                                 >
-                                                    Editar
+                                                    {UI_COPY.ideas.edit.editLabel}
                                                 </button>
                                                 <button
-                                                    onClick={() => deleteIdea(idea.id)}
+                                                    onClick={() => requestDelete(idea.id)}
                                                     className="text-red-400 hover:text-red-300 text-xs px-2"
                                                 >
-                                                    Eliminar
+                                                    {UI_COPY.ideas.delete.label}
                                                 </button>
                                             </>
                                         )}
@@ -326,31 +296,31 @@ export default function IdeasPage() {
                                 exit={{ scale: 0.9 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-2xl font-bold text-white mb-6">Nueva Idea</h3>
-                                {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+                                <h3 className="text-2xl font-bold text-white mb-6">{UI_COPY.ideas.createLabel}</h3>
+                                {localError && <p className="text-red-400 text-sm mb-4" aria-live="polite">{localError}</p>}
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Título</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{UI_COPY.ideas.form.titleLabel}</label>
                                         <input
                                             type="text"
                                             value={formData.title}
                                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
-                                            placeholder="Idea para video..."
+                                            placeholder={UI_COPY.ideas.form.titleLabel}
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Descripción</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{UI_COPY.ideas.form.descriptionLabel}</label>
                                         <textarea
                                             value={formData.description}
                                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 h-24"
-                                            placeholder="Detalles de la idea..."
+                                            placeholder={UI_COPY.ideas.form.descriptionLabel}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Prioridad (0-10)</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{UI_COPY.ideas.form.priorityLabel}</label>
                                         <input
                                             type="number"
                                             min="0"
@@ -362,10 +332,10 @@ export default function IdeasPage() {
                                     </div>
                                     <div className="flex gap-3 pt-4">
                                         <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">
-                                            Cancelar
+                                            {UI_COPY.ideas.form.cancel}
                                         </button>
                                         <button type="submit" disabled={submitting} className="flex-1 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-50">
-                                            {submitting ? 'Creando...' : 'Crear Idea'}
+                                            {submitting ? UI_COPY.ideas.form.creating : UI_COPY.ideas.form.create}
                                         </button>
                                     </div>
                                 </form>
@@ -390,10 +360,10 @@ export default function IdeasPage() {
                                 exit={{ scale: 0.95, opacity: 0 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-xl font-bold text-white mb-2">Eliminar idea</h3>
+                                <h3 className="text-xl font-bold text-white mb-2">{UI_COPY.ideas.delete.title}</h3>
                                 <p className="text-gray-400 text-sm mb-6">
-                                    ¿Seguro que quieres eliminar <span className="text-white font-semibold">{deleteTarget.title}</span>?
-                                    Esta acción no se puede deshacer.
+                                    {UI_COPY.ideas.delete.confirm} <span className="text-white font-semibold">{deleteTarget.title}</span>?
+                                    {UI_COPY.ideas.delete.confirmSuffix}
                                 </p>
                                 <div className="flex gap-3">
                                     <button
@@ -401,7 +371,7 @@ export default function IdeasPage() {
                                         onClick={() => setDeleteTarget(null)}
                                         className="flex-1 py-2.5 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
                                     >
-                                        Cancelar
+                                        {UI_COPY.ideas.form.cancel}
                                     </button>
                                     <button
                                         type="button"
@@ -409,7 +379,7 @@ export default function IdeasPage() {
                                         disabled={deleteSubmitting}
                                         className="flex-1 py-2.5 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-400 disabled:opacity-60"
                                     >
-                                        {deleteSubmitting ? 'Eliminando...' : 'Eliminar'}
+                                        {deleteSubmitting ? UI_COPY.ideas.delete.deleting : UI_COPY.ideas.delete.label}
                                     </button>
                                 </div>
                             </motion.div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Instagram, Linkedin, Music2, Plus, Sparkles } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -10,194 +10,75 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { PageTransition } from './components/Animations';
 import PriorityActions from './components/PriorityActions';
 import ProductionPipeline from './components/ProductionPipeline';
-import ProductionsList, { Production } from './components/ProductionsList';
-import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
+import ProductionsList from './components/ProductionsList';
+import AutomationRuns from './components/AutomationRuns';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
+import type { Production } from '@/domain/types';
+import { UI_COPY } from '@/config/uiCopy';
+import { useDashboardData } from '@/hooks/useDashboardData';
+import { productionsService } from '@/services/productionsService';
+import { buildPendingActions } from '@/domain/mappers/pendingActions';
+import { usePipelineFilter } from '@/hooks/usePipelineFilter';
+import type { PendingActionItem } from '@/domain/types/actions';
+import { PIPELINE_STAGE_CONFIG_BY_ID } from '@/domain/configs/pipeline';
 
-interface PipelineStats {
-  idea: number;
-  scripting: number;
-  recording: number;
-  editing: number;
-  shorts: number;
-  publishing: number;
-  published: number;
-}
-
-interface PriorityAction {
-  id: string;
-  type: 'script' | 'seo' | 'thumbnail' | 'short' | 'publish';
-  title: string;
-  productionTitle: string;
-  productionId: string;
-  urgency: 'high' | 'medium' | 'low';
-}
-
-function generatePriorityActions(productions: Production[]): PriorityAction[] {
-  const actions: PriorityAction[] = [];
-  for (const prod of productions) {
-    if (prod.status === 'scripting' && (!prod.script_status || prod.script_status === 'draft')) {
-      actions.push({ id: prod.id, type: 'script', title: 'Continuar guión', productionTitle: prod.title, productionId: prod.id, urgency: 'high' });
-    }
-    if ((prod.status === 'editing' || prod.status === 'shorts') && (!prod.thumbnail_status || prod.thumbnail_status === 'pending')) {
-      actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: 'Subir miniatura', productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
-    }
-    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < 60)) {
-      actions.push({ id: `${prod.id}-seo`, type: 'seo', title: 'Optimizar SEO', productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
-    }
-    if (prod.status === 'shorts' && prod.shorts_count === 0) {
-      actions.push({ id: `${prod.id}-short`, type: 'short', title: 'Crear shorts', productionTitle: prod.title, productionId: prod.id, urgency: 'low' });
-    }
-  }
-  const urgencyOrder = { high: 0, medium: 1, low: 2 };
-  return actions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]).slice(0, 5);
-}
+const filterProductionsByStage = (productions: Production[], stage: Production['status'] | null): Production[] => {
+  if (!stage) return productions;
+  return productions.filter((production) => production.status === stage);
+};
 
 function DashboardContent() {
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [productions, setProductions] = useState<Production[]>([]);
-  const [pipelineStats, setPipelineStats] = useState<PipelineStats>({
-    idea: 0, scripting: 0, recording: 0, editing: 0, shorts: 0, publishing: 0, published: 0
-  });
-  const [runs, setRuns] = useState<AutomationRun[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, fetchData } = useDashboardData(authFetch, isAuthenticated);
+  const { activeStage, setStageFilter, clearStageFilter } = usePipelineFilter();
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [ideasCount, setIdeasCount] = useState(0);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [productionsRes, ideasRes, runsRes] = await Promise.all([
-        authFetch('/api/productions?stats=true'),
-        authFetch('/api/ideas'),
-        authFetch('/api/automation-runs')
-      ]);
-
-      if (productionsRes.ok) {
-        const data = await productionsRes.json();
-        setProductions(data.productions || []);
-        if (data.pipeline) {
-          setPipelineStats({
-            idea: data.pipeline.idea || 0,
-            scripting: data.pipeline.scripting || 0,
-            recording: data.pipeline.recording || 0,
-            editing: data.pipeline.editing || 0,
-            shorts: data.pipeline.shorts || 0,
-            publishing: data.pipeline.publishing || 0,
-            published: data.pipeline.published || 0,
-          });
-        }
-      }
-
-      if (ideasRes.ok) {
-        const ideasData = await ideasRes.json();
-        setIdeasCount(Array.isArray(ideasData) ? ideasData.length : 0);
-      }
-      if (runsRes.ok) {
-        const runsData = await runsRes.json();
-        setRuns(Array.isArray(runsData) ? runsData : []);
-      } else {
-        setRuns([]);
-      }
-    } catch (e) {
-      console.error('Error:', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [authFetch]);
+  const openCreateContent = useCallback(() => {
+    setCreateError(null);
+    setShowModal(true);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) fetchData();
-    else setLoading(false);
+    else {
+      // handled by hook
+    }
   }, [isAuthenticated, fetchData]);
 
   useEffect(() => {
     if (searchParams?.get('new') === '1') {
-      setShowModal(true);
+      openCreateContent();
     }
-  }, [searchParams]);
+  }, [openCreateContent, searchParams]);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
+    setIsCreating(true);
+    setCreateError(null);
     try {
-      const res = await authFetch('/api/productions', {
-        method: 'POST',
-        body: JSON.stringify({ title: newTitle }),
-      });
-      if (res.ok) {
-        setNewTitle('');
-        setShowModal(false);
-        fetchData();
-      }
+      await productionsService.create(authFetch, newTitle.trim());
+      setNewTitle('');
+      setShowModal(false);
+      fetchData();
     } catch (e) {
-      console.error('Error:', e);
+      setCreateError(e instanceof Error ? e.message : UI_COPY.errors.fallbackDescription);
+    } finally {
+      setIsCreating(false);
     }
   };
 
-  const priorityActions = generatePriorityActions(productions);
-  const activeProductions = productions.filter(p => p.status !== 'published');
-
-  const getStageRoute = (stage: keyof PipelineStats) => {
-    switch (stage) {
-      case 'idea':
-        return '/ideas';
-      case 'scripting':
-        return '/scripts';
-      case 'recording':
-        return '/videos';
-      case 'editing':
-        return '/thumbnails';
-      case 'shorts':
-        return '/videos';
-      case 'publishing':
-        return '/seo';
-      case 'published':
-        return '/analytics';
-      default:
-        return '/videos';
-    }
-  };
-
-  const getProductionRoute = (production: Production) => {
-    switch (production.status) {
-      case 'idea':
-        return '/ideas';
-      case 'scripting':
-        return '/scripts';
-      case 'recording':
-        return '/videos';
-      case 'editing':
-        return '/thumbnails';
-      case 'shorts':
-        return '/videos';
-      case 'publishing':
-        return '/seo';
-      case 'published':
-        return '/analytics';
-      default:
-        return '/videos';
-    }
-  };
-
-  const getActionRoute = (action: PriorityAction) => {
-    switch (action.type) {
-      case 'script':
-        return '/scripts';
-      case 'seo':
-        return '/seo';
-      case 'thumbnail':
-        return '/thumbnails';
-      case 'short':
-        return '/videos';
-      case 'publish':
-        return '/analytics';
-      default:
-        return '/videos';
-    }
-  };
+  const priorityActions = useMemo<PendingActionItem[]>(() => buildPendingActions(data.productions), [data.productions]);
+  const activeProductions = useMemo(() => data.productions.filter(p => p.status !== 'published'), [data.productions]);
+  const filteredProductions = useMemo(
+    () => filterProductionsByStage(activeProductions, activeStage),
+    [activeProductions, activeStage]
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -215,17 +96,17 @@ function DashboardContent() {
                 <div>
                   <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-yellow-400/90 mb-3">
                     <Sparkles className="w-4 h-4" />
-                    Control de produccion
+                    {UI_COPY.dashboard.kicker}
                   </div>
                   <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-white mb-3">
-                    Hoy en tu produccion
+                    {UI_COPY.dashboard.title}
                   </h1>
                   <p className="text-base md:text-lg text-slate-300 max-w-2xl">
-                    Tu centro de comando para planificar, producir y publicar contenido con claridad.
+                    {UI_COPY.dashboard.description}
                   </p>
                 </div>
                 <motion.button
-                  onClick={() => setShowModal(true)}
+                  onClick={openCreateContent}
                   className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-black rounded-lg"
                   style={{
                     background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
@@ -235,7 +116,7 @@ function DashboardContent() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <Plus className="w-4 h-4" />
-                  Nuevo contenido
+                  {UI_COPY.dashboard.createLabel}
                 </motion.button>
               </div>
             </motion.div>
@@ -252,25 +133,45 @@ function DashboardContent() {
               <div className="space-y-8">
                 {/* Pipeline */}
                 <ProductionPipeline
-                  stats={pipelineStats}
-                  onStageClick={(stage) => router.push(getStageRoute(stage))}
+                  stats={data.pipelineStats}
+                  activeStage={activeStage}
+                  onStageClick={setStageFilter}
                 />
+
+                {activeStage && (
+                  <div className="flex items-center justify-between bg-gray-900/60 border border-gray-800 rounded-lg px-4 py-3">
+                    <p className="text-sm text-slate-300">
+                      <span className="text-slate-400">{UI_COPY.dashboard.filters.stagePrefix}:</span>{' '}
+                      <span className="text-yellow-400 font-semibold">
+                        {activeStage ? PIPELINE_STAGE_CONFIG_BY_ID[activeStage].label : ''}
+                      </span>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={clearStageFilter}
+                      className="text-xs font-semibold text-yellow-400 hover:text-yellow-300"
+                    >
+                      {UI_COPY.dashboard.filters.clearStage}
+                    </button>
+                  </div>
+                )}
 
                 {/* Main grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                   <PriorityActions
                     actions={priorityActions}
-                    onCreateNew={() => setShowModal(true)}
-                    onActionClick={(action) => router.push(getActionRoute(action))}
+                    onActionPrimaryClick={(action) => router.push(action.primaryCta.href)}
+                    onActionSecondaryClick={(action) => router.push(action.secondaryCta.href)}
+                    onCreateNew={openCreateContent}
                   />
 
                   <ProductionsList
-                    productions={activeProductions}
-                    onProductionClick={(production) => router.push(getProductionRoute(production))}
+                    productions={filteredProductions}
+                    onProductionClick={(production) => router.push(`/productions/${production.id}`)}
                   />
 
                   <div className="space-y-6">
-                    <AutomationRuns runs={runs} />
+                      <AutomationRuns runs={data.runs} />
 
                     <motion.div
                       className="surface-card glow-hover p-6"
@@ -278,7 +179,7 @@ function DashboardContent() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
                     >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">Redes sociales</div>
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">{UI_COPY.dashboard.sections.social}</div>
                       <div className="space-y-3">
                         <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-3">
@@ -286,11 +187,11 @@ function DashboardContent() {
                               <Instagram className="w-4 h-4" />
                             </span>
                             <div>
-                              <p className="text-sm font-semibold text-white">Instagram</p>
-                              <p className="text-xs text-slate-400">Reels, posts y stories</p>
+                              <p className="text-sm font-semibold text-white">{UI_COPY.social.instagram.label}</p>
+                              <p className="text-xs text-slate-400">{UI_COPY.social.instagram.description}</p>
                             </div>
                           </div>
-                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">Conectar</button>
+                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">{UI_COPY.social.instagram.action}</button>
                         </div>
                         <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-3">
@@ -298,11 +199,11 @@ function DashboardContent() {
                               <Music2 className="w-4 h-4" />
                             </span>
                             <div>
-                              <p className="text-sm font-semibold text-white">TikTok</p>
-                              <p className="text-xs text-slate-400">Clips cortos y trends</p>
+                              <p className="text-sm font-semibold text-white">{UI_COPY.social.tiktok.label}</p>
+                              <p className="text-xs text-slate-400">{UI_COPY.social.tiktok.description}</p>
                             </div>
                           </div>
-                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">Conectar</button>
+                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">{UI_COPY.social.tiktok.action}</button>
                         </div>
                         <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="flex items-center gap-3">
@@ -310,11 +211,11 @@ function DashboardContent() {
                               <Linkedin className="w-4 h-4" />
                             </span>
                             <div>
-                              <p className="text-sm font-semibold text-white">LinkedIn</p>
-                              <p className="text-xs text-slate-400">Posts, clips y branding</p>
+                              <p className="text-sm font-semibold text-white">{UI_COPY.social.linkedin.label}</p>
+                              <p className="text-xs text-slate-400">{UI_COPY.social.linkedin.description}</p>
                             </div>
                           </div>
-                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">Conectar</button>
+                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">{UI_COPY.social.linkedin.action}</button>
                         </div>
                       </div>
                     </motion.div>
@@ -326,27 +227,27 @@ function DashboardContent() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.3 }}
                     >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">Resumen</div>
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">{UI_COPY.dashboard.sections.summary}</div>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
                         <motion.div whileHover={{ scale: 1.05 }}>
-                          <div className="text-4xl font-semibold text-white">{productions.length}</div>
-                          <div className="text-sm text-slate-400">Total</div>
-                          <div className="text-xs text-slate-500 mt-1">+2 esta semana</div>
+                          <div className="text-4xl font-semibold text-white">{data.productions.length}</div>
+                          <div className="text-sm text-slate-400">{UI_COPY.summary.total}</div>
+                          <div className="text-xs text-slate-500 mt-1">{UI_COPY.summary.totalHint}</div>
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.05 }}>
                           <div className="text-4xl font-semibold text-yellow-400">{activeProductions.length}</div>
-                          <div className="text-sm text-slate-400">Activos</div>
-                          <div className="text-xs text-slate-500 mt-1">Prioridad alta</div>
+                          <div className="text-sm text-slate-400">{UI_COPY.summary.active}</div>
+                          <div className="text-xs text-slate-500 mt-1">{UI_COPY.summary.activeHint}</div>
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.05 }}>
-                          <div className="text-4xl font-semibold text-cyan-400">{ideasCount}</div>
-                          <div className="text-sm text-slate-400">Ideas</div>
-                          <div className="text-xs text-slate-500 mt-1">+3 nuevas</div>
+                          <div className="text-4xl font-semibold text-cyan-400">{data.ideasCount}</div>
+                          <div className="text-sm text-slate-400">{UI_COPY.summary.ideas}</div>
+                          <div className="text-xs text-slate-500 mt-1">{UI_COPY.summary.ideasHint}</div>
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.05 }}>
-                          <div className="text-4xl font-semibold text-emerald-400">{pipelineStats.published}</div>
-                          <div className="text-sm text-slate-400">Publicados</div>
-                          <div className="text-xs text-slate-500 mt-1">Meta semanal</div>
+                          <div className="text-4xl font-semibold text-emerald-400">{data.pipelineStats.published}</div>
+                          <div className="text-sm text-slate-400">{UI_COPY.summary.published}</div>
+                          <div className="text-xs text-slate-500 mt-1">{UI_COPY.summary.publishedHint}</div>
                         </motion.div>
                       </div>
                     </motion.div>
@@ -357,20 +258,6 @@ function DashboardContent() {
         </main>
       </PageTransition>
       <Footer />
-
-        <motion.button
-          onClick={() => setShowModal(true)}
-          className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 text-sm font-semibold text-black rounded-full"
-          style={{
-            background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-            boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
-          }}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <Plus className="w-4 h-4" />
-        Nuevo
-      </motion.button>
 
       {/* Modal */}
       {showModal && (
@@ -386,12 +273,13 @@ function DashboardContent() {
             animate={{ scale: 1, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-2xl font-semibold text-white mb-5">Nuevo contenido</h3>
+            <h3 className="text-2xl font-semibold text-white mb-5">{UI_COPY.dashboard.createLabel}</h3>
+            {createError && <p className="text-sm text-red-400 mb-4">{createError}</p>}
             <input
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Título del contenido..."
+              placeholder={UI_COPY.dashboard.createPlaceholder}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-lg text-white placeholder-gray-500 focus:border-yellow-500 focus:outline-none mb-5"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
@@ -403,15 +291,16 @@ function DashboardContent() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Cancelar
+                {UI_COPY.ideas.form.cancel}
               </motion.button>
               <motion.button
                 onClick={handleCreate}
+                disabled={isCreating}
                 className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Crear contenido
+                {isCreating ? UI_COPY.dashboard.creatingLabel : UI_COPY.dashboard.createLabel}
               </motion.button>
             </div>
           </motion.div>
@@ -429,7 +318,7 @@ export default function DashboardPage() {
           <div className="min-h-screen flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-              <p className="text-slate-300">Cargando dashboard...</p>
+              <p className="text-slate-300">{UI_COPY.dashboard.loading}</p>
             </div>
           </div>
         }
