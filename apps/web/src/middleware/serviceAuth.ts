@@ -61,3 +61,7 @@ export async function authenticateUserOrService(request: NextRequest, options: S
 
   return { response: null, userId: serviceUserId, via: 'service' };
 }
+
+export async function requireServiceOrOwner(request: NextRequest): Promise<ServiceAuthResult> {
+  return authenticateUserOrService(request, { ownerOnly: true });
+}
