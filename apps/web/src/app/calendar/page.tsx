@@ -47,10 +47,17 @@ export default function CalendarPage() {
   const rangeEnd = useMemo(() => addDays(rangeStart, rangeDays - 1), [rangeStart, rangeDays]);
   const requestFrom = useMemo(() => minDate(monthRange.from, rangeStart), [monthRange.from, rangeStart]);
   const requestTo = useMemo(() => maxDate(monthRange.to, rangeEnd), [monthRange.to, rangeEnd]);
+  const requestFromKey = useMemo(() => formatDateKey(requestFrom), [requestFrom]);
+  const requestToKey = useMemo(() => formatDateKey(requestTo), [requestTo]);
+  const requestKey = useMemo(() => `${requestFromKey}:${requestToKey}`, [requestFromKey, requestToKey]);
 
   useEffect(() => {
-    fetchCalendar(formatDateKey(requestFrom), formatDateKey(requestTo));
-  }, [fetchCalendar, requestFrom, requestTo]);
+    const timer = window.setTimeout(() => {
+      fetchCalendar(requestFromKey, requestToKey);
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchCalendar, requestFromKey, requestToKey, requestKey]);
 
   const days = useMemo(() => buildMonthDays(currentMonth), [currentMonth]);
   const availableTypes = useMemo(() => {
