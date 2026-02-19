@@ -39,6 +39,10 @@ export default function IdeasPage() {
     const [error, setError] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editTitle, setEditTitle] = useState('');
+    const [editDescription, setEditDescription] = useState('');
+    const [editSubmitting, setEditSubmitting] = useState(false);
 
     const fetchIdeas = useCallback(async () => {
         try {
@@ -95,6 +99,48 @@ export default function IdeasPage() {
             body: JSON.stringify({ status }),
         });
         await fetchIdeas();
+    };
+
+    const startEdit = (idea: Idea) => {
+        setEditingId(idea.id);
+        setEditTitle(idea.title);
+        setEditDescription(idea.description ?? '');
+        setError(null);
+    };
+
+    const cancelEdit = () => {
+        setEditingId(null);
+        setEditTitle('');
+        setEditDescription('');
+        setError(null);
+    };
+
+    const saveEdit = async (idea: Idea) => {
+        if (!editTitle.trim()) {
+            setError('El título es obligatorio');
+            return;
+        }
+        setEditSubmitting(true);
+        setError(null);
+        try {
+            const response = await authFetch(`/api/ideas?id=${idea.id}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    title: editTitle.trim(),
+                    description: editDescription.trim() ? editDescription.trim() : null,
+                }),
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al actualizar idea');
+            }
+            cancelEdit();
+            await fetchIdeas();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Error');
+        } finally {
+            setEditSubmitting(false);
+        }
     };
 
     const deleteIdea = async (id: string) => {
@@ -187,13 +233,32 @@ export default function IdeasPage() {
                                         </span>
                                         <span className="text-xs text-yellow-400">★ {idea.priority}</span>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">
-                                        {idea.title}
-                                    </h3>
-                                    {idea.description && (
-                                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">{idea.description}</p>
+                                    {editingId === idea.id ? (
+                                        <div className="space-y-3 mb-4">
+                                            <input
+                                                type="text"
+                                                value={editTitle}
+                                                onChange={(e) => setEditTitle(e.target.value)}
+                                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-yellow-400 focus:outline-none"
+                                            />
+                                            <textarea
+                                                value={editDescription}
+                                                onChange={(e) => setEditDescription(e.target.value)}
+                                                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:border-yellow-400 focus:outline-none h-20"
+                                                placeholder="Descripción (opcional)"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">
+                                                {idea.title}
+                                            </h3>
+                                            {idea.description && (
+                                                <p className="text-gray-400 text-sm mb-4 line-clamp-2">{idea.description}</p>
+                                            )}
+                                        </>
                                     )}
-                                    <div className="flex gap-2 mt-4 pt-4 border-t border-gray-800">
+                                    <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-800">
                                         <select
                                             value={idea.status}
                                             onChange={(e) => updateStatus(idea.id, e.target.value)}
@@ -205,12 +270,38 @@ export default function IdeasPage() {
                                             <option value="completed">Completada</option>
                                             <option value="archived">Archivada</option>
                                         </select>
-                                        <button
-                                            onClick={() => deleteIdea(idea.id)}
-                                            className="text-red-400 hover:text-red-300 text-xs px-2"
-                                        >
-                                            Eliminar
-                                        </button>
+                                        {editingId === idea.id ? (
+                                            <>
+                                                <button
+                                                    onClick={() => saveEdit(idea)}
+                                                    disabled={editSubmitting}
+                                                    className="text-yellow-400 hover:text-yellow-300 text-xs px-2 disabled:opacity-50"
+                                                >
+                                                    Guardar
+                                                </button>
+                                                <button
+                                                    onClick={cancelEdit}
+                                                    className="text-slate-400 hover:text-slate-300 text-xs px-2"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={() => startEdit(idea)}
+                                                    className="text-yellow-400 hover:text-yellow-300 text-xs px-2"
+                                                >
+                                                    Editar
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteIdea(idea.id)}
+                                                    className="text-red-400 hover:text-red-300 text-xs px-2"
+                                                >
+                                                    Eliminar
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </motion.div>
                             ))}

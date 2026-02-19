@@ -22,7 +22,6 @@ export interface Production {
 interface ProductionsListProps {
     productions: Production[];
     onProductionClick?: (production: Production) => void;
-    onCreateNew?: () => void;
 }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
@@ -58,7 +57,7 @@ function getNextAction(prod: Production): string {
     return 'Ver detalles';
 }
 
-export default function ProductionsList({ productions, onProductionClick, onCreateNew }: ProductionsListProps) {
+export default function ProductionsList({ productions, onProductionClick }: ProductionsListProps) {
     return (
         <motion.div
             className="surface-card glow-hover overflow-hidden"
@@ -69,14 +68,6 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
                 <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Contenidos activos</span>
-                <motion.button
-                    onClick={onCreateNew}
-                    className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    + Nuevo
-                </motion.button>
             </div>
 
             {/* Productions list */}
@@ -88,8 +79,7 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
             >
                 {productions.length === 0 ? (
                     <motion.div
-                        className="px-5 py-6 text-center cursor-pointer hover:bg-gray-800/40 transition-colors"
-                        onClick={onCreateNew}
+                        className="px-5 py-6 text-center hover:bg-gray-800/40 transition-colors"
                         variants={itemVariants}
                         whileHover={{ scale: 1.01 }}
                     >
@@ -97,7 +87,7 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
                             <Film className="w-6 h-6" />
                         </span>
                         <span className="text-base text-slate-300 block mb-1">Sin contenidos activos</span>
-                        <span className="text-sm text-yellow-400 hover:underline font-semibold">Crear tu primer contenido →</span>
+                        <span className="text-sm text-slate-400">Usa “Nuevo contenido” para comenzar.</span>
                     </motion.div>
                 ) : (
                     productions.slice(0, 6).map((prod) => {

@@ -47,14 +47,6 @@ const itemVariants = {
 };
 
 export default function PriorityActions({ actions, onActionClick, onCreateNew }: PriorityActionsProps) {
-    const displayActions = [...actions];
-
-    if (displayActions.length === 0) {
-        displayActions.push(
-            { id: 'new-1', type: 'script', title: 'Crear nuevo contenido', productionTitle: 'Empieza aquí', productionId: '', urgency: 'low' as const },
-        );
-    }
-
     return (
         <motion.div
             className="surface-card glow-hover overflow-hidden"
@@ -78,7 +70,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                 initial="hidden"
                 animate="visible"
             >
-                {displayActions.slice(0, 5).map((action) => {
+                {actions.slice(0, 5).map((action) => {
                     const styles = URGENCY_STYLES[action.urgency];
 
                     const Icon = ACTION_ICONS[action.type];
@@ -87,7 +79,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                         <motion.div
                             key={action.id}
                             className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-800/40 cursor-pointer transition-colors group ${styles.bg}`}
-                            onClick={() => action.productionId ? onActionClick?.(action) : onCreateNew?.()}
+                            onClick={() => onActionClick?.(action)}
                             variants={itemVariants}
                             whileHover={{ x: 4 }}
                         >
@@ -124,10 +116,8 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                 {/* Empty state */}
                 {actions.length === 0 && (
                     <motion.div
-                        className="flex items-center gap-4 px-5 py-4 text-slate-200 hover:bg-gray-800/40 cursor-pointer"
-                        onClick={onCreateNew}
+                        className="flex items-center gap-4 px-5 py-4 text-slate-200"
                         variants={itemVariants}
-                        whileHover={{ x: 4 }}
                     >
                         <span className="w-3 h-3 rounded-full bg-green-500" />
                         <span className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
@@ -135,8 +125,17 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                         </span>
                         <div className="flex-1">
                             <span className="text-base text-slate-100">¡Todo al día!</span>
-                            <span className="text-sm text-yellow-400 block hover:underline">Crear nuevo contenido</span>
+                            <span className="text-sm text-slate-400 block">Usa “Nuevo contenido” para comenzar.</span>
                         </div>
+                        <motion.button
+                            type="button"
+                            onClick={onCreateNew}
+                            className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
+                            whileHover={{ x: 2 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            Crear <span>→</span>
+                        </motion.button>
                     </motion.div>
                 )}
             </motion.div>

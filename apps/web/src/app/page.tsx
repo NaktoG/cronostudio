@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Instagram, Linkedin, Music2, Plus, Sparkles } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -56,6 +56,7 @@ function generatePriorityActions(productions: Production[]): PriorityAction[] {
 function DashboardContent() {
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [productions, setProductions] = useState<Production[]>([]);
   const [pipelineStats, setPipelineStats] = useState<PipelineStats>({
@@ -139,6 +140,65 @@ function DashboardContent() {
   const priorityActions = generatePriorityActions(productions);
   const activeProductions = productions.filter(p => p.status !== 'published');
 
+  const getStageRoute = (stage: keyof PipelineStats) => {
+    switch (stage) {
+      case 'idea':
+        return '/ideas';
+      case 'scripting':
+        return '/scripts';
+      case 'recording':
+        return '/videos';
+      case 'editing':
+        return '/thumbnails';
+      case 'shorts':
+        return '/videos';
+      case 'publishing':
+        return '/seo';
+      case 'published':
+        return '/analytics';
+      default:
+        return '/videos';
+    }
+  };
+
+  const getProductionRoute = (production: Production) => {
+    switch (production.status) {
+      case 'idea':
+        return '/ideas';
+      case 'scripting':
+        return '/scripts';
+      case 'recording':
+        return '/videos';
+      case 'editing':
+        return '/thumbnails';
+      case 'shorts':
+        return '/videos';
+      case 'publishing':
+        return '/seo';
+      case 'published':
+        return '/analytics';
+      default:
+        return '/videos';
+    }
+  };
+
+  const getActionRoute = (action: PriorityAction) => {
+    switch (action.type) {
+      case 'script':
+        return '/scripts';
+      case 'seo':
+        return '/seo';
+      case 'thumbnail':
+        return '/thumbnails';
+      case 'short':
+        return '/videos';
+      case 'publish':
+        return '/analytics';
+      default:
+        return '/videos';
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -191,18 +251,22 @@ function DashboardContent() {
             ) : (
               <div className="space-y-8">
                 {/* Pipeline */}
-                <ProductionPipeline stats={pipelineStats} />
+                <ProductionPipeline
+                  stats={pipelineStats}
+                  onStageClick={(stage) => router.push(getStageRoute(stage))}
+                />
 
                 {/* Main grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                   <PriorityActions
                     actions={priorityActions}
                     onCreateNew={() => setShowModal(true)}
+                    onActionClick={(action) => router.push(getActionRoute(action))}
                   />
 
                   <ProductionsList
                     productions={activeProductions}
-                    onCreateNew={() => setShowModal(true)}
+                    onProductionClick={(production) => router.push(getProductionRoute(production))}
                   />
 
                   <div className="space-y-6">

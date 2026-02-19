@@ -77,22 +77,23 @@ export default function ProductionPipeline({ stats, onStageClick }: ProductionPi
                 {STAGES.map((stage, index) => {
                     const count = stats[stage.key] || 0;
                     const hasItems = count > 0;
+                    const canClick = Boolean(onStageClick);
 
                     return (
                         <motion.button
                             key={stage.key}
-                            onClick={() => hasItems && onStageClick?.(stage.key)}
+                            onClick={() => onStageClick?.(stage.key)}
                             className={`flex flex-col items-center justify-center py-4 px-2 rounded-xl transition-all ${hasItems
-                                ? 'bg-gray-800/70 hover:bg-gray-800 cursor-pointer shadow-lg'
-                                : 'bg-gray-900/40 cursor-default'
-                                } ${
+                                ? 'bg-gray-800/70 hover:bg-gray-800 shadow-lg'
+                                : 'bg-gray-900/40'} ${
                                 // Make last item span full width on odd grid counts if needed, 
                                 // but specifically for 7 items on 2-col grid, the last one is alone.
                                 index === STAGES.length - 1 ? 'col-span-2 sm:col-span-1 md:flex-1' : 'md:flex-1'
-                                }`}
+                                } ${canClick ? 'cursor-pointer' : 'cursor-default'}`}
+                            aria-disabled={!canClick}
                             variants={itemVariants}
-                            whileHover={hasItems ? { scale: 1.03, y: -2 } : {}}
-                            whileTap={hasItems ? { scale: 0.97 } : {}}
+                            whileHover={canClick ? { scale: 1.03, y: -2 } : {}}
+                            whileTap={canClick ? { scale: 0.97 } : {}}
                         >
                             {/* Icon */}
                             <stage.icon className="w-6 h-6 mb-2 text-slate-200" />
