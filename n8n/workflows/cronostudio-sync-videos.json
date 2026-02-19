@@ -89,37 +89,9 @@
         ]
       ]
     },
-    "Map Channels": {
-      "main": [
-        [
-          {
-            "node": "Fetch YouTube Videos",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Fetch CronoStudio Videos": {
       "main": [
-        [
-          {
-            "node": "Map Videos",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Map Videos": {
-      "main": [
-        [
-          {
-            "node": "Create Video",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Demo Video Payload": {

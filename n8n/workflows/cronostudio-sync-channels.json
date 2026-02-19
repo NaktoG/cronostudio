@@ -62,17 +62,6 @@
         ]
       ]
     },
-    "Map Channels": {
-      "main": [
-        [
-          {
-            "node": "Create Channel",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Demo Channel Payload": {
       "main": [
         [

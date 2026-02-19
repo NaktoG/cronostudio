@@ -85,17 +85,6 @@
         ]
       ]
     },
-    "Map Videos": {
-      "main": [
-        [
-          {
-            "node": "Build Date Range",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Build Date Range": {
       "main": [
         [
@@ -112,17 +101,6 @@
         [
           {
             "node": "Normalize YouTube Analytics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Map Analytics": {
-      "main": [
-        [
-          {
-            "node": "Create Analytics",
             "type": "main",
             "index": 0
           }
