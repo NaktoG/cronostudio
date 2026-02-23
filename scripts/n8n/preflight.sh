@@ -27,12 +27,23 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   echo "Faltan variables: ${missing[*]}"
 else
   echo "Login CronoStudio..."
-  status=$(curl -sS -o /tmp/cronostudio_n8n_login.json -w "%{http_code}\n" \
-    -H "Content-Type: application/json" \
-    -H "x-cronostudio-webhook-secret: ${CRONOSTUDIO_WEBHOOK_SECRET:-}" \
-    -d "{\"email\":\"$CRONOSTUDIO_EMAIL\",\"password\":\"$CRONOSTUDIO_PASSWORD\"}" \
-    "${CRONOSTUDIO_API_BASE_URL%/}/auth/login" || true)
-  echo "Login status: $status"
+  login_url="${CRONOSTUDIO_API_BASE_URL%/}/auth/login"
+  login_payload="{\"email\":\"$CRONOSTUDIO_EMAIL\",\"password\":\"$CRONOSTUDIO_PASSWORD\"}"
+  if [[ "$login_url" == *"host.docker.internal"* ]]; then
+    status=$(docker exec cronostudio-n8n sh -c "wget -qO /tmp/cronostudio_n8n_login.json --header='Content-Type: application/json' --header='x-cronostudio-webhook-secret: ${CRONOSTUDIO_WEBHOOK_SECRET:-}' --post-data='$login_payload' '$login_url' >/dev/null; echo \$?" || true)
+    if [[ "$status" == "0" ]]; then
+      echo "Login status: 200 (via n8n container)"
+    else
+      echo "Login status: error (via n8n container)"
+    fi
+  else
+    status=$(curl -sS -o /tmp/cronostudio_n8n_login.json -w "%{http_code}\n" \
+      -H "Content-Type: application/json" \
+      -H "x-cronostudio-webhook-secret: ${CRONOSTUDIO_WEBHOOK_SECRET:-}" \
+      -d "$login_payload" \
+      "$login_url" || true)
+    echo "Login status: $status"
+  fi
 fi
 
 if [[ -z "${YOUTUBE_API_KEY:-}" ]]; then
