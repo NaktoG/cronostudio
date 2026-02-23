@@ -196,7 +196,7 @@
       "name": "Fetch YouTube Channels",
       "parameters": {
         "options": {},
-        "url": "https://www.googleapis.com/youtube/v3/channels"
+        "url": "={{'https://www.googleapis.com/youtube/v3/channels?part=snippet,contentDetails,statistics&id=' + $env.YOUTUBE_CHANNEL_IDS + '&key=' + $env.YOUTUBE_API_KEY}}"
       },
       "position": [
         80,
@@ -208,7 +208,9 @@
     {
       "id": "8155c812-e668-4ac4-9a4b-2912139d6645",
       "name": "Map Channels",
-      "parameters": {},
+      "parameters": {
+        "functionCode": "const existingChannels = $items('Fetch CronoStudio Channels').map((item) => item.json);\nconst existingSet = new Set(existingChannels.map((channel) => channel.youtube_channel_id).filter(Boolean));\nconst youtubeResponse = items[0]?.json || {};\nconst channels = Array.isArray(youtubeResponse.items) ? youtubeResponse.items : [];\n\nreturn channels\n  .map((channel) => ({\n    json: {\n      name: channel.snippet?.title || 'Canal',\n      youtubeChannelId: channel.id,\n      refreshToken: null,\n    },\n  }))\n  .filter((item) => item.json.youtubeChannelId && !existingSet.has(item.json.youtubeChannelId));"
+      },
       "position": [
         336,
         208
@@ -236,7 +238,12 @@
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
             }
           ]
-        }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}"
       },
       "position": [
         528,

@@ -235,7 +235,9 @@
     {
       "id": "3f154b2a-cd08-4d39-884b-dfa56d6bbf39",
       "name": "Map Videos",
-      "parameters": {},
+      "parameters": {
+        "functionCode": "const response = items[0]?.json || {};\nconst videos = Array.isArray(response.data) ? response.data : [];\n\nreturn videos\n  .filter((video) => video.youtube_video_id)\n  .map((video) => ({\n    json: {\n      videoId: video.id,\n      youtubeVideoId: video.youtube_video_id,\n    },\n  }));"
+      },
       "position": [
         -224,
         144
@@ -246,7 +248,9 @@
     {
       "id": "e0527668-6beb-45ea-86d0-8b2837ddc94a",
       "name": "Build Date Range",
-      "parameters": {},
+      "parameters": {
+        "functionCode": "const now = new Date();\nconst end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));\nconst start = new Date(end);\nconst startDate = start.toISOString().slice(0, 10);\nconst endDate = end.toISOString().slice(0, 10);\n\nreturn items.map((item) => ({\n  json: {\n    ...item.json,\n    startDate,\n    endDate,\n  },\n}));"
+      },
       "position": [
         -80,
         -16
@@ -273,7 +277,17 @@
       "name": "Fetch YouTube Analytics",
       "parameters": {
         "options": {},
-        "url": "https://youtubeanalytics.googleapis.com/v2/reports"
+        "url": "={{'https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&metrics=views,estimatedMinutesWatched,averageViewDuration&dimensions=day&filters=video==' + $json.youtubeVideoId + '&startDate=' + $json.startDate + '&endDate=' + $json.endDate}}",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.YOUTUBE_ANALYTICS_ACCESS_TOKEN}}"
+            }
+          ]
+        }
       },
       "position": [
         112,
@@ -285,7 +299,9 @@
     {
       "id": "8b1c9d91-e0cb-4a0c-9248-bc701e24ee94",
       "name": "Map Analytics",
-      "parameters": {},
+      "parameters": {
+        "functionCode": "const analyticsResponse = items[0]?.json || {};\nconst rows = Array.isArray(analyticsResponse.rows) ? analyticsResponse.rows : [];\nconst source = $node['Split Videos'].json || {};\n\nreturn rows\n  .map((row) => ({\n    json: {\n      videoId: source.videoId || null,\n      date: row[0],\n      views: parseInt(row[1] || '0', 10),\n      watchTimeMinutes: parseInt(row[2] || '0', 10),\n      avgViewDurationSeconds: parseInt(row[3] || '0', 10),\n    },\n  }))\n  .filter((item) => item.json.videoId && item.json.date);"
+      },
       "position": [
         320,
         144
@@ -313,7 +329,12 @@
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
             }
           ]
-        }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}"
       },
       "position": [
         560,

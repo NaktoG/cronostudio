@@ -224,7 +224,9 @@
     {
       "id": "73f727c0-4d8b-4296-a57e-7ab8d7bfbd9b",
       "name": "Map Channels",
-      "parameters": {},
+      "parameters": {
+        "functionCode": "const channels = items.map((item) => item.json);\n\nreturn channels\n  .filter((channel) => channel.youtube_channel_id)\n  .map((channel) => ({\n    json: {\n      channelId: channel.id,\n      youtubeChannelId: channel.youtube_channel_id,\n    },\n  }));"
+      },
       "position": [
         432,
         -32
@@ -237,7 +239,7 @@
       "name": "Fetch YouTube Videos",
       "parameters": {
         "options": {},
-        "url": "https://www.googleapis.com/youtube/v3/search"
+        "url": "={{'https://www.googleapis.com/youtube/v3/search?part=snippet&order=date&maxResults=10&type=video&channelId=' + $json.youtubeChannelId + '&key=' + $env.YOUTUBE_API_KEY}}"
       },
       "position": [
         672,
@@ -277,7 +279,9 @@
     {
       "id": "ef96ce48-e7c6-46a5-9d3c-b6a5e6667035",
       "name": "Map Videos",
-      "parameters": {},
+      "parameters": {
+        "functionCode": "const existingResponse = items[0]?.json || {};\nconst existingVideos = Array.isArray(existingResponse.data) ? existingResponse.data : [];\nconst existingSet = new Set(existingVideos.map((video) => video.youtube_video_id).filter(Boolean));\nconst youtubeResponse = $node['Fetch YouTube Videos'].json || {};\nconst videos = Array.isArray(youtubeResponse.items) ? youtubeResponse.items : [];\nconst channelId = $node['Map Channels'].json.channelId;\n\nreturn videos\n  .map((video) => ({\n    json: {\n      channelId,\n      youtubeVideoId: video.id?.videoId,\n      title: video.snippet?.title || 'Video',\n      description: video.snippet?.description || null,\n      publishedAt: video.snippet?.publishedAt || null,\n    },\n  }))\n  .filter((item) => item.json.youtubeVideoId && item.json.channelId && !existingSet.has(item.json.youtubeVideoId));"
+      },
       "position": [
         1152,
         -32
@@ -305,7 +309,12 @@
               "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
             }
           ]
-        }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}"
       },
       "position": [
         1392,
