@@ -1,0 +1,265 @@
+{
+  "active": false,
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Login CronoStudio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login CronoStudio": {
+      "main": [
+        [
+          {
+            "node": "Create Automation Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Automation Run": {
+      "main": [
+        [
+          {
+            "node": "Fetch CronoStudio Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch CronoStudio Channels": {
+      "main": [
+        [
+          {
+            "node": "Build Demo Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Demo Channels": {
+      "main": [
+        [
+          {
+            "node": "Create Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Channel": {
+      "main": [
+        [
+          {
+            "node": "Complete Automation Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-02-23T18:40:00.000Z",
+  "id": "demo-seed-channels",
+  "name": "CronoStudio - Demo Seed Channels",
+  "nodes": [
+    {
+      "id": "demo-trigger-channels",
+      "name": "Manual Trigger",
+      "parameters": {},
+      "position": [
+        -520,
+        160
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "demo-login-channels",
+      "name": "Login CronoStudio",
+      "parameters": {
+        "options": {
+          "followRedirect": true,
+          "fullResponse": true
+        },
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/auth/login",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"email\":\"{{$env.CRONOSTUDIO_EMAIL}}\",\"password\":\"{{$env.CRONOSTUDIO_PASSWORD}}\"}",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        -280,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "demo-run-channels",
+      "name": "Create Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs",
+        "sendHeaders": true,
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"workflowName\":\"demo-seed-channels\",\"status\":\"running\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        -40,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "demo-fetch-channels",
+      "name": "Fetch CronoStudio Channels",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        200,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "demo-build-channels",
+      "name": "Build Demo Channels",
+      "parameters": {
+        "functionCode": "const existing = $items('Fetch CronoStudio Channels').map((item) => item.json.youtube_channel_id);\nconst existingSet = new Set(existing.filter(Boolean));\nconst demo = [\n  { name: 'Canal Demo A', youtubeChannelId: 'UCDEMO001' },\n  { name: 'Canal Demo B', youtubeChannelId: 'UCDEMO002' },\n];\n\nreturn demo\n  .filter((channel) => !existingSet.has(channel.youtubeChannelId))\n  .map((channel) => ({\n    json: {\n      ...channel,\n      refreshToken: null,\n    },\n  }));"
+      },
+      "position": [
+        440,
+        160
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "continueOnFail": true,
+      "id": "demo-create-channel",
+      "name": "Create Channel",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/channels",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}"
+      },
+      "position": [
+        680,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "continueOnFail": true,
+      "id": "demo-complete-channels",
+      "name": "Complete Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
+        "sendHeaders": true,
+        "method": "PUT",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        920,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    }
+  ],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionCounter": 1
+}

@@ -42,6 +42,15 @@ Notas:
     - Sirve para probar agentes y no depende de CronoStudio.
     - Si ves nodos con signo de "?", faltan los nodos LangChain en tu instancia. Puedes eliminar este workflow o instalar los nodos correspondientes.
 
+5) `cronostudio-demo-seed-channels.json`
+    - Demo local sin YouTube. Crea canales de ejemplo en CronoStudio.
+
+6) `cronostudio-demo-seed-videos.json`
+    - Demo local sin YouTube. Crea videos de ejemplo en el primer canal.
+
+7) `cronostudio-demo-seed-analytics.json`
+    - Demo local sin YouTube. Genera analytics de ejemplo para videos existentes.
+
 ## Exportar workflows desde producción
 1. Desde el repo `ansible/` ejecutar:
    ```bash
@@ -86,6 +95,13 @@ node scripts/n8n_mapping_test.mjs
 ```bash
 ./scripts/n8n/preflight.sh
 ```
+
+## Auditoria de workflows
+```bash
+node ./scripts/n8n/audit_workflows.mjs
+```
+
+Reporte local: `docs/n8n/WORKFLOWS_AUDIT.md`
 
 ## Notas
 - `YOUTUBE_CHANNEL_IDS` requiere IDs de canal, no URLs.

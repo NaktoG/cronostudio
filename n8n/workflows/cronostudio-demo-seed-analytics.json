@@ -1,0 +1,265 @@
+{
+  "active": false,
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Login CronoStudio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login CronoStudio": {
+      "main": [
+        [
+          {
+            "node": "Create Automation Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Automation Run": {
+      "main": [
+        [
+          {
+            "node": "Fetch CronoStudio Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch CronoStudio Videos": {
+      "main": [
+        [
+          {
+            "node": "Build Demo Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Demo Analytics": {
+      "main": [
+        [
+          {
+            "node": "Create Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Analytics": {
+      "main": [
+        [
+          {
+            "node": "Complete Automation Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2026-02-23T18:40:00.000Z",
+  "id": "demo-seed-analytics",
+  "name": "CronoStudio - Demo Seed Analytics",
+  "nodes": [
+    {
+      "id": "demo-trigger-analytics",
+      "name": "Manual Trigger",
+      "parameters": {},
+      "position": [
+        -520,
+        160
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "demo-login-analytics",
+      "name": "Login CronoStudio",
+      "parameters": {
+        "options": {
+          "followRedirect": true,
+          "fullResponse": true
+        },
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/auth/login",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"email\":\"{{$env.CRONOSTUDIO_EMAIL}}\",\"password\":\"{{$env.CRONOSTUDIO_PASSWORD}}\"}",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        -280,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "demo-run-analytics",
+      "name": "Create Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs",
+        "sendHeaders": true,
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"workflowName\":\"demo-seed-analytics\",\"status\":\"running\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        -40,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "demo-fetch-videos",
+      "name": "Fetch CronoStudio Videos",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/videos?limit=50&offset=0",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        200,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "id": "demo-build-analytics",
+      "name": "Build Demo Analytics",
+      "parameters": {
+        "functionCode": "const response = items[0]?.json || {};\nconst videos = Array.isArray(response.data) ? response.data : [];\nconst targetVideos = videos.slice(0, 3);\nconst days = 7;\nconst out = [];\n\nfor (const video of targetVideos) {\n  for (let i = 1; i <= days; i += 1) {\n    const date = new Date();\n    date.setUTCDate(date.getUTCDate() - i);\n    out.push({\n      json: {\n        videoId: video.id,\n        date: date.toISOString().slice(0, 10),\n        views: Math.floor(Math.random() * 200),\n        watchTimeMinutes: Math.floor(Math.random() * 500),\n        avgViewDurationSeconds: Math.floor(Math.random() * 300),\n      },\n    });\n  }\n}\n\nreturn out;"
+      },
+      "position": [
+        440,
+        160
+      ],
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2
+    },
+    {
+      "continueOnFail": true,
+      "id": "demo-create-analytics",
+      "name": "Create Analytics",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/analytics",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{$json}}"
+      },
+      "position": [
+        680,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    },
+    {
+      "continueOnFail": true,
+      "id": "demo-complete-analytics",
+      "name": "Complete Automation Run",
+      "parameters": {
+        "options": {},
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/automation-runs?id={{$node[\"Create Automation Run\"].json[\"id\"]}}",
+        "sendHeaders": true,
+        "method": "PUT",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"status\":\"completed\"}",
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cookie",
+              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "position": [
+        920,
+        160
+      ],
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3
+    }
+  ],
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionCounter": 1
+}
