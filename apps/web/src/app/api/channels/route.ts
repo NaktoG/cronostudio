@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateChannelSchema, CreateChannelInput } from '@/lib/validation';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { requireRoles } from '@/middleware/rbac';
+import { requireRolesOrServiceSecret } from '@/middleware/rbac';
 import { query } from '@/lib/db';
+import { getServiceUserId } from '@/lib/serviceUser';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,11 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
     try {
-        const userId = getAuthUser(request)?.userId;
+        let userId = getAuthUser(request)?.userId;
+
+        if (!userId) {
+            userId = await getServiceUserId(request);
+        }
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,9 +63,13 @@ export async function GET(request: NextRequest) {
  * POST /api/channels
  * Crea un nuevo canal de YouTube vinculado al usuario
  */
-export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        let userId = getAuthUser(request)?.userId;
+
+        if (!userId) {
+            userId = await getServiceUserId(request);
+        }
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

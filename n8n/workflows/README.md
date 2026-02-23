@@ -103,6 +103,11 @@ node ./scripts/n8n/audit_workflows.mjs
 
 Reporte local: `docs/n8n/WORKFLOWS_AUDIT.md`
 
+## Demo seed sin YouTube
+```bash
+node ./scripts/n8n/demo_seed.mjs
+```
+
 ## Notas
 - `YOUTUBE_CHANNEL_IDS` requiere IDs de canal, no URLs.
 - Si no se resuelve `host.docker.internal`, usar la IP local del host.
