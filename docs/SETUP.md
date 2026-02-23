@@ -180,6 +180,18 @@ Para detener todo:
 ./scripts/local_status.sh
 ```
 
+### Seed local (datos demo)
+
+```bash
+./scripts/local_seed.sh
+```
+
+### Reset local (borra datos)
+
+```bash
+./scripts/local_reset.sh --yes
+```
+
 ### Iniciar día de desarrollo
 
 ```bash
