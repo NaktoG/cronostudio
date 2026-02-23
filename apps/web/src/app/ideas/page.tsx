@@ -34,6 +34,7 @@ export default function IdeasPage() {
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
+    const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
     const [formData, setFormData] = useState({ title: '', description: '', priority: 0 });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -71,15 +72,18 @@ export default function IdeasPage() {
         setSubmitting(true);
         setError(null);
         try {
-            const response = await authFetch('/api/ideas', {
-                method: 'POST',
+            const targetUrl = editingIdea ? `/api/ideas?id=${editingIdea.id}` : '/api/ideas';
+            const method = editingIdea ? 'PUT' : 'POST';
+            const response = await authFetch(targetUrl, {
+                method,
                 body: JSON.stringify(formData),
             });
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Error al crear idea');
+                throw new Error(data.error || (editingIdea ? 'Error al actualizar idea' : 'Error al crear idea'));
             }
             setShowModal(false);
+            setEditingIdea(null);
             setFormData({ title: '', description: '', priority: 0 });
             await fetchIdeas();
         } catch (err) {
@@ -87,6 +91,16 @@ export default function IdeasPage() {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const startEdit = (idea: Idea) => {
+        setEditingIdea(idea);
+        setFormData({
+            title: idea.title,
+            description: idea.description ?? '',
+            priority: idea.priority ?? 0,
+        });
+        setShowModal(true);
     };
 
     const updateStatus = async (id: string, status: string) => {
@@ -143,7 +157,11 @@ export default function IdeasPage() {
                             <p className="text-slate-300">Apunta y gestiona tus ideas para videos</p>
                         </div>
                         <motion.button
-                            onClick={() => setShowModal(true)}
+                            onClick={() => {
+                                setEditingIdea(null);
+                                setFormData({ title: '', description: '', priority: 0 });
+                                setShowModal(true);
+                            }}
                             className="px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
                             style={{
                                 background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
@@ -206,6 +224,12 @@ export default function IdeasPage() {
                                             <option value="archived">Archivada</option>
                                         </select>
                                         <button
+                                            onClick={() => startEdit(idea)}
+                                            className="text-yellow-300 hover:text-yellow-200 text-xs px-2"
+                                        >
+                                            Editar
+                                        </button>
+                                        <button
                                             onClick={() => deleteIdea(idea.id)}
                                             className="text-red-400 hover:text-red-300 text-xs px-2"
                                         >
@@ -235,7 +259,9 @@ export default function IdeasPage() {
                                 exit={{ scale: 0.9 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-2xl font-bold text-white mb-6">Nueva Idea</h3>
+                                <h3 className="text-2xl font-bold text-white mb-6">
+                                    {editingIdea ? 'Editar Idea' : 'Nueva Idea'}
+                                </h3>
                                 {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
@@ -274,7 +300,7 @@ export default function IdeasPage() {
                                             Cancelar
                                         </button>
                                         <button type="submit" disabled={submitting} className="flex-1 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-50">
-                                            {submitting ? 'Creando...' : 'Crear Idea'}
+                                            {submitting ? (editingIdea ? 'Guardando...' : 'Creando...') : editingIdea ? 'Guardar' : 'Crear Idea'}
                                         </button>
                                     </div>
                                 </form>
