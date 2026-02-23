@@ -132,6 +132,13 @@ Abrir navegador: **http://localhost:3000**
 
 Deberías ver página inicial de Next.js.
 
+#### Adminer (DB UI)
+- URL: http://localhost:8080
+- Sistema: PostgreSQL
+- Servidor: postgres
+- Usuario y Password: los definidos en `infra/docker/.env`
+- Base de datos: `POSTGRES_DB` de `infra/docker/.env`
+
 ## Estructura del Proyecto
 
 ```
@@ -165,6 +172,12 @@ Para detener todo:
 
 ```bash
 ./scripts/local_stop.sh
+```
+
+### Ver estado local
+
+```bash
+./scripts/local_status.sh
 ```
 
 ### Iniciar día de desarrollo
@@ -241,5 +254,6 @@ docker compose -f infra/docker/docker-compose.yml up -d
 
 Una vez que todo esté funcionando localmente, leer:
 - [RUNBOOK.md](RUNBOOK.md) — operación diaria y mantenimiento
+- [LOCAL_HEALTH_CHECKLIST.md](LOCAL_HEALTH_CHECKLIST.md) — checklist rápido local
 - [docs/decisions/0001-stack-base.md](decisions/0001-stack-base.md) — por qué este stack
 - [docs/runbooks/01-docker-n8n-postgres.md](runbooks/01-docker-n8n-postgres.md) — guía Docker detallada
