@@ -50,7 +50,10 @@ apply_migration() {
   "${psql_cmd[@]}" -c "INSERT INTO schema_migrations (id, checksum) VALUES ('$name', '$checksum')"
 }
 
-mapfile -t migration_files < <(ls -1 "$migrations_dir"/*.sql | sort)
+migration_files=()
+while IFS= read -r file; do
+  migration_files+=("$file")
+done < <(ls -1 "$migrations_dir"/*.sql | sort)
 
 for file in "${migration_files[@]}"; do
   apply_migration "$file"
