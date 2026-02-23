@@ -31,6 +31,7 @@ const CreateIdeaSchema = z.object({
 const UpdateIdeaSchema = z.object({
     title: z.string().min(1).max(200).optional(),
     description: z.string().optional(),
+    channelId: z.string().uuid().optional().nullable(),
     status: z.enum(['draft', 'approved', 'in_production', 'completed', 'archived']).optional(),
     priority: z.number().int().min(0).max(10).optional(),
     tags: z.array(z.string()).optional(),
@@ -140,6 +141,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
             updates: {
                 title: data.title,
                 description: data.description,
+                channelId: data.channelId ?? undefined,
                 status: data.status as IdeaStatus | undefined,
                 priority: data.priority,
                 tags: data.tags,

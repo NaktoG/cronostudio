@@ -13,11 +13,17 @@ interface Idea {
     id: string;
     title: string;
     description: string | null;
+    channelId: string | null;
     status: 'draft' | 'approved' | 'in_production' | 'completed' | 'archived';
     priority: number;
     tags: string[];
     channel_name: string | null;
     created_at: string;
+}
+
+interface Channel {
+    id: string;
+    name: string;
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -32,10 +38,17 @@ export default function IdeasPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const [ideas, setIdeas] = useState<Idea[]>([]);
+    const [channels, setChannels] = useState<Channel[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
-    const [formData, setFormData] = useState({ title: '', description: '', priority: 0 });
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        priority: 0,
+        channelId: '',
+        tagsInput: '',
+    });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
@@ -67,6 +80,32 @@ export default function IdeasPage() {
         fetchIdeas();
     }, [isAuthenticated, fetchIdeas]);
 
+    const fetchChannels = useCallback(async () => {
+        try {
+            if (!isAuthenticated) {
+                setChannels([]);
+                return;
+            }
+            const response = await authFetch('/api/channels');
+            if (response.ok) {
+                setChannels(await response.json());
+            }
+        } catch (err) {
+            console.error('Error fetching channels:', err);
+        }
+    }, [isAuthenticated, authFetch]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        fetchChannels();
+    }, [isAuthenticated, fetchChannels]);
+
+    const normalizeTags = (input: string) =>
+        input
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag.length > 0);
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
@@ -74,9 +113,16 @@ export default function IdeasPage() {
         try {
             const targetUrl = editingIdea ? `/api/ideas?id=${editingIdea.id}` : '/api/ideas';
             const method = editingIdea ? 'PUT' : 'POST';
+            const payload = {
+                title: formData.title,
+                description: formData.description,
+                priority: formData.priority,
+                channelId: formData.channelId ? formData.channelId : null,
+                tags: normalizeTags(formData.tagsInput),
+            };
             const response = await authFetch(targetUrl, {
                 method,
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
             if (!response.ok) {
                 const data = await response.json();
@@ -84,7 +130,7 @@ export default function IdeasPage() {
             }
             setShowModal(false);
             setEditingIdea(null);
-            setFormData({ title: '', description: '', priority: 0 });
+            setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
             await fetchIdeas();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Error');
@@ -99,6 +145,8 @@ export default function IdeasPage() {
             title: idea.title,
             description: idea.description ?? '',
             priority: idea.priority ?? 0,
+            channelId: idea.channelId ?? '',
+            tagsInput: Array.isArray(idea.tags) ? idea.tags.join(', ') : '',
         });
         setShowModal(true);
     };
@@ -159,7 +207,7 @@ export default function IdeasPage() {
                         <motion.button
                             onClick={() => {
                                 setEditingIdea(null);
-                                setFormData({ title: '', description: '', priority: 0 });
+                                setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
                                 setShowModal(true);
                             }}
                             className="px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
@@ -209,7 +257,19 @@ export default function IdeasPage() {
                                         {idea.title}
                                     </h3>
                                     {idea.description && (
-                                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">{idea.description}</p>
+                                        <p className="text-gray-400 text-sm mb-3 line-clamp-2">{idea.description}</p>
+                                    )}
+                                    {idea.channel_name && (
+                                        <p className="text-xs text-slate-400">Canal: {idea.channel_name}</p>
+                                    )}
+                                    {idea.tags?.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {idea.tags.map((tag) => (
+                                                <span key={tag} className="text-[11px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">
+                                                    #{tag}
+                                                </span>
+                                            ))}
+                                        </div>
                                     )}
                                     <div className="flex gap-2 mt-4 pt-4 border-t border-gray-800">
                                         <select
@@ -285,6 +345,21 @@ export default function IdeasPage() {
                                         />
                                     </div>
                                     <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Canal</label>
+                                        <select
+                                            value={formData.channelId}
+                                            onChange={(e) => setFormData({ ...formData, channelId: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                        >
+                                            <option value="">Sin canal</option>
+                                            {channels.map((channel) => (
+                                                <option key={channel.id} value={channel.id}>
+                                                    {channel.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">Prioridad (0-10)</label>
                                         <input
                                             type="number"
@@ -293,6 +368,16 @@ export default function IdeasPage() {
                                             value={formData.priority}
                                             onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Tags (separados por coma)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.tagsInput}
+                                            onChange={(e) => setFormData({ ...formData, tagsInput: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                            placeholder="seo, video, tutorial"
                                         />
                                     </div>
                                     <div className="flex gap-3 pt-4">
