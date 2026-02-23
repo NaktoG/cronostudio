@@ -155,6 +155,18 @@ cronostudio/
 
 ## Workflow Típico de Desarrollo
 
+### Inicio rapido (todo automatico)
+
+```bash
+./scripts/local_start.sh
+```
+
+Para detener todo:
+
+```bash
+./scripts/local_stop.sh
+```
+
 ### Iniciar día de desarrollo
 
 ```bash
