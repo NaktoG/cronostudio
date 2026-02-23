@@ -25,6 +25,12 @@ Acceso:
 - **n8n**: http://localhost:5678
 - **Dashboard**: http://localhost:3000
 
+### Migraciones (cuando hay cambios de schema)
+
+```bash
+./scripts/migrate.sh
+```
+
 ## Parar Servicios
 
 ```bash

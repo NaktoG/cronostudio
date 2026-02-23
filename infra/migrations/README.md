@@ -10,6 +10,16 @@ Esta carpeta contiene migraciones versionadas en SQL plano. Objetivo: que cualqu
 
 ## Ejecución
 
+### Local (stack Docker)
+
+```
+./scripts/migrate.sh
+```
+
+El wrapper local ejecuta las migraciones dentro del contenedor y registra el progreso en `schema_migrations`.
+
+### CI / Postgres externo
+
 ```
 export DATABASE_URL=postgresql://user:pass@host:5432/cronostudio
 ./scripts/db/migrate.sh
@@ -44,4 +54,4 @@ Esto genera un archivo con timestamp actual en esta carpeta, listo para editar.
 - `202601290000__auth_sessions.sql` y `202601300000__auth_email_tokens.sql:` tablas de sesiones y tokens.
 - `202602090000__user_roles.sql`: agrega columna `role` a `app_users` para habilitar RBAC.
 
-> Todos los despliegues deben usar `scripts/db/migrate.sh` (local `DATABASE_URL`) o `scripts/db_migrate.sh` (stack Docker) para aplicar estos archivos en orden.
+> Todos los despliegues deben usar `scripts/migrate.sh` (local Docker) o `scripts/db/migrate.sh` (CI/externo) para aplicar estos archivos en orden.

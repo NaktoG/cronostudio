@@ -37,6 +37,14 @@ cp infra/docker/.env.example infra/docker/.env
 
 Editar `infra/docker/.env` con valores locales. Ver `.env.example` para referencias.
 
+Copiar template de `apps/web/.env.example` a `apps/web/.env.local`:
+
+```bash
+cp apps/web/.env.example apps/web/.env.local
+```
+
+Editar `apps/web/.env.local` con valores locales. Ver `.env.example` para referencias.
+
 Variables obligatorias (mínimo):
 - `JWT_SECRET` (mínimo 32 caracteres, sin usar valores por defecto)
 
@@ -83,7 +91,7 @@ Verificar que ambos containers están en estado `Up`:
 ### 3.1 Ejecutar migraciones de base de datos
 
 ```bash
-./scripts/db/migrate.sh
+./scripts/migrate.sh
 ```
 
 > Ver `infra/migrations/README.md` para crear nuevas migraciones (`./scripts/db/create-migration.sh <descripcion>`).
