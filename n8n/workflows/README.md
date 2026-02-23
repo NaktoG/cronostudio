@@ -16,6 +16,11 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 - `YOUTUBE_ANALYTICS_ACCESS_TOKEN` (Bearer token OAuth2)
 - `YOUTUBE_CHANNEL_IDS` (IDs separados por coma)
 
+Notas:
+- Si `CRONOSTUDIO_EMAIL`/`CRONOSTUDIO_PASSWORD` estan vacios, los workflows de CronoStudio fallan en el login.
+- Si falta `YOUTUBE_API_KEY`, los workflows de sync de canales/videos fallan en la llamada a YouTube.
+- Si falta `YOUTUBE_ANALYTICS_ACCESS_TOKEN`, el workflow de analytics fallara.
+
 > Seguridad y hardening: ver `docs/n8n/SECURITY.md`.
 
 ## Workflows incluidos
@@ -33,8 +38,9 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
    - Procesa en lotes para reducir fallas.
 
 4) `demo-my-first-ai-agent-in-n8n.json`
-   - Workflow de ejemplo (plantilla oficial de n8n) usando LangChain/OpenAI.
-   - Sirve para probar agentes y no depende de CronoStudio.
+    - Workflow de ejemplo (plantilla oficial de n8n) usando LangChain/OpenAI.
+    - Sirve para probar agentes y no depende de CronoStudio.
+    - Si ves nodos con signo de "?", faltan los nodos LangChain en tu instancia. Puedes eliminar este workflow o instalar los nodos correspondientes.
 
 ## Exportar workflows desde producción
 1. Desde el repo `ansible/` ejecutar:
@@ -75,6 +81,11 @@ node scripts/n8n_mapping_test.mjs
 2. Importar JSON desde esta carpeta.
 3. Ejecutar en manual para validar.
 4. Activar el workflow si todo funciona.
+
+## Preflight rapido
+```bash
+./scripts/n8n/preflight.sh
+```
 
 ## Notas
 - `YOUTUBE_CHANNEL_IDS` requiere IDs de canal, no URLs.
