@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateInput, CreateChannelSchema, CreateChannelInput } from '@/lib/validation';
+import { validateInput, CreateChannelSchema, CreateChannelInput, UpdateChannelSchema, UpdateChannelInput } from '@/lib/validation';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRolesOrServiceSecret } from '@/middleware/rbac';
@@ -128,5 +128,110 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
             { error: 'Failed to create channel' },
             { status: 500 }
         );
+    }
+}));
+
+/**
+ * PUT /api/channels?id=...
+ * Actualiza un canal del usuario
+ */
+export const PUT = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    try {
+        let userId = getAuthUser(request)?.userId;
+        if (!userId) {
+            userId = await getServiceUserId(request);
+        }
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const channelId = searchParams.get('id');
+        if (!channelId) {
+            return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
+        }
+
+        const body = await request.json();
+        const validatedData = validateInput<UpdateChannelInput>(UpdateChannelSchema, body);
+
+        const updates: string[] = [];
+        const params: (string | number | null)[] = [];
+        let paramIndex = 1;
+
+        if (validatedData.name !== undefined) {
+            updates.push(`name = $${paramIndex++}`);
+            params.push(validatedData.name);
+        }
+        if (validatedData.youtubeChannelId !== undefined) {
+            updates.push(`youtube_channel_id = $${paramIndex++}`);
+            params.push(validatedData.youtubeChannelId);
+        }
+
+        if (updates.length === 0) {
+            return NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 });
+        }
+
+        updates.push(`updated_at = NOW()`);
+
+        params.push(channelId, userId);
+
+        const result = await query(
+            `UPDATE channels
+             SET ${updates.join(', ')}
+             WHERE id = $${paramIndex++} AND user_id = $${paramIndex}
+             RETURNING id, name, youtube_channel_id, subscribers, created_at, updated_at`,
+            params
+        );
+
+        if (result.rows.length === 0) {
+            return NextResponse.json({ error: 'Canal no encontrado o no autorizado' }, { status: 404 });
+        }
+
+        return withSecurityHeaders(NextResponse.json(result.rows[0]));
+    } catch (error) {
+        if (error instanceof Error && error.message.includes('Validation error')) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        if (error instanceof Error && error.message.includes('duplicate key')) {
+            return NextResponse.json({ error: 'Channel with this YouTube ID already exists' }, { status: 409 });
+        }
+        console.error('[PUT /api/channels] Error:', error instanceof Error ? error.message : 'Unknown error');
+        return NextResponse.json({ error: 'Failed to update channel' }, { status: 500 });
+    }
+}));
+
+/**
+ * DELETE /api/channels?id=...
+ * Elimina un canal del usuario
+ */
+export const DELETE = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+    try {
+        let userId = getAuthUser(request)?.userId;
+        if (!userId) {
+            userId = await getServiceUserId(request);
+        }
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(request.url);
+        const channelId = searchParams.get('id');
+        if (!channelId) {
+            return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
+        }
+
+        const result = await query(
+            'DELETE FROM channels WHERE id = $1 AND user_id = $2 RETURNING id',
+            [channelId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return NextResponse.json({ error: 'Canal no encontrado o no autorizado' }, { status: 404 });
+        }
+
+        return withSecurityHeaders(NextResponse.json({ success: true }));
+    } catch (error) {
+        console.error('[DELETE /api/channels] Error:', error instanceof Error ? error.message : 'Unknown error');
+        return NextResponse.json({ error: 'Failed to delete channel' }, { status: 500 });
     }
 }));

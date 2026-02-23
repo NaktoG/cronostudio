@@ -9,6 +9,7 @@ import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface Channel {
     id: string;
@@ -26,12 +27,13 @@ export default function ChannelsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
+    const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         youtubeChannelId: '',
     });
     const [submitting, setSubmitting] = useState(false);
-    const [successMessage, setSuccessMessage] = useState('');
+    const { addToast } = useToast();
 
     const fetchChannels = useCallback(async () => {
         try {
@@ -66,8 +68,10 @@ export default function ChannelsPage() {
         setError(null);
 
         try {
-            const response = await authFetch('/api/channels', {
-                method: 'POST',
+            const targetUrl = editingChannel ? `/api/channels?id=${editingChannel.id}` : '/api/channels';
+            const method = editingChannel ? 'PUT' : 'POST';
+            const response = await authFetch(targetUrl, {
+                method,
                 body: JSON.stringify(formData),
             });
 
@@ -76,16 +80,37 @@ export default function ChannelsPage() {
                 throw new Error(data.error || 'Error al crear canal');
             }
 
-            setSuccessMessage('Canal creado exitosamente');
+            addToast(editingChannel ? 'Canal actualizado' : 'Canal creado', 'success');
             setShowModal(false);
+            setEditingChannel(null);
             setFormData({ name: '', youtubeChannelId: '' });
             await fetchChannels();
-
-            setTimeout(() => setSuccessMessage(''), 3000);
         } catch (err) {
+            addToast(err instanceof Error ? err.message : 'Error desconocido', 'error');
             setError(err instanceof Error ? err.message : 'Error desconocido');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleEdit = (channel: Channel) => {
+        setEditingChannel(channel);
+        setFormData({ name: channel.name, youtubeChannelId: channel.youtube_channel_id });
+        setShowModal(true);
+    };
+
+    const handleDelete = async (channel: Channel) => {
+        if (!confirm(`Eliminar canal "${channel.name}"?`)) return;
+        try {
+            const response = await authFetch(`/api/channels?id=${channel.id}`, { method: 'DELETE' });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al eliminar canal');
+            }
+            addToast('Canal eliminado', 'success');
+            await fetchChannels();
+        } catch (err) {
+            addToast(err instanceof Error ? err.message : 'Error desconocido', 'error');
         }
     };
 
@@ -144,17 +169,6 @@ export default function ChannelsPage() {
 
                     {/* Mensajes */}
                     <AnimatePresence>
-                        {successMessage && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="mb-6 p-4 bg-green-500/10 border border-green-500/50 rounded-lg text-green-400"
-                            >
-                                {successMessage}
-                            </motion.div>
-                        )}
-
                         {error && (
                             <motion.div
                                 initial={{ opacity: 0, y: -10 }}
@@ -194,7 +208,11 @@ export default function ChannelsPage() {
                                 Conecta tu primer canal de YouTube para comenzar
                             </p>
                             <motion.button
-                                onClick={() => setShowModal(true)}
+                                onClick={() => {
+                                    setEditingChannel(null);
+                                    setFormData({ name: '', youtubeChannelId: '' });
+                                    setShowModal(true);
+                                }}
                                 className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 transition-all"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -229,9 +247,18 @@ export default function ChannelsPage() {
                                         </span>
                                     </div>
 
-                                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <h3 className="text-lg font-semibold text-white group-hover:text-yellow-400 transition-colors">
                                         {channel.name}
-                                    </h3>
+                                        </h3>
+                                        <span className={`text-[10px] uppercase tracking-[0.2em] px-2 py-1 rounded-full border ${
+                                            channel.subscribers > 0
+                                                ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                                                : 'border-amber-500/40 text-amber-300 bg-amber-500/10'
+                                        }`}>
+                                            {channel.subscribers > 0 ? 'Conectado' : 'Pendiente'}
+                                        </span>
+                                    </div>
 
                                     <div className="flex items-center gap-4 text-sm text-gray-400">
                                         <div className="flex items-center gap-1">
@@ -242,16 +269,30 @@ export default function ChannelsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 pt-4 border-t border-gray-800 flex justify-between items-center">
+                                    <div className="mt-4 pt-4 border-t border-gray-800 flex items-center justify-between gap-3">
                                         <span className="text-xs text-gray-500">
                                             Añadido: {new Date(channel.created_at).toLocaleDateString('es-ES')}
                                         </span>
-                                        <Link
-                                            href={`/analytics?channelId=${channel.id}`}
-                                            className="text-sm text-yellow-400 hover:text-yellow-300 transition-colors"
-                                        >
-                                            Ver Analytics →
-                                        </Link>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => handleEdit(channel)}
+                                                className="text-xs text-slate-300 hover:text-white"
+                                            >
+                                                Editar
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(channel)}
+                                                className="text-xs text-red-300 hover:text-red-200"
+                                            >
+                                                Eliminar
+                                            </button>
+                                            <Link
+                                                href={`/analytics?channelId=${channel.id}`}
+                                                className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors"
+                                            >
+                                                Ver Analytics →
+                                            </Link>
+                                        </div>
                                     </div>
                                 </motion.div>
                             ))}
@@ -278,7 +319,9 @@ export default function ChannelsPage() {
                                 exit={{ scale: 0.9, opacity: 0 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-2xl font-bold text-white mb-6">Añadir Canal</h3>
+                                <h3 className="text-2xl font-bold text-white mb-6">
+                                    {editingChannel ? 'Editar Canal' : 'Añadir Canal'}
+                                </h3>
 
                                 <form onSubmit={handleSubmit} className="space-y-5">
                                     <div>
@@ -307,7 +350,8 @@ export default function ChannelsPage() {
                                             onChange={(e) => setFormData({ ...formData, youtubeChannelId: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
                                             placeholder="UCxxxxxxxxxxxxx"
-                                            required
+                                            required={!editingChannel}
+                                            disabled={Boolean(editingChannel)}
                                         />
                                         <p className="mt-1 text-xs text-gray-500">
                                             Puedes encontrarlo en la URL de tu canal de YouTube
@@ -335,10 +379,10 @@ export default function ChannelsPage() {
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                                     </svg>
-                                                    Creando...
+                                                    {editingChannel ? 'Guardando...' : 'Creando...'}
                                                 </span>
                                             ) : (
-                                                'Crear Canal'
+                                                editingChannel ? 'Guardar cambios' : 'Crear Canal'
                                             )}
                                         </motion.button>
                                     </div>

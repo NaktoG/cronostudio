@@ -42,16 +42,20 @@ function AnalyticsContent() {
         startDate: '',
         endDate: '',
     });
+    const [visibleCount, setVisibleCount] = useState(10);
 
     // Calcular totales
     const totals = analytics.reduce(
         (acc, item) => ({
             views: acc.views + Number(item.total_views || 0),
             watchTime: acc.watchTime + Number(item.total_watch_time || 0),
-            avgDuration: item.avg_duration || 0,
         }),
-        { views: 0, watchTime: 0, avgDuration: 0 }
+        { views: 0, watchTime: 0 }
     );
+
+    const avgDurationSeconds = totals.views > 0
+        ? Math.round((totals.watchTime * 60) / totals.views)
+        : 0;
 
     const fetchChannels = useCallback(async () => {
         try {
@@ -122,6 +126,16 @@ function AnalyticsContent() {
         const minutes = mins % 60;
         if (hours > 0) return `${hours}h ${minutes}m`;
         return `${minutes}m`;
+    };
+
+    const applyQuickRange = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - days);
+        setDateRange({
+            startDate: start.toISOString().slice(0, 10),
+            endDate: end.toISOString().slice(0, 10),
+        });
     };
 
     return (
@@ -213,6 +227,23 @@ function AnalyticsContent() {
                         />
                     </div>
                 </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                    {[7, 30, 90].map((days) => (
+                        <button
+                            key={days}
+                            onClick={() => applyQuickRange(days)}
+                            className="text-xs px-3 py-1.5 rounded-full border border-gray-700 text-slate-300 hover:text-white hover:border-yellow-400"
+                        >
+                            {days} dias
+                        </button>
+                    ))}
+                    <button
+                        onClick={() => setDateRange({ startDate: '', endDate: '' })}
+                        className="text-xs px-3 py-1.5 rounded-full border border-gray-700 text-slate-300 hover:text-white"
+                    >
+                        Reset
+                    </button>
+                </div>
             </motion.div>
 
             {/* Error */}
@@ -268,7 +299,9 @@ function AnalyticsContent() {
                         <span className="text-sm text-gray-400">Duración Media</span>
                     </div>
                     <p className="text-3xl font-bold text-white">
-                        {totals.avgDuration > 0 ? `${Math.floor(totals.avgDuration / 60)}:${(totals.avgDuration % 60).toString().padStart(2, '0')}` : '0:00'}
+                        {avgDurationSeconds > 0
+                            ? `${Math.floor(avgDurationSeconds / 60)}:${(avgDurationSeconds % 60).toString().padStart(2, '0')}`
+                            : '0:00'}
                     </p>
                 </div>
             </motion.div>
@@ -307,7 +340,7 @@ function AnalyticsContent() {
 
                 {!loading && analytics.length > 0 && (
                     <div className="space-y-3">
-                        {analytics.slice(0, 10).map((item, index) => {
+                        {analytics.slice(0, visibleCount).map((item, index) => {
                             const views = Number(item.total_views) || 0;
                             const percentage = (views / maxViews) * 100;
                             const date = new Date(item.period);
@@ -342,6 +375,16 @@ function AnalyticsContent() {
                                 </motion.div>
                             );
                         })}
+                        {analytics.length > 10 && (
+                            <div className="pt-4 flex justify-center">
+                                <button
+                                    onClick={() => setVisibleCount(visibleCount === 10 ? 30 : 10)}
+                                    className="text-xs px-4 py-2 rounded-full border border-gray-700 text-slate-300 hover:text-white"
+                                >
+                                    {visibleCount === 10 ? 'Ver 30' : 'Ver 10'}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </motion.div>

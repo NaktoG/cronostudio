@@ -8,6 +8,7 @@ import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface Idea {
     id: string;
@@ -37,6 +38,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export default function IdeasPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
+    const { addToast } = useToast();
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [loading, setLoading] = useState(true);
@@ -132,7 +134,9 @@ export default function IdeasPage() {
             setEditingIdea(null);
             setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
             await fetchIdeas();
+            addToast(editingIdea ? 'Idea actualizada' : 'Idea creada', 'success');
         } catch (err) {
+            addToast(err instanceof Error ? err.message : 'Error', 'error');
             setError(err instanceof Error ? err.message : 'Error');
         } finally {
             setSubmitting(false);
@@ -152,11 +156,21 @@ export default function IdeasPage() {
     };
 
     const updateStatus = async (id: string, status: string) => {
-        await authFetch(`/api/ideas?id=${id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ status }),
-        });
-        await fetchIdeas();
+        try {
+            const response = await authFetch(`/api/ideas?id=${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status }),
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al actualizar estado');
+            }
+            await fetchIdeas();
+            addToast('Estado actualizado', 'success');
+        } catch (err) {
+            addToast(err instanceof Error ? err.message : 'Error', 'error');
+            setError(err instanceof Error ? err.message : 'Error');
+        }
     };
 
     const deleteIdea = async (id: string) => {
@@ -177,7 +191,9 @@ export default function IdeasPage() {
             }
             setDeleteTarget(null);
             await fetchIdeas();
+            addToast('Idea eliminada', 'success');
         } catch (err) {
+            addToast(err instanceof Error ? err.message : 'Error', 'error');
             setError(err instanceof Error ? err.message : 'Error');
         } finally {
             setDeleteSubmitting(false);

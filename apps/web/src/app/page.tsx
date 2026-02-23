@@ -13,6 +13,7 @@ import ProductionPipeline from './components/ProductionPipeline';
 import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
+import { useToast } from './contexts/ToastContext';
 
 interface PipelineStats {
   idea: number;
@@ -56,6 +57,7 @@ function generatePriorityActions(productions: Production[]): PriorityAction[] {
 function DashboardContent() {
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
+  const { addToast } = useToast();
   const searchParams = useSearchParams();
   const [productions, setProductions] = useState<Production[]>([]);
   const [pipelineStats, setPipelineStats] = useState<PipelineStats>({
@@ -130,8 +132,12 @@ function DashboardContent() {
         setNewTitle('');
         setShowModal(false);
         fetchData();
+        addToast('Contenido creado', 'success');
+      } else {
+        addToast('No se pudo crear contenido', 'error');
       }
     } catch (e) {
+      addToast('Error al crear contenido', 'error');
       console.error('Error:', e);
     }
   };
@@ -267,22 +273,22 @@ function DashboardContent() {
                         <motion.div whileHover={{ scale: 1.05 }}>
                           <div className="text-4xl font-semibold text-white">{productions.length}</div>
                           <div className="text-sm text-slate-400">Total</div>
-                          <div className="text-xs text-slate-500 mt-1">+2 esta semana</div>
+                          <div className="text-xs text-slate-500 mt-1">Total en producción</div>
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.05 }}>
                           <div className="text-4xl font-semibold text-yellow-400">{activeProductions.length}</div>
                           <div className="text-sm text-slate-400">Activos</div>
-                          <div className="text-xs text-slate-500 mt-1">Prioridad alta</div>
+                          <div className="text-xs text-slate-500 mt-1">En curso</div>
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.05 }}>
                           <div className="text-4xl font-semibold text-cyan-400">{ideasCount}</div>
                           <div className="text-sm text-slate-400">Ideas</div>
-                          <div className="text-xs text-slate-500 mt-1">+3 nuevas</div>
+                          <div className="text-xs text-slate-500 mt-1">Ideas registradas</div>
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.05 }}>
                           <div className="text-4xl font-semibold text-emerald-400">{pipelineStats.published}</div>
                           <div className="text-sm text-slate-400">Publicados</div>
-                          <div className="text-xs text-slate-500 mt-1">Meta semanal</div>
+                          <div className="text-xs text-slate-500 mt-1">Publicado hasta hoy</div>
                         </motion.div>
                       </div>
                     </motion.div>
