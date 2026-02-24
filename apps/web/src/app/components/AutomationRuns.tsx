@@ -60,7 +60,7 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
             transition={{ duration: 0.3, delay: 0.2 }}
         >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/70">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-slate-800 bg-slate-900/70">
                 <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{COMPONENT_COPY.automationRuns.title}</span>
                 <span className="text-xs text-slate-400">{runs.length} {COMPONENT_COPY.automationRuns.runsLabel}</span>
             </div>
@@ -74,7 +74,7 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
             >
                 {runs.length === 0 ? (
                     <motion.div
-                        className="px-5 py-5 flex items-center gap-3 text-slate-200"
+                        className="px-4 sm:px-5 py-5 flex items-center gap-3 text-slate-200"
                         variants={itemVariants}
                     >
                         <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
@@ -94,7 +94,7 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                             <motion.button
                                 key={run.id}
                                 type="button"
-                                className="flex w-full flex-col gap-4 px-5 py-4 text-left hover:bg-slate-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
+                                className="flex w-full flex-col gap-3 px-4 sm:px-5 py-4 text-left hover:bg-slate-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
                                 onClick={() => onRunClick?.(run)}
                                 aria-label={`Ver ejecucion ${run.workflow_name}`}
                                 variants={itemVariants}
@@ -109,10 +109,10 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                                     <Icon className={`w-4 h-4 ${run.status === 'running' ? 'animate-spin' : ''}`} />
                                 </span>
                                 <div className="flex-1 min-w-0">
-                                    <span className="text-base text-white truncate block font-medium">{run.workflow_name}</span>
-                                    <span className="text-sm text-slate-300">{config.label}</span>
+                                    <span className="text-sm sm:text-base text-white truncate block font-medium">{run.workflow_name}</span>
+                                    <span className="text-xs sm:text-sm text-slate-300">{config.label}</span>
                                 </div>
-                                <span className="text-sm text-slate-300 sm:ml-auto">{formatTimeAgo(run.started_at)}</span>
+                                <span className="text-xs sm:text-sm text-slate-300 sm:ml-auto">{formatTimeAgo(run.started_at)}</span>
                             </motion.button>
                         );
                     })

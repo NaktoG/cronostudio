@@ -79,7 +79,7 @@ export default function ProductionsList({
             transition={{ duration: 0.3, delay: 0.1 }}
         >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-800 bg-gray-900/60">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{title}</span>
                     {filterLabel && (
@@ -115,7 +115,7 @@ export default function ProductionsList({
                 {productions.length === 0 ? (
                     <motion.button
                         type="button"
-                        className="w-full px-5 py-6 text-center cursor-pointer hover:bg-gray-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
+                        className="w-full px-4 sm:px-5 py-6 text-center cursor-pointer hover:bg-gray-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
                         onClick={filterLabel && onClearFilter ? onClearFilter : showCreateButton ? onCreateNew : undefined}
                         aria-label="Crear nuevo contenido"
                         variants={itemVariants}
@@ -124,9 +124,9 @@ export default function ProductionsList({
                         <span className="w-14 h-14 mx-auto mb-3 rounded-full bg-gray-900/70 border border-gray-800 flex items-center justify-center text-yellow-400">
                             <Film className="w-6 h-6" />
                         </span>
-                        <span className="text-base text-slate-300 block mb-1">
-                            {filterLabel ? COMPONENT_COPY.productionsList.emptyStage : COMPONENT_COPY.productionsList.emptyActive}
-                        </span>
+                            <span className="text-sm sm:text-base text-slate-300 block mb-1">
+                                {filterLabel ? COMPONENT_COPY.productionsList.emptyStage : COMPONENT_COPY.productionsList.emptyActive}
+                            </span>
                         {showCreateButton && (
                             <span className="text-sm text-yellow-400 hover:underline font-semibold">
                                 {filterLabel ? COMPONENT_COPY.productionsList.changeFilter : COMPONENT_COPY.productionsList.createFirst}
@@ -143,7 +143,7 @@ export default function ProductionsList({
                             <motion.button
                                 key={prod.id}
                                 type="button"
-                                className="flex w-full flex-col gap-4 px-5 py-4 text-left hover:bg-gray-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
+                            className="flex w-full flex-col gap-3 px-4 sm:px-5 py-4 text-left hover:bg-gray-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
                                 onClick={() => onProductionClick?.(prod)}
                                 aria-label={`Abrir contenido ${prod.title}`}
                                 variants={itemVariants}
@@ -161,8 +161,8 @@ export default function ProductionsList({
 
                                 {/* Title */}
                                 <div className="flex-1 min-w-0">
-                                    <span className="text-base font-medium text-white truncate block">{prod.title}</span>
-                                    <span className="text-sm text-slate-400 truncate block">{nextAction}</span>
+                                    <span className="text-sm sm:text-base font-medium text-white truncate block">{prod.title}</span>
+                                    <span className="text-xs sm:text-sm text-slate-400 truncate block">{nextAction}</span>
                                 </div>
 
                                 {/* Arrow */}

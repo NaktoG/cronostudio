@@ -65,7 +65,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew, s
             transition={{ duration: 0.3 }}
         >
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-800 bg-gray-900/60">
                 <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] flex items-center gap-2">
                     <Target className="w-4 h-4" />
                     {COMPONENT_COPY.priorityActions.title}
@@ -89,7 +89,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew, s
                         <motion.button
                             key={action.id}
                             type="button"
-                            className={`flex w-full flex-col gap-4 px-5 py-4 text-left hover:bg-gray-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center ${styles.bg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60`}
+                            className={`flex w-full flex-col gap-3 px-4 sm:px-5 py-4 text-left hover:bg-gray-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center ${styles.bg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60`}
                             onClick={() => action.productionId ? onActionClick?.(action) : onCreateNew?.()}
                             aria-label={action.productionId ? `Abrir accion ${action.title}` : 'Crear nuevo contenido'}
                             variants={itemVariants}
@@ -102,14 +102,14 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew, s
                             />
 
                             {/* Icon */}
-                            <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                            <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                 <Icon className="w-4 h-4" />
                             </span>
 
                             {/* Action text */}
                             <div className="flex-1 min-w-0">
-                                <span className="text-base font-medium text-white block truncate">{action.title}</span>
-                                <span className="text-sm text-slate-300 truncate block">{action.productionTitle}</span>
+                                <span className="text-sm sm:text-base font-medium text-white block truncate">{action.title}</span>
+                                <span className="text-xs sm:text-sm text-slate-300 truncate block">{action.productionTitle}</span>
                             </div>
 
                             {/* Action button */}

@@ -152,10 +152,10 @@ export default function ChannelsPage() {
             <div className="min-h-screen flex flex-col">
                 <Header />
 
-                <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
+                <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
                     {/* Header de sección */}
                     <motion.div
-                        className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex flex-col gap-4 mb-6 sm:mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
@@ -165,9 +165,9 @@ export default function ChannelsPage() {
                                 <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                     <Tv className="w-5 h-5" />
                                 </span>
-                                <h2 className="text-4xl font-semibold text-white">{CHANNELS_COPY.title}</h2>
+                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{CHANNELS_COPY.title}</h2>
                             </div>
-                            <p className="text-slate-300">{CHANNELS_COPY.subtitle}</p>
+                            <p className="text-sm sm:text-base text-slate-300">{CHANNELS_COPY.subtitle}</p>
                         </div>
 
                         <motion.button
@@ -240,7 +240,7 @@ export default function ChannelsPage() {
 
                     {!loading && channels.length > 0 && (
                         <motion.div
-                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
                             variants={containerVariants}
                             initial="hidden"
                             animate="visible"

@@ -6,8 +6,8 @@ import { NAV_LABELS, QUICK_LINKS } from '../content/navigation';
 
 export default function QuickAccess() {
     return (
-        <div className="flex items-center gap-1 py-2">
-            <span className="text-[10px] text-slate-500 mr-2">{NAV_LABELS.quickAccessTitle}</span>
+        <div className="flex flex-wrap items-center gap-1.5 py-2">
+            <span className="text-[10px] text-slate-500 mr-1 sm:mr-2">{NAV_LABELS.quickAccessTitle}</span>
             {QUICK_LINKS.map((link) => {
                 const Icon = link.icon || Film;
                 return (

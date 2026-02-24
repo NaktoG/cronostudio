@@ -82,7 +82,7 @@ export default function SeoPage() {
         <ProtectedRoute>
             <div className="min-h-screen flex flex-col">
                 <Header />
-                <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
+                <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
                     <motion.div
                         className="mb-8"
                         initial={{ opacity: 0, y: -20 }}
@@ -93,14 +93,14 @@ export default function SeoPage() {
                             <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                 <Search className="w-5 h-5" />
                             </span>
-                            <h2 className="text-4xl font-semibold text-white">{SEO_COPY.title}</h2>
+                            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{SEO_COPY.title}</h2>
                         </div>
-                        <p className="text-slate-300">{SEO_COPY.subtitle}</p>
+                        <p className="text-sm sm:text-base text-slate-300">{SEO_COPY.subtitle}</p>
                     </motion.div>
 
                     {/* Tips Card */}
                     <motion.div
-                        className="surface-panel glow-hover p-6 mb-8"
+                        className="surface-panel glow-hover p-4 sm:p-6 mb-8"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
@@ -109,7 +109,7 @@ export default function SeoPage() {
                             <Lightbulb className="w-4 h-4" />
                             {SEO_COPY.tipsTitle}
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
                             {SEO_COPY.tips.map((tip) => (
                                 <div key={tip.title}>
                                     <p className="text-white font-medium mb-1">{tip.title}</p>

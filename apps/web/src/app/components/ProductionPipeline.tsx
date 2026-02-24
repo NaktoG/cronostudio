@@ -65,7 +65,7 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage }:
             transition={{ duration: 0.3 }}
         >
             {/* Header row */}
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
                 <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{COMPONENT_COPY.pipeline.title}</span>
                 <span className="text-xs text-slate-400">{total} {COMPONENT_COPY.pipeline.totalLabel}</span>
             </div>
@@ -85,7 +85,7 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage }:
                         <motion.button
                             key={stage.key}
                             onClick={() => hasItems && onStageClick?.(stage.key)}
-                            className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all sm:py-4 ${hasItems
+                            className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl transition-all sm:py-4 ${hasItems
                                 ? 'bg-gray-800/70 hover:bg-gray-800 cursor-pointer shadow-lg'
                                 : 'bg-gray-900/40 cursor-default'
                                 } ${
@@ -100,17 +100,17 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage }:
                             whileTap={hasItems ? { scale: 0.97 } : {}}
                         >
                             {/* Icon */}
-                            <stage.icon className="w-5 h-5 mb-2 text-slate-200 sm:w-6 sm:h-6" />
+                            <stage.icon className="w-4 h-4 mb-2 text-slate-200 sm:w-6 sm:h-6" />
 
                             {/* Counter badge */}
                             <div
-                                className={`w-9 h-9 rounded-full ${stage.bgColor} flex items-center justify-center mb-2 shadow-lg sm:w-10 sm:h-10`}
+                                className={`w-8 h-8 rounded-full ${stage.bgColor} flex items-center justify-center mb-2 shadow-lg sm:w-10 sm:h-10`}
                             >
-                                <span className="text-base font-bold text-white sm:text-lg">{count}</span>
+                                <span className="text-sm font-bold text-white sm:text-lg">{count}</span>
                             </div>
 
                             {/* Label */}
-                            <span className={`text-sm font-medium ${hasItems ? stage.color : 'text-gray-600'}`}>
+                            <span className={`text-[11px] sm:text-sm font-medium ${hasItems ? stage.color : 'text-gray-600'}`}>
                                 {stage.label}
                             </span>
                         </motion.button>

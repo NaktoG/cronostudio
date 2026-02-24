@@ -247,12 +247,12 @@ export default function ConfiguracionPage() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <PageTransition className="flex-1">
-          <main className="w-full px-4 md:px-8 lg:px-12 py-8">
+          <main className="w-full px-4 sm:px-6 lg:px-12 py-6 sm:py-8">
             <motion.div className="mb-8 space-y-2" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
               <BackToDashboard />
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white">Configuración</h1>
-                <p className="text-gray-400">Administra tu cuenta personal de CronoStudio.</p>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Configuración</h1>
+                <p className="text-sm sm:text-base text-gray-400">Administra tu cuenta personal de CronoStudio.</p>
                 {user && <p className="text-sm text-gray-500 mt-1">Sesión iniciada como {user.email}</p>}
               </div>
             </motion.div>

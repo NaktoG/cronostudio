@@ -276,7 +276,7 @@ function DashboardContent() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <PageTransition className="flex-1">
-        <main className="w-full px-4 md:px-8 lg:px-12 py-8">
+        <main className="w-full px-4 sm:px-6 lg:px-12 py-6 sm:py-8">
             {/* Header */}
             <motion.div
               className="mb-8 sm:mb-10"
@@ -331,7 +331,7 @@ function DashboardContent() {
                 />
 
                 {/* Main grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-6 items-start">
                   <div className="space-y-5">
                     <PriorityActions
                       actions={priorityActions}
@@ -340,12 +340,12 @@ function DashboardContent() {
 
                     {activeStage === 'idea' ? (
                     <motion.div
-                      className="surface-card glow-hover overflow-hidden"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.1 }}
-                    >
-                      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
+                       className="surface-card glow-hover overflow-hidden"
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       transition={{ duration: 0.3, delay: 0.1 }}
+                     >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-800 bg-gray-900/60">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                           <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.pipeline.ideasActive}</span>
                           <button
@@ -359,12 +359,12 @@ function DashboardContent() {
                         </div>
                           <span className="text-xs text-slate-400">{filteredIdeas.length} {DASHBOARD_COPY.pipeline.ideasCountLabel}</span>
                       </div>
-                      <div className="divide-y divide-gray-800/50">
-                        {filteredIdeas.length === 0 ? (
-                          <div className="px-5 py-6 text-slate-300">{DASHBOARD_COPY.pipeline.noIdeas}</div>
+                        <div className="divide-y divide-gray-800/50">
+                          {filteredIdeas.length === 0 ? (
+                          <div className="px-4 sm:px-5 py-6 text-slate-300">{DASHBOARD_COPY.pipeline.noIdeas}</div>
                         ) : (
                           filteredIdeas.slice(0, 6).map((idea) => (
-                            <div key={idea.id} className="px-5 py-4">
+                            <div key={idea.id} className="px-4 sm:px-5 py-4">
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-sm text-white font-medium">{idea.title}</p>
@@ -391,69 +391,69 @@ function DashboardContent() {
 
                   <div className="space-y-4">
                     <motion.div
-                      className="surface-card glow-hover p-6 min-h-[520px]"
+                      className="surface-card glow-hover p-4 sm:p-6 sm:min-h-[520px]"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.15 }}
                     >
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
                         <div>
                           <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.calendar.title}</div>
-                          <p className="text-sm text-slate-300">{DASHBOARD_COPY.calendar.subtitle}</p>
+                          <p className="text-xs sm:text-sm text-slate-300">{DASHBOARD_COPY.calendar.subtitle}</p>
                         </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex rounded-full border border-gray-700 overflow-hidden">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex rounded-full border border-gray-700 overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => setCalendarView('month')}
+                              className={`px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                                calendarView === 'month'
+                                  ? 'bg-yellow-400 text-black'
+                                  : 'text-slate-300'
+                              }`}
+                            >
+                              {DASHBOARD_COPY.calendar.month}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCalendarView('week')}
+                              className={`px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                                calendarView === 'week'
+                                  ? 'bg-yellow-400 text-black'
+                                  : 'text-slate-300'
+                              }`}
+                            >
+                              {DASHBOARD_COPY.calendar.week}
+                            </button>
+                          </div>
                           <button
                             type="button"
-                            onClick={() => setCalendarView('month')}
-                            className={`px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                              calendarView === 'month'
-                                ? 'bg-yellow-400 text-black'
-                                : 'text-slate-300'
-                            }`}
+                            onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
+                            className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
                           >
-                            {DASHBOARD_COPY.calendar.month}
+                            ←
                           </button>
                           <button
                             type="button"
-                            onClick={() => setCalendarView('week')}
-                            className={`px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                              calendarView === 'week'
-                                ? 'bg-yellow-400 text-black'
-                                : 'text-slate-300'
-                            }`}
+                            onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
+                            className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
                           >
-                            {DASHBOARD_COPY.calendar.week}
+                            →
                           </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
-                          className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
-                        >
-                          ←
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
-                          className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
-                        >
-                          →
-                        </button>
-                      </div>
                       </div>
 
-                      <div className="text-sm font-semibold text-white mb-3 capitalize">
+                      <div className="text-sm sm:text-base font-semibold text-white mb-3 capitalize">
                         {calendarMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
                       </div>
 
-                      <div className="grid grid-cols-7 gap-2 text-[10px] text-slate-400 mb-2">
+                      <div className="grid grid-cols-7 gap-1 sm:gap-2 text-[9px] sm:text-[10px] text-slate-400 mb-2">
                         {DASHBOARD_COPY.calendar.weekdays.map((day) => (
                           <span key={day} className="text-center">{day}</span>
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-7 gap-2">
+                      <div className="grid grid-cols-7 gap-1 sm:gap-2">
                         {(calendarView === 'month' ? calendarDays : weeklyDays).map((dateKey, index) => {
                           if (!dateKey) {
                             return <span key={`empty-${index}`} />;
@@ -469,7 +469,7 @@ function DashboardContent() {
                                 setSelectedDate(dateKey);
                                 setScheduleDate(dateKey);
                               }}
-                              className={`relative flex h-9 items-center justify-center rounded-lg text-xs ${
+                              className={`relative flex h-8 sm:h-9 items-center justify-center rounded-lg text-[11px] sm:text-xs ${
                                 isSelected
                                   ? 'bg-yellow-400 text-black'
                                   : 'bg-gray-900/60 text-slate-200 hover:bg-gray-800'
@@ -601,13 +601,13 @@ function DashboardContent() {
 
                   <motion.div className="space-y-4">
                     <motion.div
-                      className="surface-card glow-hover p-6"
+                      className="surface-card glow-hover p-4 sm:p-6"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
                     >
                       <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">{DASHBOARD_COPY.social.title}</div>
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3">
                         {DASHBOARD_COPY.social.items.map((item) => {
                           const iconMap: Record<string, JSX.Element> = {
                             Instagram: <Instagram className="w-4 h-4" />,
@@ -616,7 +616,7 @@ function DashboardContent() {
                             X: <Twitter className="w-4 h-4" />,
                           };
                           return (
-                            <div key={item.name} className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div key={item.name} className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-3 sm:px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                               <div className="flex items-center gap-3">
                                 <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                   {iconMap[item.name]}
