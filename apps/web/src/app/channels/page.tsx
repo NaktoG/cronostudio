@@ -62,6 +62,17 @@ export default function ChannelsPage() {
         fetchChannels();
     }, [fetchChannels]);
 
+    useEffect(() => {
+        if (!showModal) return;
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowModal(false);
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [showModal]);
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
@@ -135,7 +146,7 @@ export default function ChannelsPage() {
                 <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
                     {/* Header de sección */}
                     <motion.div
-                        className="flex items-center justify-between mb-8"
+                        className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
@@ -154,7 +165,7 @@ export default function ChannelsPage() {
 
                         <motion.button
                             onClick={() => setShowModal(true)}
-                            className="px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
+                            className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
                             style={{
                                 background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
                                 boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
@@ -213,7 +224,7 @@ export default function ChannelsPage() {
                                     setFormData({ name: '', youtubeChannelId: '' });
                                     setShowModal(true);
                                 }}
-                                className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 transition-all"
+                                className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 transition-all sm:w-auto"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                             >
@@ -269,11 +280,11 @@ export default function ChannelsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 pt-4 border-t border-gray-800 flex items-center justify-between gap-3">
+                                    <div className="mt-4 pt-4 border-t border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <span className="text-xs text-gray-500">
                                             Añadido: {new Date(channel.created_at).toLocaleDateString('es-ES')}
                                         </span>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex flex-wrap items-center gap-3">
                                             <button
                                                 onClick={() => handleEdit(channel)}
                                                 className="text-xs text-slate-300 hover:text-white"
@@ -313,13 +324,16 @@ export default function ChannelsPage() {
                             onClick={() => setShowModal(false)}
                         >
                             <motion.div
-                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-8 w-full max-w-md"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="channel-modal-title"
+                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-6 sm:p-8 w-full max-w-md max-h-[85vh] overflow-y-auto"
                                 initial={{ scale: 0.9, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0.9, opacity: 0 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-2xl font-bold text-white mb-6">
+                                <h3 id="channel-modal-title" className="text-2xl font-bold text-white mb-6">
                                     {editingChannel ? 'Editar Canal' : 'Añadir Canal'}
                                 </h3>
 
@@ -358,7 +372,7 @@ export default function ChannelsPage() {
                                         </p>
                                     </div>
 
-                                    <div className="flex gap-3 pt-4">
+                                    <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                         <button
                                             type="button"
                                             onClick={() => setShowModal(false)}

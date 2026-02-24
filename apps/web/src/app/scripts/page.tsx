@@ -8,6 +8,7 @@ import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface Script {
     id: string;
@@ -33,6 +34,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export default function ScriptsPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
+    const { addToast } = useToast();
     const [scripts, setScripts] = useState<Script[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -59,6 +61,18 @@ export default function ScriptsPage() {
 
     useEffect(() => { fetchScripts(); }, [fetchScripts]);
 
+    useEffect(() => {
+        if (!showModal && !deleteTarget) return;
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowModal(false);
+                setDeleteTarget(null);
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [showModal, deleteTarget]);
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
@@ -66,16 +80,21 @@ export default function ScriptsPage() {
             const url = editingId ? `/api/scripts?id=${editingId}` : '/api/scripts';
             const method = editingId ? 'PUT' : 'POST';
 
-            await authFetch(url, {
+            const response = await authFetch(url, {
                 method,
                 body: JSON.stringify(formData),
             });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al guardar guion');
+            }
             setShowModal(false);
             setEditingId(null);
             setFormData({ title: '', intro: '', body: '', cta: '', outro: '' });
             await fetchScripts();
+            addToast(editingId ? 'Guion actualizado' : 'Guion creado', 'success');
         } catch (err) {
-            console.error('Error:', err);
+            addToast(err instanceof Error ? err.message : 'Error', 'error');
         } finally {
             setSubmitting(false);
         }
@@ -95,11 +114,20 @@ export default function ScriptsPage() {
 
     const deleteScript = async () => {
         if (!deleteTarget) return;
-        await authFetch(`/api/scripts?id=${deleteTarget.id}`, {
-            method: 'DELETE',
-        });
-        setDeleteTarget(null);
-        await fetchScripts();
+        try {
+            const response = await authFetch(`/api/scripts?id=${deleteTarget.id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al eliminar guion');
+            }
+            setDeleteTarget(null);
+            await fetchScripts();
+            addToast('Guion eliminado', 'success');
+        } catch (err) {
+            addToast(err instanceof Error ? err.message : 'Error', 'error');
+        }
     };
 
     const formatDuration = (seconds: number) => {
@@ -114,7 +142,7 @@ export default function ScriptsPage() {
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
                     <motion.div
-                        className="flex items-center justify-between mb-8"
+                        className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
@@ -132,7 +160,7 @@ export default function ScriptsPage() {
                         </div>
                         <motion.button
                             onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '' }); setShowModal(true); }}
-                            className="px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
+                            className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
                             style={{
                                 background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
                                 boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
@@ -155,7 +183,15 @@ export default function ScriptsPage() {
                                 <FileText className="w-8 h-8" />
                             </div>
                             <h3 className="text-xl font-semibold text-white mb-2">No hay guiones todavia</h3>
-                            <p className="text-slate-300">Escribe tu primer guion</p>
+                            <p className="text-slate-300 mb-6">Escribe tu primer guion</p>
+                            <motion.button
+                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '' }); setShowModal(true); }}
+                                className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 sm:w-auto"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                Crear guion
+                            </motion.button>
                         </motion.div>
                     ) : (
                         <motion.div className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -165,7 +201,7 @@ export default function ScriptsPage() {
                                     className="surface-panel glow-hover p-6 transition-all"
                                     whileHover={{ x: 4 }}
                                 >
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-2">
                                                 <span className={`text-xs px-2 py-1 rounded ${STATUS_LABELS[script.status]?.color || 'bg-gray-600'} text-white`}>
@@ -205,13 +241,16 @@ export default function ScriptsPage() {
                             onClick={() => setShowModal(false)}
                         >
                             <motion.div
-                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="script-modal-title"
+                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-6 sm:p-8 w-full max-w-2xl max-h-[85vh] overflow-y-auto"
                                 initial={{ scale: 0.9 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.9 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-2xl font-bold text-white mb-6">
+                                <h3 id="script-modal-title" className="text-2xl font-bold text-white mb-6">
                                     {editingId ? 'Editar Guion' : 'Nuevo Guion'}
                                 </h3>
                                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -261,7 +300,7 @@ export default function ScriptsPage() {
                                             placeholder="Despedida, teaser siguiente video..."
                                         />
                                     </div>
-                                    <div className="flex gap-3 pt-4">
+                                    <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                         <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">
                                             Cancelar
                                         </button>
@@ -273,6 +312,7 @@ export default function ScriptsPage() {
                             </motion.div>
                         </motion.div>
                     )}
+                </AnimatePresence>
 
                 <AnimatePresence>
                     {deleteTarget && (
@@ -284,22 +324,24 @@ export default function ScriptsPage() {
                             onClick={() => setDeleteTarget(null)}
                         >
                             <motion.div
-                                className="bg-gray-900 border border-red-500/30 rounded-2xl p-8 w-full max-w-lg"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="script-delete-title"
+                                className="bg-gray-900 border border-red-500/30 rounded-2xl p-6 sm:p-8 w-full max-w-lg"
                                 initial={{ scale: 0.9 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.9 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-2xl font-bold text-white mb-3">Eliminar guion</h3>
+                                <h3 id="script-delete-title" className="text-2xl font-bold text-white mb-3">Eliminar guion</h3>
                                 <p className="text-sm text-gray-400 mb-6">Estás por eliminar <span className="text-white font-semibold">{deleteTarget.title}</span>. Esta acción no se puede deshacer.</p>
-                                <div className="flex gap-3">
+                                <div className="flex flex-col gap-3 sm:flex-row">
                                     <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">Cancelar</button>
                                     <button onClick={deleteScript} className="flex-1 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500">Eliminar</button>
                                 </div>
                             </motion.div>
                         </motion.div>
                     )}
-                </AnimatePresence>
                 </AnimatePresence>
             </div>
         </ProtectedRoute>

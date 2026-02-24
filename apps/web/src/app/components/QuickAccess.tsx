@@ -16,11 +16,11 @@ const QUICK_LINKS = [
     { href: '/ideas', icon: Lightbulb, label: 'Ideas' },
     { href: '/scripts', icon: FileText, label: 'Guiones' },
     { href: '/thumbnails', icon: ImageIcon, label: 'Miniaturas' },
-    { href: '/videos', icon: Film, label: 'Produccion' },
+    { href: '/', icon: Film, label: 'Dashboard' },
     { href: '/seo', icon: Search, label: 'SEO' },
     { href: '/channels', icon: Tv, label: 'Canales' },
     { href: '/analytics', icon: BarChart3, label: 'Analytics' },
-    { href: 'http://localhost:8080/?pgsql=postgres&username=cronostudio&db=cronostudio&ns=public', icon: Database, label: 'Base de Datos', external: true },
+    { href: '/configuracion', icon: Database, label: 'Configuracion' },
 ];
 
 export default function QuickAccess() {

@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Instagram, Linkedin, Music2, Plus, Sparkles } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -68,6 +68,11 @@ function DashboardContent() {
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [ideasCount, setIdeasCount] = useState(0);
+  const [activeStage, setActiveStage] = useState<keyof PipelineStats | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [scheduleProductionId, setScheduleProductionId] = useState('');
+  const [scheduleDate, setScheduleDate] = useState('');
 
   const fetchData = useCallback(async () => {
     try {
@@ -121,6 +126,17 @@ function DashboardContent() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [showModal]);
+
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
     try {
@@ -142,8 +158,81 @@ function DashboardContent() {
     }
   };
 
+  const stageLabels: Record<keyof PipelineStats, string> = {
+    idea: 'Ideas',
+    scripting: 'Guiones',
+    recording: 'Grabación',
+    editing: 'Edición',
+    shorts: 'Shorts',
+    publishing: 'Publicación',
+    published: 'Publicado',
+  };
+
   const priorityActions = generatePriorityActions(productions);
   const activeProductions = productions.filter(p => p.status !== 'published');
+  const filteredProductions = activeStage
+    ? activeProductions.filter((production) => production.status === activeStage)
+    : activeProductions;
+
+  const scheduledProductions = useMemo(
+    () => productions.filter((production) => production.target_date),
+    [productions]
+  );
+
+  const formatDateKey = (date: Date) => date.toISOString().slice(0, 10);
+  const scheduledByDate = useMemo(() => {
+    const map = new Map<string, Production[]>();
+    scheduledProductions.forEach((production) => {
+      if (!production.target_date) return;
+      const key = production.target_date.slice(0, 10);
+      const list = map.get(key) ?? [];
+      list.push(production);
+      map.set(key, list);
+    });
+    return map;
+  }, [scheduledProductions]);
+
+  const upcomingScheduled = useMemo(() => {
+    return scheduledProductions
+      .filter((production) => production.target_date)
+      .sort((a, b) => (a.target_date || '').localeCompare(b.target_date || ''))
+      .slice(0, 5);
+  }, [scheduledProductions]);
+
+  const calendarDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const startWeekday = firstDay.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days: (string | null)[] = [];
+    for (let i = 0; i < startWeekday; i += 1) days.push(null);
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      const date = new Date(year, month, day);
+      days.push(formatDateKey(date));
+    }
+    return days;
+  }, [calendarMonth]);
+
+  const handleSchedule = async () => {
+    if (!scheduleProductionId || !scheduleDate) return;
+    try {
+      const response = await authFetch(`/api/productions?id=${scheduleProductionId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ targetDate: scheduleDate }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Error al programar publicación');
+      }
+      addToast('Publicación programada', 'success');
+      setScheduleProductionId('');
+      setScheduleDate('');
+      fetchData();
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Error al programar publicación', 'error');
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -157,7 +246,7 @@ function DashboardContent() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-yellow-400/90 mb-3">
                     <Sparkles className="w-4 h-4" />
@@ -172,7 +261,7 @@ function DashboardContent() {
                 </div>
                 <motion.button
                   onClick={() => setShowModal(true)}
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-black rounded-lg"
+                  className="inline-flex w-full items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-black rounded-lg sm:w-auto"
                   style={{
                     background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
                     boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
@@ -197,7 +286,11 @@ function DashboardContent() {
             ) : (
               <div className="space-y-8">
                 {/* Pipeline */}
-                <ProductionPipeline stats={pipelineStats} />
+                <ProductionPipeline
+                  stats={pipelineStats}
+                  activeStage={activeStage}
+                  onStageClick={(stage) => setActiveStage((current) => (current === stage ? null : stage))}
+                />
 
                 {/* Main grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
@@ -207,11 +300,144 @@ function DashboardContent() {
                   />
 
                   <ProductionsList
-                    productions={activeProductions}
+                    productions={filteredProductions}
                     onCreateNew={() => setShowModal(true)}
+                    filterLabel={activeStage ? stageLabels[activeStage] : null}
+                    onClearFilter={() => setActiveStage(null)}
+                    title={activeStage ? 'Contenidos en esta etapa' : 'Contenidos activos'}
                   />
 
                   <div className="space-y-6">
+                    <motion.div
+                      className="surface-card glow-hover p-6"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 }}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Calendario</div>
+                          <p className="text-sm text-slate-300">Programa publicaciones</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
+                            className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
+                          >
+                            ←
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
+                            className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
+                          >
+                            →
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="text-sm font-semibold text-white mb-3 capitalize">
+                        {calendarMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-2 text-[10px] text-slate-400 mb-2">
+                        {['D', 'L', 'M', 'X', 'J', 'V', 'S'].map((day) => (
+                          <span key={day} className="text-center">{day}</span>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-7 gap-2">
+                        {calendarDays.map((dateKey, index) => {
+                          if (!dateKey) {
+                            return <span key={`empty-${index}`} />;
+                          }
+                          const day = Number(dateKey.slice(8, 10));
+                          const scheduled = scheduledByDate.get(dateKey) || [];
+                          const isSelected = selectedDate === dateKey;
+                          return (
+                            <button
+                              key={dateKey}
+                              type="button"
+                              onClick={() => {
+                                setSelectedDate(dateKey);
+                                setScheduleDate(dateKey);
+                              }}
+                              className={`relative flex h-9 items-center justify-center rounded-lg text-xs ${
+                                isSelected
+                                  ? 'bg-yellow-400 text-black'
+                                  : 'bg-gray-900/60 text-slate-200 hover:bg-gray-800'
+                              }`}
+                            >
+                              {day}
+                              {scheduled.length > 0 && (
+                                <span className={`absolute bottom-1 right-1 h-1.5 w-1.5 rounded-full ${isSelected ? 'bg-black/60' : 'bg-yellow-400'}`} />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="mt-4 space-y-3">
+                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">Programar</div>
+                        <select
+                          value={scheduleProductionId}
+                          onChange={(event) => setScheduleProductionId(event.target.value)}
+                          className="w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-white"
+                        >
+                          <option value="">Selecciona contenido</option>
+                          {activeProductions.map((production) => (
+                            <option key={production.id} value={production.id}>
+                              {production.title}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="date"
+                          value={scheduleDate}
+                          onChange={(event) => setScheduleDate(event.target.value)}
+                          className="w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-white"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleSchedule}
+                          className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-sm font-semibold text-black hover:bg-yellow-300"
+                        >
+                          Programar publicacion
+                        </button>
+                      </div>
+
+                      <div className="mt-5 border-t border-gray-800 pt-4">
+                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em] mb-3">Agenda</div>
+                        {selectedDate ? (
+                          <div className="space-y-2">
+                            {(scheduledByDate.get(selectedDate) || []).length === 0 && (
+                              <p className="text-xs text-slate-500">Sin publicaciones para este dia.</p>
+                            )}
+                            {(scheduledByDate.get(selectedDate) || []).map((production) => (
+                              <div key={production.id} className="flex items-center justify-between text-sm text-slate-200">
+                                <span className="truncate">{production.title}</span>
+                                <span className="text-xs text-slate-400">{production.target_date?.slice(0, 10)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {upcomingScheduled.length === 0 ? (
+                              <p className="text-xs text-slate-500">Sin publicaciones programadas.</p>
+                            ) : (
+                              upcomingScheduled.map((production) => (
+                                <div key={production.id} className="flex items-center justify-between text-sm text-slate-200">
+                                  <span className="truncate">{production.title}</span>
+                                  <span className="text-xs text-slate-400">{production.target_date?.slice(0, 10)}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+
                     <AutomationRuns runs={runs} />
 
                     <motion.div
@@ -323,12 +549,15 @@ function DashboardContent() {
           onClick={() => setShowModal(false)}
         >
           <motion.div
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 w-full max-w-lg"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dashboard-modal-title"
+            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg max-h-[85vh] overflow-y-auto"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-2xl font-semibold text-white mb-5">Nuevo contenido</h3>
+            <h3 id="dashboard-modal-title" className="text-2xl font-semibold text-white mb-5">Nuevo contenido</h3>
             <input
               type="text"
               value={newTitle}
@@ -338,7 +567,7 @@ function DashboardContent() {
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
             />
-            <div className="flex gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row">
               <motion.button
                 onClick={() => setShowModal(false)}
                 className="flex-1 px-5 py-3 text-base border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium"

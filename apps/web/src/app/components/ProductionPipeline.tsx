@@ -24,6 +24,7 @@ interface PipelineStats {
 interface ProductionPipelineProps {
     stats: PipelineStats;
     onStageClick?: (stage: keyof PipelineStats) => void;
+    activeStage?: keyof PipelineStats | null;
 }
 
 const STAGES: { key: keyof PipelineStats; icon: typeof Lightbulb; label: string; color: string; bgColor: string }[] = [
@@ -51,12 +52,12 @@ const itemVariants = {
     visible: { opacity: 1, y: 0 }
 };
 
-export default function ProductionPipeline({ stats, onStageClick }: ProductionPipelineProps) {
+export default function ProductionPipeline({ stats, onStageClick, activeStage }: ProductionPipelineProps) {
     const total = Object.values(stats).reduce((sum, count) => sum + count, 0);
 
     return (
         <motion.div
-            className="surface-card glow-hover p-5"
+            className="surface-card glow-hover p-4 sm:p-5"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
@@ -82,9 +83,11 @@ export default function ProductionPipeline({ stats, onStageClick }: ProductionPi
                         <motion.button
                             key={stage.key}
                             onClick={() => hasItems && onStageClick?.(stage.key)}
-                            className={`flex flex-col items-center justify-center py-4 px-2 rounded-xl transition-all ${hasItems
+                            className={`flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all sm:py-4 ${hasItems
                                 ? 'bg-gray-800/70 hover:bg-gray-800 cursor-pointer shadow-lg'
                                 : 'bg-gray-900/40 cursor-default'
+                                } ${
+                                activeStage === stage.key && hasItems ? 'ring-2 ring-yellow-400/60 shadow-[0_0_16px_rgba(246,201,69,0.2)]' : ''
                                 } ${
                                 // Make last item span full width on odd grid counts if needed, 
                                 // but specifically for 7 items on 2-col grid, the last one is alone.
@@ -95,16 +98,14 @@ export default function ProductionPipeline({ stats, onStageClick }: ProductionPi
                             whileTap={hasItems ? { scale: 0.97 } : {}}
                         >
                             {/* Icon */}
-                            <stage.icon className="w-6 h-6 mb-2 text-slate-200" />
+                            <stage.icon className="w-5 h-5 mb-2 text-slate-200 sm:w-6 sm:h-6" />
 
                             {/* Counter badge */}
-                            <motion.div
-                                className={`w-10 h-10 rounded-full ${stage.bgColor} flex items-center justify-center mb-2 shadow-lg`}
-                                animate={hasItems ? { scale: [1, 1.1, 1] } : {}}
-                                transition={{ repeat: hasItems ? Infinity : 0, duration: 2, repeatDelay: 3 }}
+                            <div
+                                className={`w-9 h-9 rounded-full ${stage.bgColor} flex items-center justify-center mb-2 shadow-lg sm:w-10 sm:h-10`}
                             >
-                                <span className="text-lg font-bold text-white">{count}</span>
-                            </motion.div>
+                                <span className="text-base font-bold text-white sm:text-lg">{count}</span>
+                            </div>
 
                             {/* Label */}
                             <span className={`text-sm font-medium ${hasItems ? stage.color : 'text-gray-600'}`}>

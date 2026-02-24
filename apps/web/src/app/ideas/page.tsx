@@ -102,6 +102,18 @@ export default function IdeasPage() {
         fetchChannels();
     }, [isAuthenticated, fetchChannels]);
 
+    useEffect(() => {
+        if (!showModal && !deleteTarget) return;
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowModal(false);
+                setDeleteTarget(null);
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [showModal, deleteTarget]);
+
     const normalizeTags = (input: string) =>
         input
             .split(',')
@@ -206,7 +218,7 @@ export default function IdeasPage() {
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
                     <motion.div
-                        className="flex items-center justify-between mb-8"
+                        className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
@@ -226,7 +238,7 @@ export default function IdeasPage() {
                                 setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
                                 setShowModal(true);
                             }}
-                            className="px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
+                            className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
                             style={{
                                 background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
                                 boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
@@ -249,7 +261,19 @@ export default function IdeasPage() {
                                 <Lightbulb className="w-8 h-8" />
                             </div>
                             <h3 className="text-xl font-semibold text-white mb-2">No hay ideas todavia</h3>
-                            <p className="text-slate-300">Apunta tu primera idea para un video.</p>
+                            <p className="text-slate-300 mb-6">Apunta tu primera idea para un video.</p>
+                            <motion.button
+                                onClick={() => {
+                                    setEditingIdea(null);
+                                    setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
+                                    setShowModal(true);
+                                }}
+                                className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 sm:w-auto"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                Crear idea
+                            </motion.button>
                         </motion.div>
                     ) : (
                         <motion.div
@@ -273,7 +297,7 @@ export default function IdeasPage() {
                                         {idea.title}
                                     </h3>
                                     {idea.description && (
-                                        <p className="text-gray-400 text-sm mb-3 line-clamp-2">{idea.description}</p>
+                                        <p className="text-gray-400 text-sm mb-3 line-clamp-3 sm:line-clamp-2">{idea.description}</p>
                                     )}
                                     {idea.channel_name && (
                                         <p className="text-xs text-slate-400">Canal: {idea.channel_name}</p>
@@ -287,11 +311,11 @@ export default function IdeasPage() {
                                             ))}
                                         </div>
                                     )}
-                                    <div className="flex gap-2 mt-4 pt-4 border-t border-gray-800">
+                                    <div className="mt-4 pt-4 border-t border-gray-800 flex flex-col gap-2 sm:flex-row sm:items-center">
                                         <select
                                             value={idea.status}
                                             onChange={(e) => updateStatus(idea.id, e.target.value)}
-                                            className="flex-1 text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white"
+                                            className="w-full text-xs bg-gray-800 border border-gray-700 rounded px-2 py-2 text-white sm:flex-1"
                                         >
                                             <option value="draft">Borrador</option>
                                             <option value="approved">Aprobada</option>
@@ -299,18 +323,20 @@ export default function IdeasPage() {
                                             <option value="completed">Completada</option>
                                             <option value="archived">Archivada</option>
                                         </select>
-                                        <button
-                                            onClick={() => startEdit(idea)}
-                                            className="text-yellow-300 hover:text-yellow-200 text-xs px-2"
-                                        >
-                                            Editar
-                                        </button>
-                                        <button
-                                            onClick={() => deleteIdea(idea.id)}
-                                            className="text-red-400 hover:text-red-300 text-xs px-2"
-                                        >
-                                            Eliminar
-                                        </button>
+                                        <div className="flex items-center justify-between gap-3 sm:justify-end">
+                                            <button
+                                                onClick={() => startEdit(idea)}
+                                                className="text-yellow-300 hover:text-yellow-200 text-xs px-2"
+                                            >
+                                                Editar
+                                            </button>
+                                            <button
+                                                onClick={() => deleteIdea(idea.id)}
+                                                className="text-red-400 hover:text-red-300 text-xs px-2"
+                                            >
+                                                Eliminar
+                                            </button>
+                                        </div>
                                     </div>
                                 </motion.div>
                             ))}
@@ -329,13 +355,16 @@ export default function IdeasPage() {
                             onClick={() => setShowModal(false)}
                         >
                             <motion.div
-                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-8 w-full max-w-md"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="idea-modal-title"
+                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-6 sm:p-8 w-full max-w-md max-h-[85vh] overflow-y-auto"
                                 initial={{ scale: 0.9 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.9 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-2xl font-bold text-white mb-6">
+                                <h3 id="idea-modal-title" className="text-2xl font-bold text-white mb-6">
                                     {editingIdea ? 'Editar Idea' : 'Nueva Idea'}
                                 </h3>
                                 {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
@@ -396,7 +425,7 @@ export default function IdeasPage() {
                                             placeholder="seo, video, tutorial"
                                         />
                                     </div>
-                                    <div className="flex gap-3 pt-4">
+                                    <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                         <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">
                                             Cancelar
                                         </button>
@@ -420,18 +449,21 @@ export default function IdeasPage() {
                             onClick={() => setDeleteTarget(null)}
                         >
                             <motion.div
-                                className="bg-gray-900 border border-red-500/20 rounded-2xl p-6 w-full max-w-md"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="idea-delete-title"
+                                className="bg-gray-900 border border-red-500/20 rounded-2xl p-6 sm:p-8 w-full max-w-md"
                                 initial={{ scale: 0.95, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0.95, opacity: 0 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-xl font-bold text-white mb-2">Eliminar idea</h3>
+                                <h3 id="idea-delete-title" className="text-xl font-bold text-white mb-2">Eliminar idea</h3>
                                 <p className="text-gray-400 text-sm mb-6">
                                     ¿Seguro que quieres eliminar <span className="text-white font-semibold">{deleteTarget.title}</span>?
                                     Esta acción no se puede deshacer.
                                 </p>
-                                <div className="flex gap-3">
+                                <div className="flex flex-col gap-3 sm:flex-row">
                                     <button
                                         type="button"
                                         onClick={() => setDeleteTarget(null)}

@@ -84,18 +84,19 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                     const Icon = ACTION_ICONS[action.type];
 
                     return (
-                        <motion.div
+                        <motion.button
                             key={action.id}
-                            className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-800/40 cursor-pointer transition-colors group ${styles.bg}`}
+                            type="button"
+                            className={`flex w-full flex-col gap-4 px-5 py-4 text-left hover:bg-gray-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center ${styles.bg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60`}
                             onClick={() => action.productionId ? onActionClick?.(action) : onCreateNew?.()}
+                            aria-label={action.productionId ? `Abrir accion ${action.title}` : 'Crear nuevo contenido'}
                             variants={itemVariants}
                             whileHover={{ x: 4 }}
                         >
                             {/* Urgency dot */}
-                            <motion.span
+                            <span
                                 className={`w-3 h-3 rounded-full ${styles.dot} flex-shrink-0`}
-                                animate={{ scale: action.urgency === 'high' ? [1, 1.2, 1] : 1 }}
-                                transition={{ repeat: action.urgency === 'high' ? Infinity : 0, duration: 1.5 }}
+                                aria-hidden="true"
                             />
 
                             {/* Icon */}
@@ -111,21 +112,24 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
 
                             {/* Action button */}
                             <motion.span
-                                className="text-xs text-yellow-400 opacity-0 group-hover:opacity-100 font-semibold flex items-center gap-1"
+                                className="text-xs text-yellow-400 opacity-0 group-hover:opacity-100 font-semibold flex items-center gap-1 sm:ml-auto"
                                 initial={{ x: -10 }}
                                 whileHover={{ x: 0 }}
+                                aria-hidden="true"
                             >
                                 Ir <span>→</span>
                             </motion.span>
-                        </motion.div>
+                        </motion.button>
                     );
                 })}
 
                 {/* Empty state */}
                 {actions.length === 0 && (
-                    <motion.div
-                        className="flex items-center gap-4 px-5 py-4 text-slate-200 hover:bg-gray-800/40 cursor-pointer"
+                    <motion.button
+                        type="button"
+                        className="flex w-full items-center gap-4 px-5 py-4 text-left text-slate-200 hover:bg-gray-800/40 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
                         onClick={onCreateNew}
+                        aria-label="Crear nuevo contenido"
                         variants={itemVariants}
                         whileHover={{ x: 4 }}
                     >
@@ -137,7 +141,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                             <span className="text-base text-slate-100">¡Todo al día!</span>
                             <span className="text-sm text-yellow-400 block hover:underline">Crear nuevo contenido</span>
                         </div>
-                    </motion.div>
+                    </motion.button>
                 )}
             </motion.div>
         </motion.div>

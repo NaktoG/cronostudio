@@ -160,7 +160,7 @@ function AnalyticsContent() {
 
             {/* Filtros */}
             <motion.div
-                className="surface-panel glow-hover p-6 mb-8"
+                className="surface-panel glow-hover p-4 sm:p-6 mb-8"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -227,19 +227,19 @@ function AnalyticsContent() {
                         />
                     </div>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1 sm:flex-wrap">
                     {[7, 30, 90].map((days) => (
                         <button
                             key={days}
                             onClick={() => applyQuickRange(days)}
-                            className="text-xs px-3 py-1.5 rounded-full border border-gray-700 text-slate-300 hover:text-white hover:border-yellow-400"
+                            className="text-xs px-3 py-1.5 rounded-full border border-gray-700 text-slate-300 hover:text-white hover:border-yellow-400 whitespace-nowrap"
                         >
                             {days} dias
                         </button>
                     ))}
                     <button
                         onClick={() => setDateRange({ startDate: '', endDate: '' })}
-                        className="text-xs px-3 py-1.5 rounded-full border border-gray-700 text-slate-300 hover:text-white"
+                        className="text-xs px-3 py-1.5 rounded-full border border-gray-700 text-slate-300 hover:text-white whitespace-nowrap"
                     >
                         Reset
                     </button>
@@ -308,7 +308,7 @@ function AnalyticsContent() {
 
             {/* Gráfico de barras */}
             <motion.div
-                className="surface-panel glow-hover p-6"
+                className="surface-panel glow-hover p-4 sm:p-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
@@ -353,15 +353,15 @@ function AnalyticsContent() {
                             return (
                                 <motion.div
                                     key={item.period}
-                                    className="flex items-center gap-4"
+                                    className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4"
                                     initial={{ opacity: 0, x: -20 }}
                                     animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: index * 0.05 }}
                                 >
-                                    <span className="w-20 text-sm text-gray-400 flex-shrink-0">
+                                    <span className="text-sm text-gray-400 flex-shrink-0 sm:w-20">
                                         {formattedDate}
                                     </span>
-                                    <div className="flex-1 h-8 bg-gray-800 rounded-lg overflow-hidden">
+                                    <div className="flex-1 h-6 sm:h-8 bg-gray-800 rounded-lg overflow-hidden">
                                         <motion.div
                                             className="h-full bg-gradient-to-r from-yellow-500 to-yellow-400 rounded-lg"
                                             initial={{ width: 0 }}
@@ -369,7 +369,7 @@ function AnalyticsContent() {
                                             transition={{ delay: index * 0.05 + 0.2, duration: 0.5 }}
                                         />
                                     </div>
-                                    <span className="w-16 text-sm text-white text-right font-medium">
+                                    <span className="text-sm text-white font-medium sm:w-16 sm:text-right">
                                         {formatNumber(views)}
                                     </span>
                                 </motion.div>

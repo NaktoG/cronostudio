@@ -89,10 +89,12 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                         const Icon = config.icon;
 
                         return (
-                            <motion.div
+                            <motion.button
                                 key={run.id}
-                                className="flex items-center gap-4 px-5 py-4 hover:bg-slate-800/40 cursor-pointer transition-colors group"
+                                type="button"
+                                className="flex w-full flex-col gap-4 px-5 py-4 text-left hover:bg-slate-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
                                 onClick={() => onRunClick?.(run)}
+                                aria-label={`Ver ejecucion ${run.workflow_name}`}
                                 variants={itemVariants}
                                 whileHover={{ x: 3 }}
                             >
@@ -108,8 +110,8 @@ export default function AutomationRuns({ runs, onRunClick }: AutomationRunsProps
                                     <span className="text-base text-white truncate block font-medium">{run.workflow_name}</span>
                                     <span className="text-sm text-slate-300">{config.label}</span>
                                 </div>
-                                <span className="text-sm text-slate-300">{formatTimeAgo(run.started_at)}</span>
-                            </motion.div>
+                                <span className="text-sm text-slate-300 sm:ml-auto">{formatTimeAgo(run.started_at)}</span>
+                            </motion.button>
                         );
                     })
                 )}

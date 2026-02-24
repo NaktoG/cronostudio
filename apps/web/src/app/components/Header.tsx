@@ -37,7 +37,7 @@ export default function Header() {
 
   return (
     <motion.header
-      className="sticky top-0 z-50 bg-black/85 backdrop-blur-xl border-b border-yellow-500/20"
+      className="sticky top-0 z-50 bg-black/85 backdrop-blur-xl border-b border-yellow-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -185,7 +185,7 @@ export default function Header() {
                   <Settings className="w-4 h-4 text-slate-400" />
                 </Link>
               )}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {NAV_ITEMS.map((item, index) => {
                   const isActive = pathname === item.href;
                   const Icon = item.icon;
@@ -211,6 +211,20 @@ export default function Header() {
                   );
                 })}
               </div>
+              {isAuthenticated && (
+                <motion.button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    logout();
+                  }}
+                  className="mt-3 flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-800 text-slate-200 hover:text-yellow-400 hover:border-yellow-500/40"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Salir
+                </motion.button>
+              )}
             </motion.nav>
           )}
         </AnimatePresence>

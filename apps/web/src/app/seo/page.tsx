@@ -86,7 +86,7 @@ export default function SeoPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
                     >
-                        <h3 className="text-lg font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+                        <h3 className="text-lg font-semibold text-teal-300 mb-3 flex items-center gap-2">
                             <Lightbulb className="w-4 h-4" />
                             Consejos SEO para YouTube
                         </h3>
@@ -118,6 +118,24 @@ export default function SeoPage() {
                             <h3 className="text-xl font-semibold text-white mb-2">No hay datos SEO todavia</h3>
                             <p className="text-slate-300 mb-2">Los datos SEO se crean automaticamente cuando subes un video</p>
                             <p className="text-slate-500 text-sm">Tambien puedes usar n8n para generar SEO automaticamente</p>
+                            <motion.div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
+                                <motion.button
+                                    onClick={() => window.location.assign('/channels')}
+                                    className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    Conectar canal
+                                </motion.button>
+                                <motion.button
+                                    onClick={() => window.location.assign('/analytics')}
+                                    className="px-6 py-3 border border-gray-700 text-gray-200 rounded-lg hover:bg-gray-800"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    Ver analytics
+                                </motion.button>
+                            </motion.div>
                         </motion.div>
                     ) : (
                         <motion.div className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

@@ -9,6 +9,7 @@ import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface Thumbnail {
     id: string;
@@ -31,6 +32,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export default function ThumbnailsPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
+    const { addToast } = useToast();
     const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -55,38 +57,72 @@ export default function ThumbnailsPage() {
 
     useEffect(() => { fetchThumbnails(); }, [fetchThumbnails]);
 
+    useEffect(() => {
+        if (!showModal) return;
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowModal(false);
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [showModal]);
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            await authFetch('/api/thumbnails', {
+            const response = await authFetch('/api/thumbnails', {
                 method: 'POST',
                 body: JSON.stringify(formData),
             });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al crear miniatura');
+            }
             setShowModal(false);
             setFormData({ title: '', notes: '', imageUrl: '' });
             await fetchThumbnails();
+            addToast('Miniatura creada', 'success');
         } catch (err) {
-            console.error('Error:', err);
+            addToast(err instanceof Error ? err.message : 'Error', 'error');
         } finally {
             setSubmitting(false);
         }
     };
 
     const updateStatus = async (id: string, status: string) => {
-        await authFetch(`/api/thumbnails?id=${id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ status }),
-        });
-        await fetchThumbnails();
+        try {
+            const response = await authFetch(`/api/thumbnails?id=${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status }),
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al actualizar miniatura');
+            }
+            await fetchThumbnails();
+            addToast('Estado actualizado', 'success');
+        } catch (err) {
+            addToast(err instanceof Error ? err.message : 'Error', 'error');
+        }
     };
 
     const deleteThumbnail = async (id: string) => {
         if (!confirm('¿Eliminar esta miniatura?')) return;
-        await authFetch(`/api/thumbnails?id=${id}`, {
-            method: 'DELETE',
-        });
-        await fetchThumbnails();
+        try {
+            const response = await authFetch(`/api/thumbnails?id=${id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al eliminar miniatura');
+            }
+            await fetchThumbnails();
+            addToast('Miniatura eliminada', 'success');
+        } catch (err) {
+            addToast(err instanceof Error ? err.message : 'Error', 'error');
+        }
     };
 
     return (
@@ -95,7 +131,7 @@ export default function ThumbnailsPage() {
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
                     <motion.div
-                        className="flex items-center justify-between mb-8"
+                        className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
@@ -111,7 +147,7 @@ export default function ThumbnailsPage() {
                         </div>
                         <motion.button
                             onClick={() => setShowModal(true)}
-                            className="px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
+                            className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
                             style={{
                                 background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
                                 boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
@@ -134,7 +170,15 @@ export default function ThumbnailsPage() {
                                 <ImageIcon className="w-8 h-8" />
                             </div>
                             <h3 className="text-xl font-semibold text-white mb-2">No hay miniaturas todavia</h3>
-                            <p className="text-slate-300">Crea tu primera miniatura</p>
+                            <p className="text-slate-300 mb-6">Crea tu primera miniatura</p>
+                            <motion.button
+                                onClick={() => setShowModal(true)}
+                                className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 sm:w-auto"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                Crear miniatura
+                            </motion.button>
                         </motion.div>
                     ) : (
                         <motion.div
@@ -175,11 +219,11 @@ export default function ThumbnailsPage() {
                                         {thumb.notes && (
                                             <p className="text-gray-400 text-sm line-clamp-2">{thumb.notes}</p>
                                         )}
-                                        <div className="flex gap-2 mt-4 pt-3 border-t border-gray-800">
+                                        <div className="mt-4 pt-3 border-t border-gray-800 flex flex-col gap-2 sm:flex-row sm:items-center">
                                             <select
                                                 value={thumb.status}
                                                 onChange={(e) => updateStatus(thumb.id, e.target.value)}
-                                                className="flex-1 text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white"
+                                                className="w-full text-xs bg-gray-800 border border-gray-700 rounded px-2 py-2 text-white sm:flex-1"
                                             >
                                                 <option value="pending">Pendiente</option>
                                                 <option value="designing">Diseñando</option>
@@ -211,13 +255,16 @@ export default function ThumbnailsPage() {
                             onClick={() => setShowModal(false)}
                         >
                             <motion.div
-                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-8 w-full max-w-md"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="thumbnail-modal-title"
+                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-6 sm:p-8 w-full max-w-md max-h-[85vh] overflow-y-auto"
                                 initial={{ scale: 0.9 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.9 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-2xl font-bold text-white mb-6">Nueva Miniatura</h3>
+                                <h3 id="thumbnail-modal-title" className="text-2xl font-bold text-white mb-6">Nueva Miniatura</h3>
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">Título</label>
@@ -249,7 +296,7 @@ export default function ThumbnailsPage() {
                                             placeholder="https://..."
                                         />
                                     </div>
-                                    <div className="flex gap-3 pt-4">
+                                    <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                         <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">
                                             Cancelar
                                         </button>

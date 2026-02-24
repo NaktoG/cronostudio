@@ -23,6 +23,9 @@ interface ProductionsListProps {
     productions: Production[];
     onProductionClick?: (production: Production) => void;
     onCreateNew?: () => void;
+    title?: string;
+    filterLabel?: string | null;
+    onClearFilter?: () => void;
 }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
@@ -58,7 +61,14 @@ function getNextAction(prod: Production): string {
     return 'Ver detalles';
 }
 
-export default function ProductionsList({ productions, onProductionClick, onCreateNew }: ProductionsListProps) {
+export default function ProductionsList({
+    productions,
+    onProductionClick,
+    onCreateNew,
+    title = 'Contenidos activos',
+    filterLabel,
+    onClearFilter,
+}: ProductionsListProps) {
     return (
         <motion.div
             className="surface-card glow-hover overflow-hidden"
@@ -68,7 +78,19 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
         >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
-                <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Contenidos activos</span>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                    <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{title}</span>
+                    {filterLabel && (
+                        <button
+                            type="button"
+                            onClick={onClearFilter}
+                            className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-300 hover:border-yellow-400/60"
+                        >
+                            {filterLabel}
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    )}
+                </div>
                 <motion.button
                     onClick={onCreateNew}
                     className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
@@ -87,18 +109,24 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
                 animate="visible"
             >
                 {productions.length === 0 ? (
-                    <motion.div
-                        className="px-5 py-6 text-center cursor-pointer hover:bg-gray-800/40 transition-colors"
-                        onClick={onCreateNew}
+                    <motion.button
+                        type="button"
+                        className="w-full px-5 py-6 text-center cursor-pointer hover:bg-gray-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
+                        onClick={filterLabel && onClearFilter ? onClearFilter : onCreateNew}
+                        aria-label="Crear nuevo contenido"
                         variants={itemVariants}
                         whileHover={{ scale: 1.01 }}
                     >
                         <span className="w-14 h-14 mx-auto mb-3 rounded-full bg-gray-900/70 border border-gray-800 flex items-center justify-center text-yellow-400">
                             <Film className="w-6 h-6" />
                         </span>
-                        <span className="text-base text-slate-300 block mb-1">Sin contenidos activos</span>
-                        <span className="text-sm text-yellow-400 hover:underline font-semibold">Crear tu primer contenido →</span>
-                    </motion.div>
+                        <span className="text-base text-slate-300 block mb-1">
+                            {filterLabel ? 'Sin contenidos en esta etapa' : 'Sin contenidos activos'}
+                        </span>
+                        <span className="text-sm text-yellow-400 hover:underline font-semibold">
+                            {filterLabel ? 'Cambiar filtro →' : 'Crear tu primer contenido →'}
+                        </span>
+                    </motion.button>
                 ) : (
                     productions.slice(0, 6).map((prod) => {
                         const badge = STATUS_BADGE[prod.status] || STATUS_BADGE.idea;
@@ -106,10 +134,12 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
                         const nextAction = getNextAction(prod);
 
                         return (
-                            <motion.div
+                            <motion.button
                                 key={prod.id}
-                                className="flex items-center gap-4 px-5 py-4 hover:bg-gray-800/40 cursor-pointer transition-colors group"
+                                type="button"
+                                className="flex w-full flex-col gap-4 px-5 py-4 text-left hover:bg-gray-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
                                 onClick={() => onProductionClick?.(prod)}
+                                aria-label={`Abrir contenido ${prod.title}`}
                                 variants={itemVariants}
                                 whileHover={{ x: 4 }}
                             >
@@ -131,13 +161,14 @@ export default function ProductionsList({ productions, onProductionClick, onCrea
 
                                 {/* Arrow */}
                                 <motion.span
-                                    className="text-gray-600 group-hover:text-yellow-400 transition-colors text-lg"
+                                    className="text-gray-600 group-hover:text-yellow-400 transition-colors text-lg sm:ml-auto"
                                     initial={{ x: 0 }}
                                     whileHover={{ x: 3 }}
+                                    aria-hidden="true"
                                 >
                                     →
                                 </motion.span>
-                            </motion.div>
+                            </motion.button>
                         );
                     })
                 )}

@@ -14,7 +14,7 @@ export default function ThemeToggle() {
             aria-pressed={!isDark}
             aria-label={label}
             onClick={toggleTheme}
-            className="fixed right-4 top-4 z-50 flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold shadow-lg backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400"
+            className="fixed right-4 bottom-4 top-auto z-50 flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold shadow-lg backdrop-blur focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 sm:top-4 sm:bottom-auto"
             style={{
                 backgroundColor: 'var(--surface)',
                 color: 'var(--foreground)',
