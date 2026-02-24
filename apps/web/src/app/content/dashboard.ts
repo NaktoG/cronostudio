@@ -1,0 +1,82 @@
+export const DASHBOARD_COPY = {
+  header: {
+    tag: 'Control de produccion',
+    title: 'Hoy en tu produccion',
+    subtitle: 'Tu centro de comando para planificar, producir y publicar contenido con claridad.',
+    newContent: 'Nuevo contenido',
+  },
+  loading: {
+    dashboard: 'Cargando dashboard...',
+  },
+  summary: {
+    title: 'Resumen',
+    total: 'Total',
+    totalSubtitle: 'Total en producción',
+    active: 'Activos',
+    activeSubtitle: 'En curso',
+    ideas: 'Ideas',
+    ideasSubtitle: 'Ideas registradas',
+    published: 'Publicados',
+    publishedSubtitle: 'Publicado hasta hoy',
+  },
+  pipeline: {
+    inStage: 'Contenidos en esta etapa',
+    active: 'Contenidos activos',
+    ideasActive: 'Ideas activas',
+    noIdeas: 'No hay ideas activas.',
+  },
+  calendar: {
+    title: 'Calendario',
+    subtitle: 'Programa publicaciones',
+    month: 'Mes',
+    week: 'Semana',
+    schedule: 'Programar',
+    selectContent: 'Selecciona contenido',
+    scheduleAction: 'Programar publicacion',
+    clear: 'Limpiar',
+    agenda: 'Agenda',
+    emptyDay: 'Sin publicaciones para este dia.',
+    emptyUpcoming: 'Sin publicaciones programadas.',
+    reschedule: 'Reprogramar',
+    cancel: 'Cancelar',
+    weekdays: ['D', 'L', 'M', 'X', 'J', 'V', 'S'],
+  },
+  social: {
+    title: 'Redes sociales',
+    connect: 'Conectar',
+    items: [
+      { name: 'Instagram', description: 'Reels, posts y stories' },
+      { name: 'TikTok', description: 'Clips cortos y trends' },
+      { name: 'LinkedIn', description: 'Posts, clips y branding' },
+      { name: 'X', description: 'Hilos y anuncios' },
+    ],
+  },
+  modal: {
+    title: 'Nuevo contenido',
+    placeholder: 'Título del contenido...',
+    cancel: 'Cancelar',
+    create: 'Crear contenido',
+  },
+  fab: {
+    label: 'Nuevo',
+  },
+  toasts: {
+    created: 'Contenido creado',
+    createError: 'Error al crear contenido',
+    createFailed: 'No se pudo crear contenido',
+    scheduled: 'Publicación programada',
+    scheduleError: 'Error al programar publicación',
+    canceled: 'Publicación cancelada',
+    cancelError: 'Error al cancelar publicación',
+  },
+};
+
+export const STAGE_LABELS = {
+  idea: 'Ideas',
+  scripting: 'Guiones',
+  recording: 'Grabación',
+  editing: 'Edición',
+  shorts: 'Shorts',
+  publishing: 'Publicación',
+  published: 'Publicado',
+} as const;

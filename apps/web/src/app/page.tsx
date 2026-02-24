@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Instagram, Linkedin, Music2, Plus, Sparkles } from 'lucide-react';
+import { Instagram, Linkedin, Music2, Plus, Sparkles, Twitter } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -14,6 +14,7 @@ import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
 import { useToast } from './contexts/ToastContext';
+import { DASHBOARD_COPY, STAGE_LABELS } from './content/dashboard';
 
 interface PipelineStats {
   idea: number;
@@ -152,25 +153,17 @@ function DashboardContent() {
         setNewTitle('');
         setShowModal(false);
         fetchData();
-        addToast('Contenido creado', 'success');
+      addToast(DASHBOARD_COPY.toasts.created, 'success');
       } else {
-        addToast('No se pudo crear contenido', 'error');
+      addToast(DASHBOARD_COPY.toasts.createFailed, 'error');
       }
     } catch (e) {
-      addToast('Error al crear contenido', 'error');
+      addToast(DASHBOARD_COPY.toasts.createError, 'error');
       console.error('Error:', e);
     }
   };
 
-  const stageLabels: Record<keyof PipelineStats, string> = {
-    idea: 'Ideas',
-    scripting: 'Guiones',
-    recording: 'Grabación',
-    editing: 'Edición',
-    shorts: 'Shorts',
-    publishing: 'Publicación',
-    published: 'Publicado',
-  };
+  const stageLabels: Record<keyof PipelineStats, string> = STAGE_LABELS;
 
   const priorityActions = generatePriorityActions(productions);
   const activeProductions = productions.filter(p => p.status !== 'published');
@@ -244,12 +237,12 @@ function DashboardContent() {
         const data = await response.json();
         throw new Error(data.error || 'Error al programar publicación');
       }
-      addToast('Publicación programada', 'success');
+      addToast(DASHBOARD_COPY.toasts.scheduled, 'success');
       setScheduleProductionId('');
       setScheduleDate('');
       fetchData();
     } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al programar publicación', 'error');
+      addToast(error instanceof Error ? error.message : DASHBOARD_COPY.toasts.scheduleError, 'error');
     }
   };
 
@@ -263,10 +256,10 @@ function DashboardContent() {
         const data = await response.json();
         throw new Error(data.error || 'Error al cancelar publicación');
       }
-      addToast('Publicación cancelada', 'success');
+      addToast(DASHBOARD_COPY.toasts.canceled, 'success');
       fetchData();
     } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al cancelar publicación', 'error');
+      addToast(error instanceof Error ? error.message : DASHBOARD_COPY.toasts.cancelError, 'error');
     }
   };
 
@@ -286,13 +279,13 @@ function DashboardContent() {
                 <div>
                   <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-yellow-400/90 mb-3">
                     <Sparkles className="w-4 h-4" />
-                    Control de produccion
+                    {DASHBOARD_COPY.header.tag}
                   </div>
                   <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-white mb-3">
-                    Hoy en tu produccion
+                    {DASHBOARD_COPY.header.title}
                   </h1>
                   <p className="text-base md:text-lg text-slate-300 max-w-2xl">
-                    Tu centro de comando para planificar, producir y publicar contenido con claridad.
+                    {DASHBOARD_COPY.header.subtitle}
                   </p>
                 </div>
                 <motion.button
@@ -305,8 +298,8 @@ function DashboardContent() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Plus className="w-4 h-4" />
-                  Nuevo contenido
+          <Plus className="w-4 h-4" />
+          {DASHBOARD_COPY.fab.label}
                 </motion.button>
               </div>
             </motion.div>
@@ -328,14 +321,43 @@ function DashboardContent() {
                   onStageClick={(stage) => setActiveStage((current) => (current === stage ? null : stage))}
                 />
 
+                <motion.div
+                  className="grid grid-cols-2 md:grid-cols-4 gap-4"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                >
+                  <div className="surface-card glow-hover p-4">
+                    <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.summary.total}</div>
+                    <div className="text-2xl font-semibold text-white mt-2">{productions.length}</div>
+                    <div className="text-xs text-slate-500 mt-1">{DASHBOARD_COPY.summary.totalSubtitle}</div>
+                  </div>
+                  <div className="surface-card glow-hover p-4">
+                    <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.summary.active}</div>
+                    <div className="text-2xl font-semibold text-white mt-2">{activeProductions.length}</div>
+                    <div className="text-xs text-slate-500 mt-1">{DASHBOARD_COPY.summary.activeSubtitle}</div>
+                  </div>
+                  <div className="surface-card glow-hover p-4">
+                    <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.summary.ideas}</div>
+                    <div className="text-2xl font-semibold text-white mt-2">{ideasCount}</div>
+                    <div className="text-xs text-slate-500 mt-1">{DASHBOARD_COPY.summary.ideasSubtitle}</div>
+                  </div>
+                  <div className="surface-card glow-hover p-4">
+                    <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.summary.published}</div>
+                    <div className="text-2xl font-semibold text-white mt-2">{pipelineStats.published || 0}</div>
+                    <div className="text-xs text-slate-500 mt-1">{DASHBOARD_COPY.summary.publishedSubtitle}</div>
+                  </div>
+                </motion.div>
+
                 {/* Main grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 items-start">
-                  <PriorityActions
-                    actions={priorityActions}
-                    showCreateButton={false}
-                  />
+                  <div className="space-y-5">
+                    <PriorityActions
+                      actions={priorityActions}
+                      showCreateButton={false}
+                    />
 
-                  {activeStage === 'idea' ? (
+                    {activeStage === 'idea' ? (
                     <motion.div
                       className="surface-card glow-hover overflow-hidden"
                       initial={{ opacity: 0, y: 10 }}
@@ -344,13 +366,13 @@ function DashboardContent() {
                     >
                       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                          <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Ideas activas</span>
+                          <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.pipeline.ideasActive}</span>
                           <button
                             type="button"
                             onClick={() => setActiveStage(null)}
                             className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-300 hover:border-yellow-400/60"
                           >
-                            Ideas
+                            {stageLabels.idea}
                             <span aria-hidden="true">×</span>
                           </button>
                         </div>
@@ -358,7 +380,7 @@ function DashboardContent() {
                       </div>
                       <div className="divide-y divide-gray-800/50">
                         {filteredIdeas.length === 0 ? (
-                          <div className="px-5 py-6 text-slate-300">No hay ideas activas.</div>
+                          <div className="px-5 py-6 text-slate-300">{DASHBOARD_COPY.pipeline.noIdeas}</div>
                         ) : (
                           filteredIdeas.slice(0, 6).map((idea) => (
                             <div key={idea.id} className="px-5 py-4">
@@ -380,22 +402,23 @@ function DashboardContent() {
                       onCreateNew={() => setShowModal(true)}
                       filterLabel={activeStage ? stageLabels[activeStage] : null}
                       onClearFilter={() => setActiveStage(null)}
-                      title={activeStage ? 'Contenidos en esta etapa' : 'Contenidos activos'}
+                      title={activeStage ? DASHBOARD_COPY.pipeline.inStage : DASHBOARD_COPY.pipeline.active}
                       showCreateButton={false}
                     />
                   )}
+                  </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     <motion.div
-                      className="surface-card glow-hover p-6"
+                      className="surface-card glow-hover p-6 min-h-[520px]"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.15 }}
                     >
                       <div className="flex items-center justify-between mb-4">
                         <div>
-                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Calendario</div>
-                          <p className="text-sm text-slate-300">Programa publicaciones</p>
+                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.calendar.title}</div>
+                          <p className="text-sm text-slate-300">{DASHBOARD_COPY.calendar.subtitle}</p>
                         </div>
                       <div className="flex items-center gap-2">
                         <div className="flex rounded-full border border-gray-700 overflow-hidden">
@@ -408,7 +431,7 @@ function DashboardContent() {
                                 : 'text-slate-300'
                             }`}
                           >
-                            Mes
+                            {DASHBOARD_COPY.calendar.month}
                           </button>
                           <button
                             type="button"
@@ -419,7 +442,7 @@ function DashboardContent() {
                                 : 'text-slate-300'
                             }`}
                           >
-                            Semana
+                            {DASHBOARD_COPY.calendar.week}
                           </button>
                         </div>
                         <button
@@ -444,7 +467,7 @@ function DashboardContent() {
                       </div>
 
                       <div className="grid grid-cols-7 gap-2 text-[10px] text-slate-400 mb-2">
-                        {['D', 'L', 'M', 'X', 'J', 'V', 'S'].map((day) => (
+                        {DASHBOARD_COPY.calendar.weekdays.map((day) => (
                           <span key={day} className="text-center">{day}</span>
                         ))}
                       </div>
@@ -481,13 +504,13 @@ function DashboardContent() {
                       </div>
 
                       <div className="mt-4 space-y-3">
-                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">Programar</div>
+                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">{DASHBOARD_COPY.calendar.schedule}</div>
                         <select
                           value={scheduleProductionId}
                           onChange={(event) => setScheduleProductionId(event.target.value)}
                           className="w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-white"
                         >
-                          <option value="">Selecciona contenido</option>
+                          <option value="">{DASHBOARD_COPY.calendar.selectContent}</option>
                           {activeProductions.map((production) => (
                             <option key={production.id} value={production.id}>
                               {production.title}
@@ -506,7 +529,7 @@ function DashboardContent() {
                             onClick={handleSchedule}
                             className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-sm font-semibold text-black hover:bg-yellow-300"
                           >
-                            Programar publicacion
+                            {DASHBOARD_COPY.calendar.scheduleAction}
                           </button>
                           <button
                             type="button"
@@ -516,17 +539,17 @@ function DashboardContent() {
                             }}
                             className="w-full rounded-lg border border-gray-700 px-3 py-2 text-sm text-slate-200 hover:bg-gray-800"
                           >
-                            Limpiar
+                            {DASHBOARD_COPY.calendar.clear}
                           </button>
                         </div>
                       </div>
 
                       <div className="mt-5 border-t border-gray-800 pt-4">
-                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em] mb-3">Agenda</div>
+                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em] mb-3">{DASHBOARD_COPY.calendar.agenda}</div>
                         {selectedDate ? (
                           <div className="space-y-2">
                             {(scheduledByDate.get(selectedDate) || []).length === 0 && (
-                              <p className="text-xs text-slate-500">Sin publicaciones para este dia.</p>
+                              <p className="text-xs text-slate-500">{DASHBOARD_COPY.calendar.emptyDay}</p>
                             )}
                             {(scheduledByDate.get(selectedDate) || []).map((production) => (
                               <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
@@ -541,14 +564,14 @@ function DashboardContent() {
                                     }}
                                     className="text-yellow-300 hover:text-yellow-200"
                                   >
-                                    Reprogramar
+                                    {DASHBOARD_COPY.calendar.reschedule}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleUnschedule(production.id)}
                                     className="text-red-300 hover:text-red-200"
                                   >
-                                    Cancelar
+                                    {DASHBOARD_COPY.calendar.cancel}
                                   </button>
                                 </div>
                               </div>
@@ -557,7 +580,7 @@ function DashboardContent() {
                         ) : (
                           <div className="space-y-2">
                             {upcomingScheduled.length === 0 ? (
-                              <p className="text-xs text-slate-500">Sin publicaciones programadas.</p>
+                              <p className="text-xs text-slate-500">{DASHBOARD_COPY.calendar.emptyUpcoming}</p>
                             ) : (
                               upcomingScheduled.map((production) => (
                                 <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
@@ -573,14 +596,14 @@ function DashboardContent() {
                                       }}
                                       className="text-yellow-300 hover:text-yellow-200"
                                     >
-                                      Reprogramar
+                                      {DASHBOARD_COPY.calendar.reschedule}
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => handleUnschedule(production.id)}
                                       className="text-red-300 hover:text-red-200"
                                     >
-                                      Cancelar
+                                      {DASHBOARD_COPY.calendar.cancel}
                                     </button>
                                   </div>
                                 </div>
@@ -593,85 +616,42 @@ function DashboardContent() {
 
                     <AutomationRuns runs={runs} />
 
+                  </div>
+
+                  <motion.div className="space-y-4">
                     <motion.div
                       className="surface-card glow-hover p-6"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
                     >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">Redes sociales</div>
-                      <div className="space-y-3">
-                        <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
-                              <Instagram className="w-4 h-4" />
-                            </span>
-                            <div>
-                              <p className="text-sm font-semibold text-white">Instagram</p>
-                              <p className="text-xs text-slate-400">Reels, posts y stories</p>
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">{DASHBOARD_COPY.social.title}</div>
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                        {DASHBOARD_COPY.social.items.map((item) => {
+                          const iconMap: Record<string, JSX.Element> = {
+                            Instagram: <Instagram className="w-4 h-4" />,
+                            TikTok: <Music2 className="w-4 h-4" />,
+                            LinkedIn: <Linkedin className="w-4 h-4" />,
+                            X: <Twitter className="w-4 h-4" />,
+                          };
+                          return (
+                            <div key={item.name} className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                                  {iconMap[item.name]}
+                                </span>
+                                <div>
+                                  <p className="text-sm font-semibold text-white">{item.name}</p>
+                                  <p className="text-xs text-slate-400">{item.description}</p>
+                                </div>
+                              </div>
+                              <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">{DASHBOARD_COPY.social.connect}</button>
                             </div>
-                          </div>
-                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">Conectar</button>
-                        </div>
-                        <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
-                              <Music2 className="w-4 h-4" />
-                            </span>
-                            <div>
-                              <p className="text-sm font-semibold text-white">TikTok</p>
-                              <p className="text-xs text-slate-400">Clips cortos y trends</p>
-                            </div>
-                          </div>
-                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">Conectar</button>
-                        </div>
-                        <div className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
-                              <Linkedin className="w-4 h-4" />
-                            </span>
-                            <div>
-                              <p className="text-sm font-semibold text-white">LinkedIn</p>
-                              <p className="text-xs text-slate-400">Posts, clips y branding</p>
-                            </div>
-                          </div>
-                          <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">Conectar</button>
-                        </div>
+                          );
+                        })}
                       </div>
                     </motion.div>
-
-                    {/* Stats */}
-                    <motion.div
-                      className="surface-card glow-hover p-6"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">Resumen</div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-                        <motion.div whileHover={{ scale: 1.05 }}>
-                          <div className="text-4xl font-semibold text-white">{productions.length}</div>
-                          <div className="text-sm text-slate-400">Total</div>
-                          <div className="text-xs text-slate-500 mt-1">Total en producción</div>
-                        </motion.div>
-                        <motion.div whileHover={{ scale: 1.05 }}>
-                          <div className="text-4xl font-semibold text-yellow-400">{activeProductions.length}</div>
-                          <div className="text-sm text-slate-400">Activos</div>
-                          <div className="text-xs text-slate-500 mt-1">En curso</div>
-                        </motion.div>
-                        <motion.div whileHover={{ scale: 1.05 }}>
-                          <div className="text-4xl font-semibold text-cyan-400">{ideasCount}</div>
-                          <div className="text-sm text-slate-400">Ideas</div>
-                          <div className="text-xs text-slate-500 mt-1">Ideas registradas</div>
-                        </motion.div>
-                        <motion.div whileHover={{ scale: 1.05 }}>
-                          <div className="text-4xl font-semibold text-emerald-400">{pipelineStats.published}</div>
-                          <div className="text-sm text-slate-400">Publicados</div>
-                          <div className="text-xs text-slate-500 mt-1">Publicado hasta hoy</div>
-                        </motion.div>
-                      </div>
-                    </motion.div>
-                  </div>
+                  </motion.div>
                 </div>
               </div>
             )}
@@ -690,7 +670,7 @@ function DashboardContent() {
         whileTap={{ scale: 0.98 }}
       >
         <Plus className="w-4 h-4" />
-        Nuevo
+        {DASHBOARD_COPY.header.newContent}
       </motion.button>
 
       {/* Modal */}
@@ -710,12 +690,12 @@ function DashboardContent() {
             animate={{ scale: 1, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="dashboard-modal-title" className="text-2xl font-semibold text-white mb-5">Nuevo contenido</h3>
+            <h3 id="dashboard-modal-title" className="text-2xl font-semibold text-white mb-5">{DASHBOARD_COPY.modal.title}</h3>
             <input
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="Título del contenido..."
+              placeholder={DASHBOARD_COPY.modal.placeholder}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-lg text-white placeholder-gray-500 focus:border-yellow-500 focus:outline-none mb-5"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
@@ -727,7 +707,7 @@ function DashboardContent() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Cancelar
+                {DASHBOARD_COPY.modal.cancel}
               </motion.button>
               <motion.button
                 onClick={handleCreate}
@@ -735,7 +715,7 @@ function DashboardContent() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Crear contenido
+                {DASHBOARD_COPY.modal.create}
               </motion.button>
             </div>
           </motion.div>
@@ -753,7 +733,7 @@ export default function DashboardPage() {
           <div className="min-h-screen flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-              <p className="text-slate-300">Cargando dashboard...</p>
+               <p className="text-slate-300">{DASHBOARD_COPY.loading.dashboard}</p>
             </div>
           </div>
         }
