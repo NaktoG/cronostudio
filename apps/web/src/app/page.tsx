@@ -107,7 +107,6 @@ function DashboardContent() {
       if (ideasRes.ok) {
         const ideasData = await ideasRes.json();
         const ideasList = Array.isArray(ideasData) ? ideasData : [];
-        setIdeasCount(ideasList.length);
         setIdeas(ideasList.map((idea: { id: string; title: string; status: string; priority: number }) => idea));
       }
       if (runsRes.ok) {
