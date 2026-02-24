@@ -1,34 +1,15 @@
 'use client';
 
 import Link from 'next/link';
-import {
-    BarChart3,
-    Database,
-    Film,
-    FileText,
-    Image as ImageIcon,
-    Lightbulb,
-    Search,
-    Tv,
-} from 'lucide-react';
-
-const QUICK_LINKS = [
-    { href: '/ideas', icon: Lightbulb, label: 'Ideas' },
-    { href: '/scripts', icon: FileText, label: 'Guiones' },
-    { href: '/thumbnails', icon: ImageIcon, label: 'Miniaturas' },
-    { href: '/', icon: Film, label: 'Dashboard' },
-    { href: '/seo', icon: Search, label: 'SEO' },
-    { href: '/channels', icon: Tv, label: 'Canales' },
-    { href: '/analytics', icon: BarChart3, label: 'Analytics' },
-    { href: '/configuracion', icon: Database, label: 'Configuracion' },
-];
+import { Film } from 'lucide-react';
+import { NAV_LABELS, QUICK_LINKS } from '../content/navigation';
 
 export default function QuickAccess() {
     return (
         <div className="flex items-center gap-1 py-2">
-            <span className="text-[10px] text-slate-500 mr-2">Ir a:</span>
+            <span className="text-[10px] text-slate-500 mr-2">{NAV_LABELS.quickAccessTitle}</span>
             {QUICK_LINKS.map((link) => {
-                const Icon = link.icon;
+                const Icon = link.icon || Film;
                 return (
                 <Link
                     key={link.href}

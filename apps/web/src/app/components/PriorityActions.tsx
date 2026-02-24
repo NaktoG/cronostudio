@@ -3,6 +3,7 @@
 import type { ComponentType } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, FileText, Image as ImageIcon, Scissors, Search, Target, Upload } from 'lucide-react';
+import { COMPONENT_COPY } from '../content/components';
 
 interface PriorityAction {
     id: string;
@@ -52,7 +53,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew, s
 
     if (displayActions.length === 0 && showCreateButton) {
         displayActions.push(
-            { id: 'new-1', type: 'script', title: 'Crear nuevo contenido', productionTitle: 'Empieza aquí', productionId: '', urgency: 'low' as const },
+            { id: 'new-1', type: 'script', title: COMPONENT_COPY.priorityActions.createTitle, productionTitle: COMPONENT_COPY.priorityActions.createSubtitle, productionId: '', urgency: 'low' as const },
         );
     }
 
@@ -67,9 +68,9 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew, s
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
                 <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] flex items-center gap-2">
                     <Target className="w-4 h-4" />
-                    Acciones pendientes
+                    {COMPONENT_COPY.priorityActions.title}
                 </span>
-                <span className="text-xs text-slate-400">{actions.length} items</span>
+                <span className="text-xs text-slate-400">{actions.length} {COMPONENT_COPY.priorityActions.itemsLabel}</span>
             </div>
 
             {/* Action list */}
@@ -118,7 +119,7 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew, s
                                 whileHover={{ x: 0 }}
                                 aria-hidden="true"
                             >
-                                Ir <span>→</span>
+                                {COMPONENT_COPY.priorityActions.goTo} <span>→</span>
                             </motion.span>
                         </motion.button>
                     );
@@ -135,8 +136,8 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew, s
                             <CheckCircle2 className="w-4 h-4" />
                         </span>
                         <div className="flex-1">
-                            <span className="text-base text-slate-100">¡Todo al día!</span>
-                            <span className="text-sm text-slate-400 block">Sin pendientes por ahora</span>
+                            <span className="text-base text-slate-100">{COMPONENT_COPY.priorityActions.emptyTitle}</span>
+                            <span className="text-sm text-slate-400 block">{COMPONENT_COPY.priorityActions.emptySubtitle}</span>
                         </div>
                     </motion.div>
                 )}

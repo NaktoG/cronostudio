@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Instagram, Linkedin, Music2, Plus, Sparkles, Twitter } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -15,6 +15,7 @@ import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
 import { useToast } from './contexts/ToastContext';
 import { DASHBOARD_COPY, STAGE_LABELS } from './content/dashboard';
+import useDialogFocus from './hooks/useDialogFocus';
 
 interface PipelineStats {
   idea: number;
@@ -39,16 +40,16 @@ function generatePriorityActions(productions: Production[]): PriorityAction[] {
   const actions: PriorityAction[] = [];
   for (const prod of productions) {
     if (prod.status === 'scripting' && (!prod.script_status || prod.script_status === 'draft')) {
-      actions.push({ id: prod.id, type: 'script', title: 'Continuar guión', productionTitle: prod.title, productionId: prod.id, urgency: 'high' });
+      actions.push({ id: prod.id, type: 'script', title: DASHBOARD_COPY.priorityActions.script, productionTitle: prod.title, productionId: prod.id, urgency: 'high' });
     }
     if ((prod.status === 'editing' || prod.status === 'shorts') && (!prod.thumbnail_status || prod.thumbnail_status === 'pending')) {
-      actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: 'Subir miniatura', productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
+      actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: DASHBOARD_COPY.priorityActions.thumbnail, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
     }
     if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < 60)) {
-      actions.push({ id: `${prod.id}-seo`, type: 'seo', title: 'Optimizar SEO', productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
+      actions.push({ id: `${prod.id}-seo`, type: 'seo', title: DASHBOARD_COPY.priorityActions.seo, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
     }
     if (prod.status === 'shorts' && prod.shorts_count === 0) {
-      actions.push({ id: `${prod.id}-short`, type: 'short', title: 'Crear shorts', productionTitle: prod.title, productionId: prod.id, urgency: 'low' });
+      actions.push({ id: `${prod.id}-short`, type: 'short', title: DASHBOARD_COPY.priorityActions.shorts, productionTitle: prod.title, productionId: prod.id, urgency: 'low' });
     }
   }
   const urgencyOrder = { high: 0, medium: 1, low: 2 };
@@ -76,13 +77,16 @@ function DashboardContent() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [scheduleProductionId, setScheduleProductionId] = useState('');
   const [scheduleDate, setScheduleDate] = useState('');
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  const fetchData = useCallback(async () => {
+  useDialogFocus(modalRef, showModal);
+
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     try {
       const [productionsRes, ideasRes, runsRes] = await Promise.all([
-        authFetch('/api/productions?stats=true'),
-        authFetch('/api/ideas'),
-        authFetch('/api/automation-runs')
+        authFetch('/api/productions?stats=true', { signal }),
+        authFetch('/api/ideas', { signal }),
+        authFetch('/api/automation-runs', { signal })
       ]);
 
       if (productionsRes.ok) {
@@ -114,15 +118,22 @@ function DashboardContent() {
         setRuns([]);
       }
     } catch (e) {
+      if (signal?.aborted) return;
       console.error('Error:', e);
     } finally {
+      if (signal?.aborted) return;
       setLoading(false);
     }
   }, [authFetch]);
 
   useEffect(() => {
-    if (isAuthenticated) fetchData();
-    else setLoading(false);
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
   }, [isAuthenticated, fetchData]);
 
   useEffect(() => {
@@ -321,34 +332,6 @@ function DashboardContent() {
                   onStageClick={(stage) => setActiveStage((current) => (current === stage ? null : stage))}
                 />
 
-                <motion.div
-                  className="grid grid-cols-2 md:grid-cols-4 gap-4"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  <div className="surface-card glow-hover p-4">
-                    <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.summary.total}</div>
-                    <div className="text-2xl font-semibold text-white mt-2">{productions.length}</div>
-                    <div className="text-xs text-slate-500 mt-1">{DASHBOARD_COPY.summary.totalSubtitle}</div>
-                  </div>
-                  <div className="surface-card glow-hover p-4">
-                    <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.summary.active}</div>
-                    <div className="text-2xl font-semibold text-white mt-2">{activeProductions.length}</div>
-                    <div className="text-xs text-slate-500 mt-1">{DASHBOARD_COPY.summary.activeSubtitle}</div>
-                  </div>
-                  <div className="surface-card glow-hover p-4">
-                    <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.summary.ideas}</div>
-                    <div className="text-2xl font-semibold text-white mt-2">{ideasCount}</div>
-                    <div className="text-xs text-slate-500 mt-1">{DASHBOARD_COPY.summary.ideasSubtitle}</div>
-                  </div>
-                  <div className="surface-card glow-hover p-4">
-                    <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.summary.published}</div>
-                    <div className="text-2xl font-semibold text-white mt-2">{pipelineStats.published || 0}</div>
-                    <div className="text-xs text-slate-500 mt-1">{DASHBOARD_COPY.summary.publishedSubtitle}</div>
-                  </div>
-                </motion.div>
-
                 {/* Main grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 items-start">
                   <div className="space-y-5">
@@ -376,7 +359,7 @@ function DashboardContent() {
                             <span aria-hidden="true">×</span>
                           </button>
                         </div>
-                        <span className="text-xs text-slate-400">{filteredIdeas.length} ideas</span>
+                          <span className="text-xs text-slate-400">{filteredIdeas.length} {DASHBOARD_COPY.pipeline.ideasCountLabel}</span>
                       </div>
                       <div className="divide-y divide-gray-800/50">
                         {filteredIdeas.length === 0 ? (
@@ -659,20 +642,6 @@ function DashboardContent() {
       </PageTransition>
       <Footer />
 
-        <motion.button
-          onClick={() => setShowModal(true)}
-          className="fixed bottom-6 right-6 md:hidden flex items-center gap-2 px-5 py-3 text-sm font-semibold text-black rounded-full"
-          style={{
-            background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-            boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
-          }}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <Plus className="w-4 h-4" />
-        {DASHBOARD_COPY.header.newContent}
-      </motion.button>
-
       {/* Modal */}
       {showModal && (
         <motion.div
@@ -686,6 +655,8 @@ function DashboardContent() {
             aria-modal="true"
             aria-labelledby="dashboard-modal-title"
             className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg max-h-[85vh] overflow-y-auto"
+            ref={modalRef}
+            tabIndex={-1}
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}

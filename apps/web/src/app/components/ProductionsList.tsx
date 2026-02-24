@@ -2,6 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { CheckCircle2, FileText, Film, Lightbulb, Smartphone, Scissors, Upload, Video } from 'lucide-react';
+import { COMPONENT_COPY } from '../content/components';
+import { NEXT_ACTION_LABELS, PRODUCTION_STATUS_BADGES } from '../content/labels';
 
 export interface Production {
     id: string;
@@ -30,13 +32,13 @@ interface ProductionsListProps {
 }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
-    idea: { label: 'Idea', color: 'bg-slate-600', icon: Lightbulb },
-    scripting: { label: 'Guion', color: 'bg-blue-600', icon: FileText },
-    recording: { label: 'Grabando', color: 'bg-purple-600', icon: Video },
-    editing: { label: 'Editando', color: 'bg-orange-600', icon: Scissors },
-    shorts: { label: 'Shorts', color: 'bg-cyan-600', icon: Smartphone },
-    publishing: { label: 'Publicando', color: 'bg-yellow-600', icon: Upload },
-    published: { label: 'Publicado', color: 'bg-emerald-600', icon: CheckCircle2 },
+    idea: { label: PRODUCTION_STATUS_BADGES.idea, color: 'bg-slate-600', icon: Lightbulb },
+    scripting: { label: PRODUCTION_STATUS_BADGES.scripting, color: 'bg-blue-600', icon: FileText },
+    recording: { label: PRODUCTION_STATUS_BADGES.recording, color: 'bg-purple-600', icon: Video },
+    editing: { label: PRODUCTION_STATUS_BADGES.editing, color: 'bg-orange-600', icon: Scissors },
+    shorts: { label: PRODUCTION_STATUS_BADGES.shorts, color: 'bg-cyan-600', icon: Smartphone },
+    publishing: { label: PRODUCTION_STATUS_BADGES.publishing, color: 'bg-yellow-600', icon: Upload },
+    published: { label: PRODUCTION_STATUS_BADGES.published, color: 'bg-emerald-600', icon: CheckCircle2 },
 };
 
 const containerVariants = {
@@ -53,13 +55,11 @@ const itemVariants = {
 };
 
 function getNextAction(prod: Production): string {
-    if (prod.status === 'idea') return 'Empezar guión';
-    if (prod.status === 'scripting') return prod.script_status === 'draft' ? 'Continuar guión' : 'Revisar guión';
-    if (prod.status === 'recording') return 'Subir grabación';
-    if (prod.status === 'editing') return 'Terminar edición';
-    if (prod.status === 'shorts') return `Crear shorts`;
-    if (prod.status === 'publishing') return 'Programar publicación';
-    return 'Ver detalles';
+    if (prod.status === 'scripting') return prod.script_status === 'draft' ? NEXT_ACTION_LABELS.scripting : COMPONENT_COPY.productionsList.reviewScript;
+    if (prod.status in NEXT_ACTION_LABELS) {
+        return NEXT_ACTION_LABELS[prod.status as keyof typeof NEXT_ACTION_LABELS];
+    }
+    return NEXT_ACTION_LABELS.published;
 }
 
 export default function ProductionsList({
@@ -100,7 +100,7 @@ export default function ProductionsList({
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                     >
-                        + Nuevo
+                        {COMPONENT_COPY.productionsList.new}
                     </motion.button>
                 )}
             </div>
@@ -125,11 +125,11 @@ export default function ProductionsList({
                             <Film className="w-6 h-6" />
                         </span>
                         <span className="text-base text-slate-300 block mb-1">
-                            {filterLabel ? 'Sin contenidos en esta etapa' : 'Sin contenidos activos'}
+                            {filterLabel ? COMPONENT_COPY.productionsList.emptyStage : COMPONENT_COPY.productionsList.emptyActive}
                         </span>
                         {showCreateButton && (
                             <span className="text-sm text-yellow-400 hover:underline font-semibold">
-                                {filterLabel ? 'Cambiar filtro →' : 'Crear tu primer contenido →'}
+                                {filterLabel ? COMPONENT_COPY.productionsList.changeFilter : COMPONENT_COPY.productionsList.createFirst}
                             </span>
                         )}
                     </motion.button>

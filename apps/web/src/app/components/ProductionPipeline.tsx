@@ -10,6 +10,8 @@ import {
     Upload,
     Video,
 } from 'lucide-react';
+import { PIPELINE_STAGE_LABELS } from '../content/labels';
+import { COMPONENT_COPY } from '../content/components';
 
 interface PipelineStats {
     idea: number;
@@ -28,13 +30,13 @@ interface ProductionPipelineProps {
 }
 
 const STAGES: { key: keyof PipelineStats; icon: typeof Lightbulb; label: string; color: string; bgColor: string }[] = [
-    { key: 'idea', icon: Lightbulb, label: 'Ideas', color: 'text-slate-300', bgColor: 'bg-slate-700' },
-    { key: 'scripting', icon: FileText, label: 'Guion', color: 'text-blue-300', bgColor: 'bg-blue-500' },
-    { key: 'recording', icon: Video, label: 'Grabacion', color: 'text-purple-300', bgColor: 'bg-purple-500' },
-    { key: 'editing', icon: Scissors, label: 'Edicion', color: 'text-orange-300', bgColor: 'bg-orange-500' },
-    { key: 'shorts', icon: Smartphone, label: 'Shorts', color: 'text-cyan-300', bgColor: 'bg-cyan-500' },
-    { key: 'publishing', icon: Upload, label: 'Publicar', color: 'text-yellow-300', bgColor: 'bg-yellow-500' },
-    { key: 'published', icon: CheckCircle2, label: 'Publicado', color: 'text-emerald-300', bgColor: 'bg-emerald-500' },
+    { key: 'idea', icon: Lightbulb, label: PIPELINE_STAGE_LABELS.idea, color: 'text-slate-300', bgColor: 'bg-slate-700' },
+    { key: 'scripting', icon: FileText, label: PIPELINE_STAGE_LABELS.scripting, color: 'text-blue-300', bgColor: 'bg-blue-500' },
+    { key: 'recording', icon: Video, label: PIPELINE_STAGE_LABELS.recording, color: 'text-purple-300', bgColor: 'bg-purple-500' },
+    { key: 'editing', icon: Scissors, label: PIPELINE_STAGE_LABELS.editing, color: 'text-orange-300', bgColor: 'bg-orange-500' },
+    { key: 'shorts', icon: Smartphone, label: PIPELINE_STAGE_LABELS.shorts, color: 'text-cyan-300', bgColor: 'bg-cyan-500' },
+    { key: 'publishing', icon: Upload, label: PIPELINE_STAGE_LABELS.publishing, color: 'text-yellow-300', bgColor: 'bg-yellow-500' },
+    { key: 'published', icon: CheckCircle2, label: PIPELINE_STAGE_LABELS.published, color: 'text-emerald-300', bgColor: 'bg-emerald-500' },
 ];
 
 const containerVariants = {
@@ -64,8 +66,8 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage }:
         >
             {/* Header row */}
             <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Pipeline de produccion</span>
-                <span className="text-xs text-slate-400">{total} contenidos</span>
+                <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{COMPONENT_COPY.pipeline.title}</span>
+                <span className="text-xs text-slate-400">{total} {COMPONENT_COPY.pipeline.totalLabel}</span>
             </div>
 
             {/* Pipeline Container - Responsive Grid/Flex */}

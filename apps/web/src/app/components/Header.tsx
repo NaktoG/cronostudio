@@ -5,30 +5,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import {
-  BarChart3,
-  FileText,
-  Image as ImageIcon,
-  LayoutDashboard,
-  Lightbulb,
-  LogOut,
-  Menu,
-  Search,
-  Settings,
-  Tv,
-  X,
-} from 'lucide-react';
+import { LogOut, Menu, Settings, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-
-const NAV_ITEMS = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/ideas', label: 'Ideas', icon: Lightbulb },
-  { href: '/scripts', label: 'Guiones', icon: FileText },
-  { href: '/thumbnails', label: 'Miniaturas', icon: ImageIcon },
-  { href: '/seo', label: 'SEO', icon: Search },
-  { href: '/channels', label: 'Canales', icon: Tv },
-  { href: '/analytics', label: 'Analítica', icon: BarChart3 },
-];
+import { NAV_ITEMS, NAV_LABELS } from '../content/navigation';
 
 export default function Header() {
   const pathname = usePathname();
@@ -120,7 +99,7 @@ export default function Header() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <LogOut className="w-4 h-4" />
-                  Salir
+                  {NAV_LABELS.logout}
                 </motion.button>
               </div>
             ) : (
@@ -130,7 +109,7 @@ export default function Header() {
                     className="px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 transition-colors"
                     whileHover={{ scale: 1.02 }}
                   >
-                    Iniciar Sesión
+                    {NAV_LABELS.login}
                   </motion.button>
                 </Link>
                 <Link href="/register">
@@ -143,7 +122,7 @@ export default function Header() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    Registrarse
+                    {NAV_LABELS.register}
                   </motion.button>
                 </Link>
               </div>
@@ -222,7 +201,7 @@ export default function Header() {
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <LogOut className="w-4 h-4" />
-                  Salir
+                  {NAV_LABELS.logout}
                 </motion.button>
               )}
             </motion.nav>

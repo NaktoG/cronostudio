@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { searchParams } = new URL(request.url);
@@ -146,18 +146,18 @@ export async function GET(request: NextRequest) {
         return withSecurityHeaders(response);
     } catch (error) {
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         console.error('[GET /api/analytics] Error:', error instanceof Error ? error.message : 'Unknown error');
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al obtener analytics' },
             { status: 500 }
-        );
+        ));
     }
 }
 
@@ -174,7 +174,7 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
         }
 
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const body = await request.json();
@@ -191,10 +191,10 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
         );
 
         if (videoCheck.rows.length === 0) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'Video no encontrado o no autorizado' },
                 { status: 404 }
-            );
+            ));
         }
 
         // Upsert: insertar o actualizar si ya existe para esa fecha
@@ -227,17 +227,17 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
         return withSecurityHeaders(response);
     } catch (error) {
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         console.error('[POST /api/analytics] Error:', error instanceof Error ? error.message : 'Unknown error');
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al registrar analytics' },
             { status: 500 }
-        );
+        ));
     }
 }));

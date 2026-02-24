@@ -24,6 +24,13 @@ export const DASHBOARD_COPY = {
     active: 'Contenidos activos',
     ideasActive: 'Ideas activas',
     noIdeas: 'No hay ideas activas.',
+    ideasCountLabel: 'ideas',
+  },
+  priorityActions: {
+    script: 'Continuar guion',
+    thumbnail: 'Subir miniatura',
+    seo: 'Optimizar SEO',
+    shorts: 'Crear shorts',
   },
   calendar: {
     title: 'Calendario',

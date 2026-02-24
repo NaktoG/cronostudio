@@ -8,6 +8,9 @@ import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { SEO_COPY } from '../content/pages/seo';
+import { useRouter } from 'next/navigation';
 
 interface SeoData {
     id: string;
@@ -24,26 +27,42 @@ interface SeoData {
 export default function SeoPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
+    const { addToast } = useToast();
+    const router = useRouter();
     const [seoData, setSeoData] = useState<SeoData[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    const fetchSeoData = useCallback(async () => {
+    const fetchSeoData = useCallback(async (signal?: AbortSignal) => {
         try {
             setLoading(true);
             if (!isAuthenticated) {
                 setSeoData([]);
+                setError(null);
                 return;
             }
-            const response = await authFetch('/api/seo');
-            if (response.ok) setSeoData(await response.json());
+            const response = await authFetch('/api/seo', { signal });
+            if (!response.ok) {
+                throw new Error(SEO_COPY.errors.load);
+            }
+            setSeoData(await response.json());
+            setError(null);
         } catch (err) {
-            console.error('Error:', err);
+            if (signal?.aborted) return;
+            const message = err instanceof Error ? err.message : SEO_COPY.errors.unknown;
+            setError(message);
+            addToast(message, 'error');
         } finally {
+            if (signal?.aborted) return;
             setLoading(false);
         }
-    }, [isAuthenticated, authFetch]);
+    }, [isAuthenticated, authFetch, addToast]);
 
-    useEffect(() => { fetchSeoData(); }, [fetchSeoData]);
+    useEffect(() => {
+        const controller = new AbortController();
+        fetchSeoData(controller.signal);
+        return () => controller.abort();
+    }, [fetchSeoData]);
 
     const getScoreColor = (score: number) => {
         if (score >= 80) return 'text-green-400';
@@ -53,10 +72,10 @@ export default function SeoPage() {
     };
 
     const getScoreLabel = (score: number) => {
-        if (score >= 80) return 'Excelente';
-        if (score >= 60) return 'Bueno';
-        if (score >= 40) return 'Mejorable';
-        return 'Necesita trabajo';
+        if (score >= 80) return SEO_COPY.score.excellent;
+        if (score >= 60) return SEO_COPY.score.good;
+        if (score >= 40) return SEO_COPY.score.ok;
+        return SEO_COPY.score.bad;
     };
 
     return (
@@ -74,9 +93,9 @@ export default function SeoPage() {
                             <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                 <Search className="w-5 h-5" />
                             </span>
-                            <h2 className="text-4xl font-semibold text-white">SEO</h2>
+                            <h2 className="text-4xl font-semibold text-white">{SEO_COPY.title}</h2>
                         </div>
-                        <p className="text-slate-300">Optimizacion de titulos, descripciones y tags para YouTube</p>
+                        <p className="text-slate-300">{SEO_COPY.subtitle}</p>
                     </motion.div>
 
                     {/* Tips Card */}
@@ -88,21 +107,15 @@ export default function SeoPage() {
                     >
                         <h3 className="text-lg font-semibold text-teal-300 mb-3 flex items-center gap-2">
                             <Lightbulb className="w-4 h-4" />
-                            Consejos SEO para YouTube
+                            {SEO_COPY.tipsTitle}
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div>
-                                <p className="text-white font-medium mb-1">Título</p>
-                                <p className="text-gray-400">30-60 caracteres, palabra clave al inicio</p>
-                            </div>
-                            <div>
-                                <p className="text-white font-medium mb-1">Descripción</p>
-                                <p className="text-gray-400">100-500 caracteres, links y CTAs incluidos</p>
-                            </div>
-                            <div>
-                                <p className="text-white font-medium mb-1">Tags</p>
-                                <p className="text-gray-400">5-15 tags relevantes y específicos</p>
-                            </div>
+                            {SEO_COPY.tips.map((tip) => (
+                                <div key={tip.title}>
+                                    <p className="text-white font-medium mb-1">{tip.title}</p>
+                                    <p className="text-gray-400">{tip.description}</p>
+                                </div>
+                            ))}
                         </div>
                     </motion.div>
 
@@ -110,30 +123,38 @@ export default function SeoPage() {
                         <div className="flex justify-center py-20">
                             <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
                         </div>
+                    ) : error ? (
+                        <motion.div
+                            className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                        >
+                            {error}
+                        </motion.div>
                     ) : seoData.length === 0 ? (
                         <motion.div className="text-center py-20" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                             <div className="w-20 h-20 mx-auto mb-6 bg-gray-900/60 border border-gray-800 rounded-full flex items-center justify-center text-yellow-400">
                                 <Search className="w-8 h-8" />
                             </div>
-                            <h3 className="text-xl font-semibold text-white mb-2">No hay datos SEO todavia</h3>
-                            <p className="text-slate-300 mb-2">Los datos SEO se crean automaticamente cuando subes un video</p>
-                            <p className="text-slate-500 text-sm">Tambien puedes usar n8n para generar SEO automaticamente</p>
+                            <h3 className="text-xl font-semibold text-white mb-2">{SEO_COPY.emptyTitle}</h3>
+                            <p className="text-slate-300 mb-2">{SEO_COPY.emptySubtitle}</p>
+                            <p className="text-slate-500 text-sm">{SEO_COPY.emptyHint}</p>
                             <motion.div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                                 <motion.button
-                                    onClick={() => window.location.assign('/channels')}
+                                    onClick={() => router.push('/channels')}
                                     className="px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    Conectar canal
+                                    {SEO_COPY.connectChannel}
                                 </motion.button>
                                 <motion.button
-                                    onClick={() => window.location.assign('/analytics')}
+                                    onClick={() => router.push('/analytics')}
                                     className="px-6 py-3 border border-gray-700 text-gray-200 rounded-lg hover:bg-gray-800"
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    Ver analytics
+                                    {SEO_COPY.viewAnalytics}
                                 </motion.button>
                             </motion.div>
                         </motion.div>
@@ -155,7 +176,7 @@ export default function SeoPage() {
                                                 </h3>
                                             </div>
                                             {item.video_title && (
-                                                <p className="text-sm text-gray-500">Video: {item.video_title}</p>
+                                                <p className="text-sm text-gray-500">{SEO_COPY.videoPrefix} {item.video_title}</p>
                                             )}
                                         </div>
                                         <div className="text-right">
@@ -190,7 +211,7 @@ export default function SeoPage() {
                                     {/* Score Bar */}
                                     <div className="mt-4 pt-4 border-t border-gray-800">
                                         <div className="flex items-center gap-4">
-                                            <span className="text-xs text-gray-500">Score SEO</span>
+                                            <span className="text-xs text-gray-500">{SEO_COPY.scoreLabel}</span>
                                             <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
                                                 <motion.div
                                                     className={`h-full ${item.score >= 80 ? 'bg-green-500' : item.score >= 60 ? 'bg-yellow-500' : item.score >= 40 ? 'bg-orange-500' : 'bg-red-500'}`}

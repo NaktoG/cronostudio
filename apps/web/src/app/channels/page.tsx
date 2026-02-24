@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { Plus, Tv } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -10,6 +10,8 @@ import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { CHANNELS_COPY } from '../content/pages/channels';
+import useDialogFocus from '../hooks/useDialogFocus';
 
 interface Channel {
     id: string;
@@ -34,15 +36,18 @@ export default function ChannelsPage() {
     });
     const [submitting, setSubmitting] = useState(false);
     const { addToast } = useToast();
+    const modalRef = useRef<HTMLDivElement>(null);
 
-    const fetchChannels = useCallback(async () => {
+    useDialogFocus(modalRef, showModal);
+
+    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
         try {
             setLoading(true);
             if (!isAuthenticated) {
                 setChannels([]);
                 return;
             }
-            const response = await authFetch('/api/channels');
+            const response = await authFetch('/api/channels', { signal });
 
             if (!response.ok) {
                 throw new Error('Error al cargar canales');
@@ -52,14 +57,18 @@ export default function ChannelsPage() {
             setChannels(data);
             setError(null);
         } catch (err) {
+            if (signal?.aborted) return;
             setError(err instanceof Error ? err.message : 'Error desconocido');
         } finally {
+            if (signal?.aborted) return;
             setLoading(false);
         }
     }, [isAuthenticated, authFetch]);
 
     useEffect(() => {
-        fetchChannels();
+        const controller = new AbortController();
+        fetchChannels(controller.signal);
+        return () => controller.abort();
     }, [fetchChannels]);
 
     useEffect(() => {
@@ -156,11 +165,9 @@ export default function ChannelsPage() {
                                 <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                     <Tv className="w-5 h-5" />
                                 </span>
-                                <h2 className="text-4xl font-semibold text-white">Canales</h2>
+                                <h2 className="text-4xl font-semibold text-white">{CHANNELS_COPY.title}</h2>
                             </div>
-                            <p className="text-slate-300">
-                                Gestiona tus canales de YouTube conectados
-                            </p>
+                            <p className="text-slate-300">{CHANNELS_COPY.subtitle}</p>
                         </div>
 
                         <motion.button
@@ -174,7 +181,7 @@ export default function ChannelsPage() {
                             whileTap={{ scale: 0.98 }}
                         >
                             <Plus className="w-4 h-4" />
-                            Anadir canal
+                            {CHANNELS_COPY.create}
                         </motion.button>
                     </motion.div>
 
@@ -197,7 +204,7 @@ export default function ChannelsPage() {
                         <div className="flex items-center justify-center py-20">
                             <div className="flex flex-col items-center gap-4">
                                 <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-                                <p className="text-gray-400">Cargando canales...</p>
+                                <p className="text-gray-400">{CHANNELS_COPY.loading}</p>
                             </div>
                         </div>
                     )}
@@ -214,24 +221,22 @@ export default function ChannelsPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
                             </div>
-                            <h3 className="text-xl font-semibold text-white mb-2">No hay canales</h3>
-                            <p className="text-gray-400 mb-6">
-                                Conecta tu primer canal de YouTube para comenzar
-                            </p>
-                            <motion.button
-                                onClick={() => {
-                                    setEditingChannel(null);
-                                    setFormData({ name: '', youtubeChannelId: '' });
-                                    setShowModal(true);
-                                }}
-                                className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 transition-all sm:w-auto"
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                Añadir Canal
-                            </motion.button>
-                        </motion.div>
-                    )}
+                                <h3 className="text-xl font-semibold text-white mb-2">{CHANNELS_COPY.emptyTitle}</h3>
+                                <p className="text-gray-400 mb-6">{CHANNELS_COPY.emptySubtitle}</p>
+                                <motion.button
+                                    onClick={() => {
+                                        setEditingChannel(null);
+                                        setFormData({ name: '', youtubeChannelId: '' });
+                                        setShowModal(true);
+                                    }}
+                                    className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 transition-all sm:w-auto"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                    {CHANNELS_COPY.emptyAction}
+                                </motion.button>
+                            </motion.div>
+                        )}
 
                     {!loading && channels.length > 0 && (
                         <motion.div
@@ -267,7 +272,7 @@ export default function ChannelsPage() {
                                                 ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
                                                 : 'border-amber-500/40 text-amber-300 bg-amber-500/10'
                                         }`}>
-                                            {channel.subscribers > 0 ? 'Conectado' : 'Pendiente'}
+                                            {channel.subscribers > 0 ? CHANNELS_COPY.statusConnected : CHANNELS_COPY.statusPending}
                                         </span>
                                     </div>
 
@@ -282,26 +287,26 @@ export default function ChannelsPage() {
 
                                     <div className="mt-4 pt-4 border-t border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <span className="text-xs text-gray-500">
-                                            Añadido: {new Date(channel.created_at).toLocaleDateString('es-ES')}
+                                            {CHANNELS_COPY.createdAt} {new Date(channel.created_at).toLocaleDateString('es-ES')}
                                         </span>
                                         <div className="flex flex-wrap items-center gap-3">
                                             <button
                                                 onClick={() => handleEdit(channel)}
                                                 className="text-xs text-slate-300 hover:text-white"
                                             >
-                                                Editar
+                                                {CHANNELS_COPY.edit}
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(channel)}
                                                 className="text-xs text-red-300 hover:text-red-200"
                                             >
-                                                Eliminar
+                                                {CHANNELS_COPY.delete}
                                             </button>
                                             <Link
                                                 href={`/analytics?channelId=${channel.id}`}
                                                 className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors"
                                             >
-                                                Ver Analytics →
+                                                {CHANNELS_COPY.viewAnalytics}
                                             </Link>
                                         </div>
                                     </div>
@@ -328,19 +333,21 @@ export default function ChannelsPage() {
                                 aria-modal="true"
                                 aria-labelledby="channel-modal-title"
                                 className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-6 sm:p-8 w-full max-w-md max-h-[85vh] overflow-y-auto"
+                                ref={modalRef}
+                                tabIndex={-1}
                                 initial={{ scale: 0.9, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0.9, opacity: 0 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <h3 id="channel-modal-title" className="text-2xl font-bold text-white mb-6">
-                                    {editingChannel ? 'Editar Canal' : 'Añadir Canal'}
+                                    {editingChannel ? CHANNELS_COPY.modalTitleEdit : CHANNELS_COPY.modalTitleCreate}
                                 </h3>
 
                                 <form onSubmit={handleSubmit} className="space-y-5">
                                     <div>
                                         <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                                            Nombre del Canal
+                                            {CHANNELS_COPY.form.name}
                                         </label>
                                         <input
                                             id="name"
@@ -348,14 +355,14 @@ export default function ChannelsPage() {
                                             value={formData.name}
                                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                                            placeholder="Mi Canal de YouTube"
+                                            placeholder={CHANNELS_COPY.form.placeholderName}
                                             required
                                         />
                                     </div>
 
                                     <div>
                                         <label htmlFor="youtubeChannelId" className="block text-sm font-medium text-gray-300 mb-2">
-                                            YouTube Channel ID
+                                            {CHANNELS_COPY.form.youtubeId}
                                         </label>
                                         <input
                                             id="youtubeChannelId"
@@ -363,12 +370,12 @@ export default function ChannelsPage() {
                                             value={formData.youtubeChannelId}
                                             onChange={(e) => setFormData({ ...formData, youtubeChannelId: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                                            placeholder="UCxxxxxxxxxxxxx"
+                                            placeholder={CHANNELS_COPY.form.placeholderId}
                                             required={!editingChannel}
                                             disabled={Boolean(editingChannel)}
                                         />
                                         <p className="mt-1 text-xs text-gray-500">
-                                            Puedes encontrarlo en la URL de tu canal de YouTube
+                                            {CHANNELS_COPY.form.youtubeHelp}
                                         </p>
                                     </div>
 
@@ -378,7 +385,7 @@ export default function ChannelsPage() {
                                             onClick={() => setShowModal(false)}
                                             className="flex-1 py-3 px-4 border border-gray-700 text-gray-300 font-medium rounded-lg hover:bg-gray-800 transition-colors"
                                         >
-                                            Cancelar
+                                            {CHANNELS_COPY.cancel}
                                         </button>
                                         <motion.button
                                             type="submit"
@@ -393,10 +400,10 @@ export default function ChannelsPage() {
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                                     </svg>
-                                                    {editingChannel ? 'Guardando...' : 'Creando...'}
+                                                    {editingChannel ? CHANNELS_COPY.submittingEdit : CHANNELS_COPY.submittingCreate}
                                                 </span>
                                             ) : (
-                                                editingChannel ? 'Guardar cambios' : 'Crear Canal'
+                                                editingChannel ? CHANNELS_COPY.submitEdit : CHANNELS_COPY.submitCreate
                                             )}
                                         </motion.button>
                                     </div>
