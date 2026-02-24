@@ -69,7 +69,6 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [ideasCount, setIdeasCount] = useState(0);
   const [ideas, setIdeas] = useState<{ id: string; title: string; status: string; priority: number }[]>([]);
   const [activeStage, setActiveStage] = useState<keyof PipelineStats | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());

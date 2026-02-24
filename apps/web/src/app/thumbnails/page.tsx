@@ -196,17 +196,18 @@ export default function ThumbnailsPage() {
                             </motion.button>
                         </motion.div>
                     ) : (
-                        <motion.div
-                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                        >
-                            {thumbnails.slice(0, visibleCount).map((thumb) => (
-                                <motion.div
-                                    key={thumb.id}
-                                    className="surface-panel glow-hover overflow-hidden transition-all group"
-                                    whileHover={{ y: -4 }}
-                                >
+                        <div className="space-y-4">
+                            <motion.div
+                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                            >
+                                {thumbnails.slice(0, visibleCount).map((thumb) => (
+                                    <motion.div
+                                        key={thumb.id}
+                                        className="surface-panel glow-hover overflow-hidden transition-all group"
+                                        whileHover={{ y: -4 }}
+                                    >
                                     {/* Preview */}
                                     <div className="relative aspect-video bg-gray-800 flex items-center justify-center">
                                         {thumb.image_url ? (
@@ -253,19 +254,20 @@ export default function ThumbnailsPage() {
                                             </button>
                                         </div>
                                     </div>
-                                </motion.div>
-                            ))}
-                        </motion.div>
-                        {thumbnails.length > 12 && (
-                            <div className="pt-4 flex justify-center">
-                                <button
-                                    onClick={() => setVisibleCount(visibleCount < thumbnails.length ? thumbnails.length : 12)}
-                                    className="text-xs px-4 py-2 rounded-full border border-gray-700 text-slate-300 hover:text-white"
-                                >
-                                    {visibleCount < thumbnails.length ? THUMBNAILS_COPY.list.showMore : THUMBNAILS_COPY.list.showLess}
-                                </button>
-                            </div>
-                        )}
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+                            {thumbnails.length > 12 && (
+                                <div className="pt-4 flex justify-center">
+                                    <button
+                                        onClick={() => setVisibleCount(visibleCount < thumbnails.length ? thumbnails.length : 12)}
+                                        className="text-xs px-4 py-2 rounded-full border border-gray-700 text-slate-300 hover:text-white"
+                                    >
+                                        {visibleCount < thumbnails.length ? THUMBNAILS_COPY.list.showMore : THUMBNAILS_COPY.list.showLess}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </main>
                 <Footer />
