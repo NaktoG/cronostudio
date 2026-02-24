@@ -17,6 +17,7 @@ interface PriorityActionsProps {
     actions: PriorityAction[];
     onActionClick?: (action: PriorityAction) => void;
     onCreateNew?: () => void;
+    showCreateButton?: boolean;
 }
 
 const ACTION_ICONS: Record<string, ComponentType<{ className?: string }>> = {
@@ -46,10 +47,10 @@ const itemVariants = {
     visible: { opacity: 1, x: 0 }
 };
 
-export default function PriorityActions({ actions, onActionClick, onCreateNew }: PriorityActionsProps) {
+export default function PriorityActions({ actions, onActionClick, onCreateNew, showCreateButton = true }: PriorityActionsProps) {
     const displayActions = [...actions];
 
-    if (displayActions.length === 0) {
+    if (displayActions.length === 0 && showCreateButton) {
         displayActions.push(
             { id: 'new-1', type: 'script', title: 'Crear nuevo contenido', productionTitle: 'Empieza aquí', productionId: '', urgency: 'low' as const },
         );
@@ -124,24 +125,20 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew }:
                 })}
 
                 {/* Empty state */}
-                {actions.length === 0 && (
-                    <motion.button
-                        type="button"
-                        className="flex w-full items-center gap-4 px-5 py-4 text-left text-slate-200 hover:bg-gray-800/40 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
-                        onClick={onCreateNew}
-                        aria-label="Crear nuevo contenido"
+                {actions.length === 0 && !showCreateButton && (
+                    <motion.div
+                        className="flex items-center gap-4 px-5 py-4 text-slate-200"
                         variants={itemVariants}
-                        whileHover={{ x: 4 }}
                     >
-                        <span className="w-3 h-3 rounded-full bg-green-500" />
+                        <span className="w-3 h-3 rounded-full bg-emerald-500" />
                         <span className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                             <CheckCircle2 className="w-4 h-4" />
                         </span>
                         <div className="flex-1">
                             <span className="text-base text-slate-100">¡Todo al día!</span>
-                            <span className="text-sm text-yellow-400 block hover:underline">Crear nuevo contenido</span>
+                            <span className="text-sm text-slate-400 block">Sin pendientes por ahora</span>
                         </div>
-                    </motion.button>
+                    </motion.div>
                 )}
             </motion.div>
         </motion.div>

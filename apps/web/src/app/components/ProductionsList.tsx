@@ -26,6 +26,7 @@ interface ProductionsListProps {
     title?: string;
     filterLabel?: string | null;
     onClearFilter?: () => void;
+    showCreateButton?: boolean;
 }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
@@ -68,6 +69,7 @@ export default function ProductionsList({
     title = 'Contenidos activos',
     filterLabel,
     onClearFilter,
+    showCreateButton = true,
 }: ProductionsListProps) {
     return (
         <motion.div
@@ -91,14 +93,16 @@ export default function ProductionsList({
                         </button>
                     )}
                 </div>
-                <motion.button
-                    onClick={onCreateNew}
-                    className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                >
-                    + Nuevo
-                </motion.button>
+                {showCreateButton && (
+                    <motion.button
+                        onClick={onCreateNew}
+                        className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                    >
+                        + Nuevo
+                    </motion.button>
+                )}
             </div>
 
             {/* Productions list */}
@@ -112,7 +116,7 @@ export default function ProductionsList({
                     <motion.button
                         type="button"
                         className="w-full px-5 py-6 text-center cursor-pointer hover:bg-gray-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
-                        onClick={filterLabel && onClearFilter ? onClearFilter : onCreateNew}
+                        onClick={filterLabel && onClearFilter ? onClearFilter : showCreateButton ? onCreateNew : undefined}
                         aria-label="Crear nuevo contenido"
                         variants={itemVariants}
                         whileHover={{ scale: 1.01 }}
@@ -123,9 +127,11 @@ export default function ProductionsList({
                         <span className="text-base text-slate-300 block mb-1">
                             {filterLabel ? 'Sin contenidos en esta etapa' : 'Sin contenidos activos'}
                         </span>
-                        <span className="text-sm text-yellow-400 hover:underline font-semibold">
-                            {filterLabel ? 'Cambiar filtro →' : 'Crear tu primer contenido →'}
-                        </span>
+                        {showCreateButton && (
+                            <span className="text-sm text-yellow-400 hover:underline font-semibold">
+                                {filterLabel ? 'Cambiar filtro →' : 'Crear tu primer contenido →'}
+                            </span>
+                        )}
                     </motion.button>
                 ) : (
                     productions.slice(0, 6).map((prod) => {

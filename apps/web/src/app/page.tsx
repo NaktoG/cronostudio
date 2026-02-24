@@ -68,8 +68,10 @@ function DashboardContent() {
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [ideasCount, setIdeasCount] = useState(0);
+  const [ideas, setIdeas] = useState<{ id: string; title: string; status: string; priority: number }[]>([]);
   const [activeStage, setActiveStage] = useState<keyof PipelineStats | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [scheduleProductionId, setScheduleProductionId] = useState('');
   const [scheduleDate, setScheduleDate] = useState('');
@@ -100,7 +102,9 @@ function DashboardContent() {
 
       if (ideasRes.ok) {
         const ideasData = await ideasRes.json();
-        setIdeasCount(Array.isArray(ideasData) ? ideasData.length : 0);
+        const ideasList = Array.isArray(ideasData) ? ideasData : [];
+        setIdeasCount(ideasList.length);
+        setIdeas(ideasList.map((idea: { id: string; title: string; status: string; priority: number }) => idea));
       }
       if (runsRes.ok) {
         const runsData = await runsRes.json();
@@ -174,6 +178,10 @@ function DashboardContent() {
     ? activeProductions.filter((production) => production.status === activeStage)
     : activeProductions;
 
+  const filteredIdeas = activeStage === 'idea'
+    ? ideas.filter((idea) => idea.status !== 'archived')
+    : [];
+
   const scheduledProductions = useMemo(
     () => productions.filter((production) => production.target_date),
     [productions]
@@ -214,6 +222,17 @@ function DashboardContent() {
     return days;
   }, [calendarMonth]);
 
+  const weeklyDays = useMemo(() => {
+    const base = selectedDate ? new Date(selectedDate) : new Date();
+    const start = new Date(base);
+    start.setDate(base.getDate() - base.getDay());
+    return Array.from({ length: 7 }).map((_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+      return formatDateKey(date);
+    });
+  }, [selectedDate]);
+
   const handleSchedule = async () => {
     if (!scheduleProductionId || !scheduleDate) return;
     try {
@@ -231,6 +250,23 @@ function DashboardContent() {
       fetchData();
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Error al programar publicación', 'error');
+    }
+  };
+
+  const handleUnschedule = async (productionId: string) => {
+    try {
+      const response = await authFetch(`/api/productions?id=${productionId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ targetDate: null }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Error al cancelar publicación');
+      }
+      addToast('Publicación cancelada', 'success');
+      fetchData();
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Error al cancelar publicación', 'error');
     }
   };
 
@@ -293,19 +329,61 @@ function DashboardContent() {
                 />
 
                 {/* Main grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 items-start">
                   <PriorityActions
                     actions={priorityActions}
-                    onCreateNew={() => setShowModal(true)}
+                    showCreateButton={false}
                   />
 
-                  <ProductionsList
-                    productions={filteredProductions}
-                    onCreateNew={() => setShowModal(true)}
-                    filterLabel={activeStage ? stageLabels[activeStage] : null}
-                    onClearFilter={() => setActiveStage(null)}
-                    title={activeStage ? 'Contenidos en esta etapa' : 'Contenidos activos'}
-                  />
+                  {activeStage === 'idea' ? (
+                    <motion.div
+                      className="surface-card glow-hover overflow-hidden"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.1 }}
+                    >
+                      <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800 bg-gray-900/60">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                          <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Ideas activas</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveStage(null)}
+                            className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-300 hover:border-yellow-400/60"
+                          >
+                            Ideas
+                            <span aria-hidden="true">×</span>
+                          </button>
+                        </div>
+                        <span className="text-xs text-slate-400">{filteredIdeas.length} ideas</span>
+                      </div>
+                      <div className="divide-y divide-gray-800/50">
+                        {filteredIdeas.length === 0 ? (
+                          <div className="px-5 py-6 text-slate-300">No hay ideas activas.</div>
+                        ) : (
+                          filteredIdeas.slice(0, 6).map((idea) => (
+                            <div key={idea.id} className="px-5 py-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-white font-medium">{idea.title}</p>
+                                  <p className="text-xs text-slate-400">Prioridad {idea.priority}</p>
+                                </div>
+                                <span className="text-[10px] uppercase tracking-[0.2em] text-yellow-300">{idea.status}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <ProductionsList
+                      productions={filteredProductions}
+                      onCreateNew={() => setShowModal(true)}
+                      filterLabel={activeStage ? stageLabels[activeStage] : null}
+                      onClearFilter={() => setActiveStage(null)}
+                      title={activeStage ? 'Contenidos en esta etapa' : 'Contenidos activos'}
+                      showCreateButton={false}
+                    />
+                  )}
 
                   <div className="space-y-6">
                     <motion.div
@@ -319,22 +397,46 @@ function DashboardContent() {
                           <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Calendario</div>
                           <p className="text-sm text-slate-300">Programa publicaciones</p>
                         </div>
-                        <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex rounded-full border border-gray-700 overflow-hidden">
                           <button
                             type="button"
-                            onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
-                            className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
+                            onClick={() => setCalendarView('month')}
+                            className={`px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                              calendarView === 'month'
+                                ? 'bg-yellow-400 text-black'
+                                : 'text-slate-300'
+                            }`}
                           >
-                            ←
+                            Mes
                           </button>
                           <button
                             type="button"
-                            onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
-                            className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
+                            onClick={() => setCalendarView('week')}
+                            className={`px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                              calendarView === 'week'
+                                ? 'bg-yellow-400 text-black'
+                                : 'text-slate-300'
+                            }`}
                           >
-                            →
+                            Semana
                           </button>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
+                          className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
+                        >
+                          ←
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
+                          className="text-xs px-2 py-1 border border-gray-700 rounded hover:border-yellow-400"
+                        >
+                          →
+                        </button>
+                      </div>
                       </div>
 
                       <div className="text-sm font-semibold text-white mb-3 capitalize">
@@ -348,7 +450,7 @@ function DashboardContent() {
                       </div>
 
                       <div className="grid grid-cols-7 gap-2">
-                        {calendarDays.map((dateKey, index) => {
+                        {(calendarView === 'month' ? calendarDays : weeklyDays).map((dateKey, index) => {
                           if (!dateKey) {
                             return <span key={`empty-${index}`} />;
                           }
@@ -398,13 +500,25 @@ function DashboardContent() {
                           onChange={(event) => setScheduleDate(event.target.value)}
                           className="w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-white"
                         />
-                        <button
-                          type="button"
-                          onClick={handleSchedule}
-                          className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-sm font-semibold text-black hover:bg-yellow-300"
-                        >
-                          Programar publicacion
-                        </button>
+                        <div className="flex flex-col gap-2 sm:flex-row">
+                          <button
+                            type="button"
+                            onClick={handleSchedule}
+                            className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-sm font-semibold text-black hover:bg-yellow-300"
+                          >
+                            Programar publicacion
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setScheduleProductionId('');
+                              setScheduleDate('');
+                            }}
+                            className="w-full rounded-lg border border-gray-700 px-3 py-2 text-sm text-slate-200 hover:bg-gray-800"
+                          >
+                            Limpiar
+                          </button>
+                        </div>
                       </div>
 
                       <div className="mt-5 border-t border-gray-800 pt-4">
@@ -415,9 +529,28 @@ function DashboardContent() {
                               <p className="text-xs text-slate-500">Sin publicaciones para este dia.</p>
                             )}
                             {(scheduledByDate.get(selectedDate) || []).map((production) => (
-                              <div key={production.id} className="flex items-center justify-between text-sm text-slate-200">
+                              <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
                                 <span className="truncate">{production.title}</span>
-                                <span className="text-xs text-slate-400">{production.target_date?.slice(0, 10)}</span>
+                                <div className="flex items-center gap-2 text-xs text-slate-400">
+                                  <span>{production.target_date?.slice(0, 10)}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setScheduleProductionId(production.id);
+                                      setScheduleDate(production.target_date?.slice(0, 10) || selectedDate);
+                                    }}
+                                    className="text-yellow-300 hover:text-yellow-200"
+                                  >
+                                    Reprogramar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUnschedule(production.id)}
+                                    className="text-red-300 hover:text-red-200"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -427,9 +560,29 @@ function DashboardContent() {
                               <p className="text-xs text-slate-500">Sin publicaciones programadas.</p>
                             ) : (
                               upcomingScheduled.map((production) => (
-                                <div key={production.id} className="flex items-center justify-between text-sm text-slate-200">
+                                <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
                                   <span className="truncate">{production.title}</span>
-                                  <span className="text-xs text-slate-400">{production.target_date?.slice(0, 10)}</span>
+                                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                                    <span>{production.target_date?.slice(0, 10)}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedDate(production.target_date?.slice(0, 10) || null);
+                                        setScheduleProductionId(production.id);
+                                        setScheduleDate(production.target_date?.slice(0, 10) || '');
+                                      }}
+                                      className="text-yellow-300 hover:text-yellow-200"
+                                    >
+                                      Reprogramar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUnschedule(production.id)}
+                                      className="text-red-300 hover:text-red-200"
+                                    >
+                                      Cancelar
+                                    </button>
+                                  </div>
                                 </div>
                               ))
                             )}
