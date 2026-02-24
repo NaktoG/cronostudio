@@ -21,12 +21,12 @@ export default function Header() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="w-full px-4 md:px-8 py-4">
+      <div className="w-full px-4 md:px-8 py-3 sm:py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
             <motion.div
-              className="w-11 h-11 rounded-xl flex items-center justify-center shadow-lg"
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shadow-lg"
               style={{
                 background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.9), rgba(246, 201, 69, 0.6))',
                 boxShadow: '0 10px 24px rgba(246, 201, 69, 0.3)',
@@ -39,7 +39,7 @@ export default function Header() {
                 alt="CronoStudio"
                 width={32}
                 height={32}
-                className="w-8 h-8 object-contain"
+                className="w-6 h-6 sm:w-8 sm:h-8 object-contain"
                 priority
               />
             </motion.div>
@@ -94,7 +94,7 @@ export default function Header() {
                 </Link>
                 <motion.button
                   onClick={logout}
-                  className="px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all flex items-center gap-2"
+                  className="hidden sm:inline-flex px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all items-center gap-2"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >

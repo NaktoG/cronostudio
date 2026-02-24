@@ -279,21 +279,21 @@ function DashboardContent() {
         <main className="w-full px-4 md:px-8 lg:px-12 py-8">
             {/* Header */}
             <motion.div
-              className="mb-10"
+              className="mb-8 sm:mb-10"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 sm:gap-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-yellow-400/90 mb-3">
                     <Sparkles className="w-4 h-4" />
                     {DASHBOARD_COPY.header.tag}
                   </div>
-                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-white mb-3">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold text-white mb-3">
                     {DASHBOARD_COPY.header.title}
                   </h1>
-                  <p className="text-base md:text-lg text-slate-300 max-w-2xl">
+                  <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl">
                     {DASHBOARD_COPY.header.subtitle}
                   </p>
                 </div>
