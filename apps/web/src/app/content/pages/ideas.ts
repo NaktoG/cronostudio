@@ -28,7 +28,7 @@ export const IDEAS_COPY = {
     tags: 'Tags (separados por coma)',
     noChannel: 'Sin canal',
     placeholderTitle: 'Idea para video...',
-    placeholderDescription: 'Detalles de la idea...',
+    placeholderDescription: 'Promesa: En este video vas a entender ...\nBullets:\n- Punto 1\n- Punto 2\n- Punto 3\nHook: Escribe 2 frases o 200 caracteres...',
     placeholderTags: 'seo, video, tutorial',
   },
   toasts: {
@@ -36,6 +36,10 @@ export const IDEAS_COPY = {
     updated: 'Idea actualizada',
     deleted: 'Idea eliminada',
     statusUpdated: 'Estado actualizado',
+    ideaNotReady: 'Idea no lista: completa promesa, bullets y hook',
     error: 'Error',
+  },
+  errors: {
+    ideaNotReadyTitle: 'Faltantes para marcar como lista',
   },
 };

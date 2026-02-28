@@ -12,6 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 import { IDEAS_COPY } from '../content/pages/ideas';
 import { IDEA_STATUS_LABELS, IdeaStatus } from '../content/labels';
 import useDialogFocus from '../hooks/useDialogFocus';
+import { evaluateIdeaReady } from '@/lib/ideaReady';
 
 interface Idea {
     id: string;
@@ -56,6 +57,7 @@ export default function IdeasPage() {
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [statusErrors, setStatusErrors] = useState<Record<string, string[]>>({});
     const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
@@ -186,6 +188,17 @@ export default function IdeasPage() {
 
     const updateStatus = async (id: string, status: string) => {
         try {
+            if (status === 'approved') {
+                const targetIdea = ideas.find((idea) => idea.id === id);
+                if (targetIdea) {
+                    const readiness = evaluateIdeaReady(targetIdea.title, targetIdea.description);
+                    if (!readiness.isReady) {
+                        addToast(IDEAS_COPY.toasts.ideaNotReady, 'error');
+                        setStatusErrors((prev) => ({ ...prev, [id]: readiness.errors }));
+                        return;
+                    }
+                }
+            }
             const response = await authFetch(`/api/ideas?id=${id}`, {
                 method: 'PUT',
                 body: JSON.stringify({ status }),
@@ -194,6 +207,11 @@ export default function IdeasPage() {
                 const data = await response.json();
                 throw new Error(data.error || 'Error al actualizar estado');
             }
+            setStatusErrors((prev) => {
+                if (!prev[id]) return prev;
+                const { [id]: _, ...rest } = prev;
+                return rest;
+            });
             await fetchIdeas();
             addToast(IDEAS_COPY.toasts.statusUpdated, 'success');
         } catch (err) {
@@ -356,6 +374,16 @@ export default function IdeasPage() {
                                             </button>
                                         </div>
                                     </div>
+                                    {statusErrors[idea.id]?.length > 0 && (
+                                        <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                                            <div className="font-semibold mb-1">{IDEAS_COPY.errors.ideaNotReadyTitle}</div>
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                {statusErrors[idea.id].map((item) => (
+                                                    <li key={item}>{item}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
                                     </motion.div>
                                 ))}
                             </motion.div>

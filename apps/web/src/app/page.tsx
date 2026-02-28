@@ -3,7 +3,8 @@
 import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Instagram, Linkedin, Music2, Plus, Sparkles, Twitter } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getIsoWeekInfo } from '@/lib/dates';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -29,11 +30,43 @@ interface PipelineStats {
 
 interface PriorityAction {
   id: string;
-  type: 'script' | 'seo' | 'thumbnail' | 'short' | 'publish';
+  type: 'idea' | 'script' | 'seo' | 'thumbnail' | 'short' | 'publish';
   title: string;
   productionTitle: string;
   productionId: string;
   urgency: 'high' | 'medium' | 'low';
+  href?: string;
+}
+
+interface WeeklyStatus {
+  status: 'OK' | 'EN_RIESGO' | 'FALLIDA';
+  nextCondition: { label: string; dueAt: string; missing: string[] } | null;
+  channel: { id: string; name: string } | null;
+  channelSource: 'explicit' | 'default';
+  goal: { targetVideos: number; diasPublicacion: string[]; horaCorte: string };
+  week: { isoYear: number; isoWeek: number; startDate: string; endDate: string };
+  publishedCount: number;
+  publishedThisWeek?: { id: string; title: string; publishedAt: string }[];
+  planGenerated?: boolean;
+  plannedProductions?: { id: string; title: string; day: string | null; status: string }[];
+  currentStreak?: number;
+  bestStreak?: number;
+  last4Weeks?: { isoYear: number; isoWeek: number; status: 'OK' | 'EN_RIESGO' | 'FALLIDA' }[];
+  tasks: PriorityAction[];
+}
+
+interface WeeklyGoalResponse {
+  goal: { targetVideos: number; diasPublicacion: string[]; horaCorte: string };
+  channel: { id: string; name: string } | null;
+  channelSource: 'explicit' | 'default';
+  isoYear: number;
+  isoWeek: number;
+  source: 'stored' | 'default';
+}
+
+interface Channel {
+  id: string;
+  name: string;
 }
 
 function generatePriorityActions(productions: Production[]): PriorityAction[] {
@@ -61,12 +94,24 @@ function DashboardContent() {
   const authFetch = useAuthFetch();
   const { addToast } = useToast();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [productions, setProductions] = useState<Production[]>([]);
   const [pipelineStats, setPipelineStats] = useState<PipelineStats>({
     idea: 0, scripting: 0, recording: 0, editing: 0, shorts: 0, publishing: 0, published: 0
   });
   const [runs, setRuns] = useState<AutomationRun[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weeklyStatus, setWeeklyStatus] = useState<WeeklyStatus | null>(null);
+  const [weeklyActions, setWeeklyActions] = useState<PriorityAction[]>([]);
+  const [weeklyGoal, setWeeklyGoal] = useState<WeeklyGoalResponse | null>(null);
+  const [weeklyError, setWeeklyError] = useState<string | null>(null);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState('');
+  const [publishTarget, setPublishTarget] = useState<Production | null>(null);
+  const [publishUrl, setPublishUrl] = useState('');
+  const [publishPlatformId, setPublishPlatformId] = useState('');
+  const [publishSubmitting, setPublishSubmitting] = useState(false);
+  const [planSubmitting, setPlanSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [ideas, setIdeas] = useState<{ id: string; title: string; status: string; priority: number }[]>([]);
@@ -77,15 +122,67 @@ function DashboardContent() {
   const [scheduleProductionId, setScheduleProductionId] = useState('');
   const [scheduleDate, setScheduleDate] = useState('');
   const modalRef = useRef<HTMLDivElement>(null);
+  const publishRef = useRef<HTMLDivElement>(null);
+  const fallbackIso = useMemo(() => getIsoWeekInfo(new Date()), []);
 
   useDialogFocus(modalRef, showModal);
+  useDialogFocus(publishRef, Boolean(publishTarget));
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const paramChannel = searchParams?.get('channelId');
+    const storedChannel = typeof window !== 'undefined' ? window.localStorage.getItem('cronostudio.channelId') : null;
+    const initial = paramChannel || storedChannel || '';
+    if (initial) {
+      setSelectedChannelId(initial);
+    }
+  }, [isAuthenticated, searchParams]);
+
+  const fetchChannels = useCallback(async (signal?: AbortSignal) => {
+    try {
+      if (!isAuthenticated) {
+        setChannels([]);
+        return;
+      }
+      const response = await authFetch('/api/channels', { signal });
+      if (response.ok) {
+        const data = await response.json();
+        const list = Array.isArray(data) ? data : [];
+        setChannels(list);
+        if (!selectedChannelId && list.length > 0) {
+          const defaultId = list[0].id;
+          setSelectedChannelId(defaultId);
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem('cronostudio.channelId', defaultId);
+          }
+          const params = new URLSearchParams(searchParams?.toString() ?? '');
+          params.set('channelId', defaultId);
+          const query = params.toString();
+          router.replace(query ? `/?${query}` : '/');
+        }
+      }
+    } catch (error) {
+      if (signal?.aborted) return;
+      setChannels([]);
+    }
+  }, [isAuthenticated, authFetch, router, searchParams, selectedChannelId]);
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     try {
-      const [productionsRes, ideasRes, runsRes] = await Promise.all([
+      const isoYear = fallbackIso.isoYear;
+      const isoWeek = fallbackIso.isoWeek;
+      const params = new URLSearchParams({
+        channelId: selectedChannelId,
+        isoYear: String(isoYear),
+        isoWeek: String(isoWeek),
+      });
+      const query = `?${params.toString()}`;
+      const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes] = await Promise.all([
         authFetch('/api/productions?stats=true', { signal }),
         authFetch('/api/ideas', { signal }),
-        authFetch('/api/automation-runs', { signal })
+        authFetch('/api/automation-runs', { signal }),
+        authFetch(`/api/weekly-status${query}`, { signal }),
+        authFetch(`/api/weekly-goals${query}`, { signal })
       ]);
 
       if (productionsRes.ok) {
@@ -115,6 +212,25 @@ function DashboardContent() {
       } else {
         setRuns([]);
       }
+
+      if (weeklyRes.ok) {
+        const weeklyData: WeeklyStatus = await weeklyRes.json();
+        setWeeklyStatus(weeklyData);
+        setWeeklyActions(Array.isArray(weeklyData.tasks) ? weeklyData.tasks : []);
+        setWeeklyError(null);
+      } else {
+        const errorData = await weeklyRes.json().catch(() => null);
+        setWeeklyError(errorData?.error || 'Error al cargar estado semanal');
+        setWeeklyStatus(null);
+        setWeeklyActions([]);
+      }
+
+      if (weeklyGoalsRes.ok) {
+        const goalsData: WeeklyGoalResponse = await weeklyGoalsRes.json();
+        setWeeklyGoal(goalsData);
+      } else {
+        setWeeklyGoal(null);
+      }
     } catch (e) {
       if (signal?.aborted) return;
       console.error('Error:', e);
@@ -122,7 +238,7 @@ function DashboardContent() {
       if (signal?.aborted) return;
       setLoading(false);
     }
-  }, [authFetch]);
+  }, [authFetch, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -130,9 +246,10 @@ function DashboardContent() {
       return;
     }
     const controller = new AbortController();
+    fetchChannels(controller.signal);
     fetchData(controller.signal);
     return () => controller.abort();
-  }, [isAuthenticated, fetchData]);
+  }, [isAuthenticated, fetchChannels, fetchData]);
 
   useEffect(() => {
     if (searchParams?.get('new') === '1') {
@@ -141,15 +258,16 @@ function DashboardContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    if (!showModal) return;
+    if (!showModal && !publishTarget) return;
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setShowModal(false);
+        setPublishTarget(null);
       }
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [showModal]);
+  }, [showModal, publishTarget]);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
@@ -172,9 +290,129 @@ function DashboardContent() {
     }
   };
 
-  const stageLabels: Record<keyof PipelineStats, string> = STAGE_LABELS;
+  const handlePublish = async () => {
+    if (!publishTarget) return;
+    setPublishSubmitting(true);
+    try {
+      const response = await authFetch('/api/productions/publish', {
+        method: 'POST',
+        body: JSON.stringify({
+          productionId: publishTarget.id,
+          publishedUrl: publishUrl.trim() || null,
+          platformId: publishPlatformId.trim() || null,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Error al marcar como publicado');
+      }
+      setPublishTarget(null);
+      setPublishUrl('');
+      setPublishPlatformId('');
+      fetchData();
+      addToast('Publicado', 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Error al marcar como publicado', 'error');
+    } finally {
+      setPublishSubmitting(false);
+    }
+  };
 
-  const priorityActions = generatePriorityActions(productions);
+  const handleGeneratePlan = async () => {
+    if (!selectedChannelId) {
+      addToast('Selecciona un canal primero', 'error');
+      return;
+    }
+    setPlanSubmitting(true);
+    try {
+      const isoYear = weeklyStatus?.week.isoYear ?? fallbackIso.isoYear;
+      const isoWeek = weeklyStatus?.week.isoWeek ?? fallbackIso.isoWeek;
+      const params = new URLSearchParams({
+        channelId: selectedChannelId,
+        isoYear: String(isoYear),
+        isoWeek: String(isoWeek),
+      });
+      const response = await authFetch(`/api/weekly-plan/generate?${params.toString()}`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Error al generar plan');
+      }
+      addToast('Plan semanal generado', 'success');
+      fetchData();
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Error al generar plan', 'error');
+    } finally {
+      setPlanSubmitting(false);
+    }
+  };
+
+  const handleChannelChange = (value: string) => {
+    setSelectedChannelId(value);
+    if (typeof window !== 'undefined') {
+      if (value) {
+        window.localStorage.setItem('cronostudio.channelId', value);
+      } else {
+        window.localStorage.removeItem('cronostudio.channelId');
+      }
+    }
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    if (value) {
+      params.set('channelId', value);
+    } else {
+      params.delete('channelId');
+    }
+    const query = params.toString();
+    router.replace(query ? `/?${query}` : '/');
+  };
+
+  const stageLabels: Record<keyof PipelineStats, string> = STAGE_LABELS;
+  const statusStyles: Record<string, { badge: string; dot: string; text: string }> = {
+    OK: { badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', dot: 'bg-emerald-400', text: 'text-emerald-200' },
+    EN_RIESGO: { badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30', dot: 'bg-amber-400', text: 'text-amber-200' },
+    FALLIDA: { badge: 'bg-red-500/15 text-red-300 border-red-500/30', dot: 'bg-red-400', text: 'text-red-200' },
+  };
+  const weeklyStyle = weeklyStatus ? statusStyles[weeklyStatus.status] : statusStyles.OK;
+  const nextConditionText = weeklyStatus?.nextCondition?.label ?? DASHBOARD_COPY.weeklyStatus.noNext;
+  const nextConditionDue = weeklyStatus?.nextCondition?.dueAt
+    ? new Date(weeklyStatus.nextCondition.dueAt).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : null;
+  const goalData = weeklyGoal?.goal ?? weeklyStatus?.goal ?? null;
+  const weekLabel = loading
+    ? '--'
+    : weeklyStatus
+      ? `${weeklyStatus.week.isoYear}-W${String(weeklyStatus.week.isoWeek).padStart(2, '0')}`
+      : weeklyGoal
+        ? `${weeklyGoal.isoYear}-W${String(weeklyGoal.isoWeek).padStart(2, '0')}`
+        : `${fallbackIso.isoYear}-W${String(fallbackIso.isoWeek).padStart(2, '0')}`;
+  const dayLabels: Record<string, string> = {
+    monday: 'Lun',
+    tuesday: 'Mar',
+    wednesday: 'Mie',
+    thursday: 'Jue',
+    friday: 'Vie',
+    saturday: 'Sab',
+    sunday: 'Dom',
+  };
+  const goalDays = goalData?.diasPublicacion
+    ? goalData.diasPublicacion.map((day) => dayLabels[day] || day).join('/')
+    : '--';
+  const publishedCount = weeklyStatus?.publishedCount ?? 0;
+  const weeklyTarget = goalData?.targetVideos ?? 0;
+  const channelName = weeklyStatus?.channel?.name ?? weeklyGoal?.channel?.name ?? '';
+  const channelSource = weeklyStatus?.channelSource ?? weeklyGoal?.channelSource;
+  const isDefaultChannel = channelSource === 'default';
+  const streakCurrent = weeklyStatus?.currentStreak ?? 0;
+  const streakBest = weeklyStatus?.bestStreak ?? 0;
+  const last4Weeks = weeklyStatus?.last4Weeks ?? [];
+  const streakColors: Record<string, string> = {
+    OK: 'bg-emerald-400',
+    EN_RIESGO: 'bg-amber-400',
+    FALLIDA: 'bg-red-400',
+  };
+
+  const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions);
   const activeProductions = productions.filter(p => p.status !== 'published');
   const filteredProductions = activeStage
     ? activeProductions.filter((production) => production.status === activeStage)
@@ -277,6 +515,95 @@ function DashboardContent() {
       <Header />
       <PageTransition className="flex-1">
         <main className="w-full px-4 sm:px-6 lg:px-12 py-6 sm:py-8">
+            {/* Context bar */}
+            <motion.div
+              className="surface-card glow-hover p-4 sm:p-5 mb-6"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2">
+                  <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
+                    {DASHBOARD_COPY.context.title}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                    <span className="rounded-full border border-gray-800 px-3 py-1 text-slate-200">
+                      {DASHBOARD_COPY.context.isoWeek}: {weekLabel}
+                    </span>
+                    {goalData && (
+                      <span className="rounded-full border border-gray-800 px-3 py-1 text-slate-200">
+                        {DASHBOARD_COPY.context.goal}: {weeklyTarget} {DASHBOARD_COPY.context.videos} · {goalDays} · {goalData.horaCorte}
+                      </span>
+                    )}
+                    {weeklyTarget > 0 && (
+                      <span className="rounded-full border border-gray-800 px-3 py-1 text-slate-200">
+                        {DASHBOARD_COPY.context.published}: {publishedCount}/{weeklyTarget}
+                      </span>
+                    )}
+                  </div>
+                  {weeklyError && (
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-red-300">
+                      <span>No se pudo evaluar la semana.</span>
+                      <button
+                        type="button"
+                        onClick={() => fetchData()}
+                        className="text-yellow-300 hover:text-yellow-200 underline"
+                      >
+                        Reintentar
+                      </button>
+                    </div>
+                  )}
+                  {isDefaultChannel && channelName && (
+                    <p className="text-xs text-amber-200">
+                      {DASHBOARD_COPY.context.defaultChannel}: {channelName}
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">
+                    {DASHBOARD_COPY.context.channel}
+                  </label>
+                  <select
+                    value={selectedChannelId}
+                    onChange={(event) => handleChannelChange(event.target.value)}
+                    className="w-full min-w-[220px] rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-white"
+                    disabled={channels.length === 0}
+                  >
+                    <option value="">{channels.length === 0 ? DASHBOARD_COPY.context.noChannels : DASHBOARD_COPY.context.selectChannel}</option>
+                    {channels.map((channel) => (
+                      <option key={channel.id} value={channel.id}>
+                        {channel.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </motion.div>
+            {weeklyStatus && weeklyStatus.planGenerated === false && !weeklyError && (
+              <motion.div
+                className="surface-card glow-hover p-5 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                <div>
+                  <p className="text-sm text-slate-300">Plan semanal automático</p>
+                  <p className="text-xs text-slate-400">2 videos: Mar/Vie</p>
+                </div>
+                <motion.button
+                  type="button"
+                  onClick={handleGeneratePlan}
+                  className="px-5 py-3 rounded-lg bg-yellow-400 text-black font-semibold hover:bg-yellow-300"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  disabled={planSubmitting}
+                >
+                  {planSubmitting ? 'Generando...' : 'Generar plan semanal (2 videos: Mar/Vie)'}
+                </motion.button>
+              </motion.div>
+            )}
+
             {/* Header */}
             <motion.div
               className="mb-8 sm:mb-10"
@@ -333,6 +660,71 @@ function DashboardContent() {
                 {/* Main grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-6 items-start">
                   <div className="space-y-5">
+                    <motion.div
+                      className="surface-card glow-hover p-4 sm:p-5"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-3">
+                        {DASHBOARD_COPY.weeklyStreak.title}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-slate-400">{DASHBOARD_COPY.weeklyStreak.current}</p>
+                          <p className="text-lg font-semibold text-white">🔥 {streakCurrent} semanas</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-slate-400">{DASHBOARD_COPY.weeklyStreak.best}</p>
+                          <p className="text-lg font-semibold text-white">🏆 {streakBest} semanas</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center gap-2">
+                        {(last4Weeks.length > 0 ? last4Weeks : Array.from({ length: 4 }).map(() => ({ status: 'EN_RIESGO' })))
+                          .slice(0, 4)
+                          .map((week, index) => (
+                            <span
+                              key={`${week.status}-${index}`}
+                              className={`h-3 w-3 rounded-full ${streakColors[week.status] || 'bg-gray-700'}`}
+                              title={week.status}
+                            />
+                          ))}
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      className="surface-card glow-hover p-4 sm:p-5"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
+                            {DASHBOARD_COPY.weeklyStatus.title}
+                          </div>
+                          {weeklyStatus?.channel && (
+                            <p className="text-xs text-slate-400 mt-1">
+                              {DASHBOARD_COPY.weeklyStatus.channel}: {weeklyStatus.channel.name}
+                            </p>
+                          )}
+                        </div>
+                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${weeklyStyle.badge}`}>
+                          <span className={`h-2 w-2 rounded-full ${weeklyStyle.dot}`} />
+                          {weeklyStatus?.status ?? 'OK'}
+                        </span>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">
+                          {DASHBOARD_COPY.weeklyStatus.next}
+                        </div>
+                        <p className={`text-sm ${weeklyStyle.text}`}>{nextConditionText}</p>
+                        {nextConditionDue && (
+                          <p className="text-xs text-slate-400">{nextConditionDue}</p>
+                        )}
+                      </div>
+                    </motion.div>
+
                     <PriorityActions
                       actions={priorityActions}
                       showCreateButton={false}
@@ -380,6 +772,7 @@ function DashboardContent() {
                   ) : (
                     <ProductionsList
                       productions={filteredProductions}
+                      onMarkPublished={(production) => setPublishTarget(production)}
                       onCreateNew={() => setShowModal(true)}
                       filterLabel={activeStage ? stageLabels[activeStage] : null}
                       onClearFilter={() => setActiveStage(null)}
@@ -686,6 +1079,72 @@ function DashboardContent() {
               >
                 {DASHBOARD_COPY.modal.create}
               </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {publishTarget && (
+        <motion.div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          onClick={() => setPublishTarget(null)}
+        >
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="publish-modal-title"
+            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg"
+            ref={publishRef}
+            tabIndex={-1}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="publish-modal-title" className="text-2xl font-semibold text-white mb-3">Marcar como publicado</h3>
+            <p className="text-sm text-slate-300 mb-5">{publishTarget.title}</p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">URL publicado (opcional)</label>
+                <input
+                  type="url"
+                  value={publishUrl}
+                  onChange={(event) => setPublishUrl(event.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
+                  placeholder="https://youtube.com/watch?v=..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">ID de plataforma (opcional)</label>
+                <input
+                  type="text"
+                  value={publishPlatformId}
+                  onChange={(event) => setPublishPlatformId(event.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
+                  placeholder="YouTube videoId"
+                />
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <motion.button
+                  onClick={() => setPublishTarget(null)}
+                  className="flex-1 px-5 py-3 text-base border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  disabled={publishSubmitting}
+                >
+                  Cancelar
+                </motion.button>
+                <motion.button
+                  onClick={handlePublish}
+                  className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  disabled={publishSubmitting}
+                >
+                  {publishSubmitting ? 'Guardando...' : 'Marcar como publicado'}
+                </motion.button>
+              </div>
             </div>
           </motion.div>
         </motion.div>

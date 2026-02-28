@@ -2,16 +2,17 @@
 
 import type { ComponentType } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, FileText, Image as ImageIcon, Scissors, Search, Target, Upload } from 'lucide-react';
+import { CheckCircle2, FileText, Image as ImageIcon, Lightbulb, Scissors, Search, Target, Upload } from 'lucide-react';
 import { COMPONENT_COPY } from '../content/components';
 
 interface PriorityAction {
     id: string;
-    type: 'script' | 'seo' | 'thumbnail' | 'short' | 'publish';
+    type: 'idea' | 'script' | 'seo' | 'thumbnail' | 'short' | 'publish';
     title: string;
     productionTitle: string;
     productionId: string;
     urgency: 'high' | 'medium' | 'low';
+    href?: string;
 }
 
 interface PriorityActionsProps {
@@ -22,6 +23,7 @@ interface PriorityActionsProps {
 }
 
 const ACTION_ICONS: Record<string, ComponentType<{ className?: string }>> = {
+    idea: Lightbulb,
     script: FileText,
     seo: Search,
     thumbnail: ImageIcon,
@@ -80,8 +82,9 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew, s
                 initial="hidden"
                 animate="visible"
             >
-                {displayActions.slice(0, 5).map((action) => {
+                {displayActions.slice(0, 3).map((action) => {
                     const styles = URGENCY_STYLES[action.urgency];
+                    const hasTarget = Boolean(action.href || action.productionId);
 
                     const Icon = ACTION_ICONS[action.type];
 
@@ -90,8 +93,18 @@ export default function PriorityActions({ actions, onActionClick, onCreateNew, s
                             key={action.id}
                             type="button"
                             className={`flex w-full flex-col gap-3 px-4 sm:px-5 py-4 text-left hover:bg-gray-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center ${styles.bg} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60`}
-                            onClick={() => action.productionId ? onActionClick?.(action) : onCreateNew?.()}
-                            aria-label={action.productionId ? `Abrir accion ${action.title}` : 'Crear nuevo contenido'}
+                            onClick={() => {
+                                if (action.href) {
+                                    window.location.href = action.href;
+                                    return;
+                                }
+                                if (action.productionId) {
+                                    onActionClick?.(action);
+                                    return;
+                                }
+                                onCreateNew?.();
+                            }}
+                            aria-label={hasTarget ? `Abrir accion ${action.title}` : 'Crear nuevo contenido'}
                             variants={itemVariants}
                             whileHover={{ x: 4 }}
                         >

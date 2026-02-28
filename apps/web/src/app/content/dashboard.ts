@@ -48,6 +48,17 @@ export const DASHBOARD_COPY = {
     cancel: 'Cancelar',
     weekdays: ['D', 'L', 'M', 'X', 'J', 'V', 'S'],
   },
+  context: {
+    title: 'Contexto',
+    channel: 'Canal',
+    selectChannel: 'Selecciona un canal',
+    noChannels: 'Sin canales disponibles',
+    isoWeek: 'Semana ISO',
+    goal: 'Meta semanal',
+    videos: 'videos',
+    published: 'Publicados',
+    defaultChannel: 'Canal por defecto',
+  },
   social: {
     title: 'Redes sociales',
     connect: 'Conectar',
@@ -57,6 +68,17 @@ export const DASHBOARD_COPY = {
       { name: 'LinkedIn', description: 'Posts, clips y branding' },
       { name: 'X', description: 'Hilos y anuncios' },
     ],
+  },
+  weeklyStatus: {
+    title: 'Estado semanal',
+    next: 'Próxima condición crítica',
+    noNext: 'Semana completa o sin pendientes',
+    channel: 'Canal',
+  },
+  weeklyStreak: {
+    title: 'Indicador de ritmo',
+    current: 'Racha actual',
+    best: 'Mejor racha',
   },
   modal: {
     title: 'Nuevo contenido',

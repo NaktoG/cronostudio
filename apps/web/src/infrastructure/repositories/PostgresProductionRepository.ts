@@ -132,6 +132,8 @@ export class PostgresProductionRepository implements ProductionRepository {
             scriptStatus: 'script_status',
             thumbnailStatus: 'thumbnail_status',
             seoScore: 'seo_score',
+            publishedUrl: 'published_url',
+            platformId: 'platform_id',
         };
 
         for (const [key, dbColumn] of Object.entries(fieldMap)) {
@@ -239,6 +241,8 @@ export class PostgresProductionRepository implements ProductionRepository {
             priority: row.priority as number,
             targetDate: row.target_date ? new Date(row.target_date as string) : null,
             publishedAt: row.published_at ? new Date(row.published_at as string) : null,
+            publishedUrl: row.published_url as string | null,
+            platformId: row.platform_id as string | null,
             scriptStatus: row.script_status as string | null,
             thumbnailStatus: row.thumbnail_status as string | null,
             seoScore: row.seo_score as number | null,

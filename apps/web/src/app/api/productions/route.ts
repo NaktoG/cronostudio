@@ -36,6 +36,8 @@ const UpdateProductionSchema = z.object({
     status: z.enum(PRODUCTION_STATUSES).optional(),
     priority: z.number().int().min(0).max(10).optional(),
     targetDate: z.string().optional().nullable(),
+    publishedUrl: z.string().url().optional().nullable(),
+    platformId: z.string().optional().nullable(),
 });
 
 // Helper to extract userId
@@ -161,6 +163,8 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
                 status: data.status as ProductionStatus | undefined,
                 priority: data.priority,
                 targetDate: data.targetDate ? new Date(data.targetDate) : undefined,
+                publishedUrl: data.publishedUrl ?? undefined,
+                platformId: data.platformId ?? undefined,
             },
         });
 

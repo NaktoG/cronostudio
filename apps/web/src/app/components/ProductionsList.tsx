@@ -24,6 +24,7 @@ export interface Production {
 interface ProductionsListProps {
     productions: Production[];
     onProductionClick?: (production: Production) => void;
+    onMarkPublished?: (production: Production) => void;
     onCreateNew?: () => void;
     title?: string;
     filterLabel?: string | null;
@@ -65,6 +66,7 @@ function getNextAction(prod: Production): string {
 export default function ProductionsList({
     productions,
     onProductionClick,
+    onMarkPublished,
     onCreateNew,
     title = 'Contenidos activos',
     filterLabel,
@@ -164,6 +166,19 @@ export default function ProductionsList({
                                     <span className="text-sm sm:text-base font-medium text-white truncate block">{prod.title}</span>
                                     <span className="text-xs sm:text-sm text-slate-400 truncate block">{nextAction}</span>
                                 </div>
+
+                                {prod.status === 'publishing' && onMarkPublished && (
+                                    <button
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            onMarkPublished(prod);
+                                        }}
+                                        className="text-xs px-3 py-2 rounded-lg border border-yellow-400/40 text-yellow-300 hover:border-yellow-400 hover:text-yellow-200"
+                                    >
+                                        Marcar como publicado
+                                    </button>
+                                )}
 
                                 {/* Arrow */}
                                 <motion.span
