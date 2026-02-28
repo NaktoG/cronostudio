@@ -580,7 +580,7 @@ function DashboardContent() {
                 </div>
               </div>
             </motion.div>
-            {weeklyStatus && weeklyStatus.planGenerated === false && !weeklyError && (
+            {(weeklyStatus?.planGenerated === false || weeklyError) && (
               <motion.div
                 className="surface-card glow-hover p-5 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                 initial={{ opacity: 0, y: 10 }}
