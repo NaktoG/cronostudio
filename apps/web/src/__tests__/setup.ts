@@ -1,5 +1,9 @@
 import '@testing-library/jest-dom';
 
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = 'test_secret_change_me_32_chars_min____';
+process.env.DATABASE_URL = 'postgresql://USER:PASSWORD@localhost:5432/cronostudio_test';
+
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
     useRouter: () => ({
