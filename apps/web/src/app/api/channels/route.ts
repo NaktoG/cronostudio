@@ -4,6 +4,7 @@ import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRolesOrServiceSecret } from '@/middleware/rbac';
 import { query } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { getServiceUserId } from '@/lib/serviceUser';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +23,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
     try {
-        let userId = getAuthUser(request)?.userId;
+        let userId: string | null = getAuthUser(request)?.userId ?? null;
 
         if (!userId) {
             userId = await getServiceUserId(request);
@@ -50,7 +51,9 @@ export async function GET(request: NextRequest) {
 
         return withSecurityHeaders(response);
     } catch (error) {
-        console.error('[GET /api/channels] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[GET /api/channels] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return NextResponse.json(
             { error: 'Failed to fetch channels' },
@@ -65,7 +68,7 @@ export async function GET(request: NextRequest) {
  */
 export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        let userId = getAuthUser(request)?.userId;
+        let userId: string | null = getAuthUser(request)?.userId ?? null;
 
         if (!userId) {
             userId = await getServiceUserId(request);
@@ -89,7 +92,7 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
         );
 
         // Log seguro (sin refresh_token)
-        console.log('[POST /api/channels] Created:', {
+        logger.info('[POST /api/channels] Created', {
             id: result.rows[0].id,
             userId: userId, // Logueamos quien lo creó
             name: validatedData.name,
@@ -122,7 +125,9 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
             );
         }
 
-        console.error('[POST /api/channels] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[POST /api/channels] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return NextResponse.json(
             { error: 'Failed to create channel' },
@@ -137,7 +142,7 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
  */
 export const PUT = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        let userId = getAuthUser(request)?.userId;
+        let userId: string | null = getAuthUser(request)?.userId ?? null;
         if (!userId) {
             userId = await getServiceUserId(request);
         }
@@ -195,7 +200,9 @@ export const PUT = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIM
         if (error instanceof Error && error.message.includes('duplicate key')) {
             return NextResponse.json({ error: 'Channel with this YouTube ID already exists' }, { status: 409 });
         }
-        console.error('[PUT /api/channels] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[PUT /api/channels] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
         return NextResponse.json({ error: 'Failed to update channel' }, { status: 500 });
     }
 }));
@@ -206,7 +213,7 @@ export const PUT = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIM
  */
 export const DELETE = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        let userId = getAuthUser(request)?.userId;
+        let userId: string | null = getAuthUser(request)?.userId ?? null;
         if (!userId) {
             userId = await getServiceUserId(request);
         }
@@ -231,7 +238,9 @@ export const DELETE = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_
 
         return withSecurityHeaders(NextResponse.json({ success: true }));
     } catch (error) {
-        console.error('[DELETE /api/channels] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[DELETE /api/channels] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
         return NextResponse.json({ error: 'Failed to delete channel' }, { status: 500 });
     }
 }));

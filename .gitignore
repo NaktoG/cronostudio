@@ -8,7 +8,12 @@ out/
 # Env / secrets
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!.env.*.example
+!.env.template
+!.env.sample
 
 # OS
 .DS_Store

@@ -45,6 +45,8 @@ cp apps/web/.env.example apps/web/.env.local
 
 Editar `apps/web/.env.local` con valores locales. Ver `.env.example` para referencias.
 
+**Importante:** Los archivos `.env` reales nunca se versionan. Solo se versionan los templates `.env.example`. Si necesitas un entorno nuevo, copia el template correspondiente y completa los valores localmente.
+
 Variables obligatorias (mínimo):
 - `JWT_SECRET` (mínimo 32 caracteres, sin usar valores por defecto)
 
@@ -74,7 +76,7 @@ Control de registro:
 QA recomendado:
 - Ver `docs/QA_AUTH_FLOW.md`
 
-**⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` a git si contiene credenciales reales y recuerda que en producción no existen valores de respaldo: cada variable crítica debe establecerse explícitamente.
+**⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` ni `apps/web/.env.local` si contienen credenciales reales y recuerda que en producción no existen valores de respaldo: cada variable crítica debe establecerse explícitamente.
 
 ### 3. Levantar infraestructura (n8n + Postgres)
 

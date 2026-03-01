@@ -4,6 +4,7 @@ import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRolesOrServiceSecret } from '@/middleware/rbac';
 import { query } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { getServiceUserId } from '@/lib/serviceUser';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +17,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
     try {
-        let userId = getAuthUser(request)?.userId;
+        let userId: string | null = getAuthUser(request)?.userId ?? null;
 
         if (!userId) {
             userId = await getServiceUserId(request);
@@ -69,7 +70,9 @@ export async function GET(request: NextRequest) {
             }
         ));
     } catch (error) {
-        console.error('[GET /api/videos] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[GET /api/videos] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return NextResponse.json(
             { error: 'Error al obtener videos' },
@@ -84,7 +87,7 @@ export async function GET(request: NextRequest) {
  */
 export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        let userId = getAuthUser(request)?.userId;
+        let userId: string | null = getAuthUser(request)?.userId ?? null;
 
         if (!userId) {
             userId = await getServiceUserId(request);
@@ -126,7 +129,7 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
             ]
         );
 
-        console.log('[POST /api/videos] Video creado:', {
+        logger.info('[POST /api/videos] Video creado', {
             id: result.rows[0].id,
             title: validatedData.title,
             userId: userId,
@@ -149,7 +152,9 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
             );
         }
 
-        console.error('[POST /api/videos] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[POST /api/videos] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return NextResponse.json(
             { error: 'Error al crear video' },

@@ -4,6 +4,7 @@ import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRolesOrServiceSecret } from '@/middleware/rbac';
 import { query } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { getServiceUserId } from '@/lib/serviceUser';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +20,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
     try {
         // Autenticación requerida
-        let userId = getAuthUser(request)?.userId;
+        let userId: string | null = getAuthUser(request)?.userId ?? null;
 
         if (!userId) {
             userId = await getServiceUserId(request);
@@ -152,7 +153,9 @@ export async function GET(request: NextRequest) {
             ));
         }
 
-        console.error('[GET /api/analytics] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[GET /api/analytics] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return withSecurityHeaders(NextResponse.json(
             { error: 'Error al obtener analytics' },
@@ -167,7 +170,7 @@ export async function GET(request: NextRequest) {
  */
 export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        let userId = getAuthUser(request)?.userId;
+        let userId: string | null = getAuthUser(request)?.userId ?? null;
 
         if (!userId) {
             userId = await getServiceUserId(request);
@@ -216,7 +219,7 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
             ]
         );
 
-        console.log('[POST /api/analytics] Analytics registrado:', {
+        logger.info('[POST /api/analytics] Analytics registrado', {
             id: result.rows[0].id,
             videoId: validatedData.videoId,
             date: validatedData.date,
@@ -233,7 +236,9 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
             ));
         }
 
-        console.error('[POST /api/analytics] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[POST /api/analytics] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return withSecurityHeaders(NextResponse.json(
             { error: 'Error al registrar analytics' },
