@@ -31,6 +31,17 @@ Notas:
 - `POST /api/integrations/youtube/disconnect`
 - Confirmar con `GET /api/integrations/youtube/status`.
 
+## Si no querés configurar OAuth ahora
+Podés verificar estado sin credenciales:
+- `GET /api/integrations/youtube/diagnostics`
+  - Muestra si están las envs, si existe la tabla y si hay filas.
+  - No expone tokens ni secretos.
+
+## Cómo completar verificación real después
+1) Configurar envs en `apps/web/.env.local`.
+2) Abrir `/api/integrations/youtube/connect` y completar consentimiento.
+3) Revisar `/api/integrations/youtube/status` y `/api/integrations/youtube/diagnostics`.
+
 ## Refresh token
 Google puede no devolver `refresh_token` si ya se autorizó antes.
 Si no llega en el callback y no existe uno previo, hay que re-consentir:

@@ -6,11 +6,39 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
+function redactChannelId(value: string | null): string | null {
+  if (!value) return null;
+  if (value.length <= 8) return value;
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+}
+
+function envConfigured() {
+  return {
+    clientId: Boolean(process.env.YOUTUBE_OAUTH_CLIENT_ID),
+    clientSecret: Boolean(process.env.YOUTUBE_OAUTH_CLIENT_SECRET),
+    redirectUri: Boolean(process.env.YOUTUBE_OAUTH_REDIRECT_URI),
+    encryptionKey: Boolean(process.env.YOUTUBE_TOKEN_ENCRYPTION_KEY),
+  };
+}
+
 export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
     const userId = getAuthUser(request)?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+    }
+
+    const env = envConfigured();
+    const envOk = Object.values(env).every(Boolean);
+    if (!envOk) {
+      return withSecurityHeaders(NextResponse.json({
+        connected: false,
+        reason: 'missing_config',
+        channelId: null,
+        channelTitle: null,
+        scopes: null,
+        tokenExpiryAt: null,
+      }));
     }
 
     const result = await query(
@@ -25,6 +53,7 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     if (result.rows.length === 0) {
       return withSecurityHeaders(NextResponse.json({
         connected: false,
+        reason: 'not_connected',
         channelId: null,
         channelTitle: null,
         scopes: null,
@@ -35,7 +64,7 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     const row = result.rows[0];
     return withSecurityHeaders(NextResponse.json({
       connected: true,
-      channelId: row.youtube_channel_id,
+      channelId: redactChannelId(row.youtube_channel_id),
       channelTitle: row.youtube_channel_title,
       scopes: row.scope,
       tokenExpiryAt: row.token_expiry_at ? new Date(row.token_expiry_at).toISOString() : null,
