@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Instagram, Linkedin, Music2, Plus, Sparkles, Twitter } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -1108,7 +1108,7 @@ function DashboardContent() {
                       <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">{DASHBOARD_COPY.social.title}</div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3">
                         {DASHBOARD_COPY.social.items.map((item) => {
-                          const iconMap: Record<string, JSX.Element> = {
+                          const iconMap: Record<string, ReactNode> = {
                             Instagram: <Instagram className="w-4 h-4" />,
                             TikTok: <Music2 className="w-4 h-4" />,
                             LinkedIn: <Linkedin className="w-4 h-4" />,

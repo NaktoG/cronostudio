@@ -1,4 +1,4 @@
-import { RefObject, useEffect } from 'react';
+import { useEffect, type RefObject } from 'react';
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
@@ -10,7 +10,7 @@ function getFocusable(container: HTMLElement | null) {
   );
 }
 
-export default function useDialogFocus(ref: RefObject<HTMLElement>, active: boolean) {
+export default function useDialogFocus<T extends HTMLElement>(ref: RefObject<T | null>, active: boolean) {
   useEffect(() => {
     if (!active) return undefined;
     const previous = document.activeElement as HTMLElement | null;

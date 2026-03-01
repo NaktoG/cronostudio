@@ -366,7 +366,7 @@ export default function ScriptsPage() {
                                 <p className="text-sm text-gray-400 mb-6">{SCRIPTS_COPY.deleteWarning} <span className="text-white font-semibold">{deleteTarget.title}</span>. {SCRIPTS_COPY.deleteIrreversible}</p>
                                 <div className="flex flex-col gap-3 sm:flex-row">
                                     <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">{SCRIPTS_COPY.cancel}</button>
-                                    <button onClick={deleteScript} className="flex-1 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500">{deleteSubmitting ? SCRIPTS_COPY.deleting : SCRIPTS_COPY.delete}</button>
+                                    <button onClick={deleteScript} className="flex-1 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500">{submitting ? SCRIPTS_COPY.deleting : SCRIPTS_COPY.delete}</button>
                                 </div>
                             </motion.div>
                         </motion.div>
