@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -13,6 +14,23 @@ export default function Header() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [mobileMenuOpen]);
 
   return (
     <motion.header
@@ -139,74 +157,88 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.nav
-              className="lg:hidden mt-4 pb-4 border-t border-gray-800 pt-4"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              {isAuthenticated && (
-                <Link
-                  href="/configuracion"
-                  className="mb-4 flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 text-slate-200"
-                  onClick={() => setMobileMenuOpen(false)}
+        {mounted && createPortal(
+          <AnimatePresence>
+            {mobileMenuOpen && (
+              <motion.div
+                className="fixed inset-0 z-[60] lg:hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <div className="absolute inset-0 bg-black/70" onClick={() => setMobileMenuOpen(false)} />
+                <motion.div
+                  className="absolute right-0 top-0 h-full w-[min(90vw,320px)] border-l border-gray-800 bg-gray-950 px-5 py-6 pb-[env(safe-area-inset-bottom)]"
+                  initial={{ x: reduceMotion ? 0 : 80, opacity: 0 }}
+                  animate={{ x: 0, opacity: 1 }}
+                  exit={{ x: reduceMotion ? 0 : 80, opacity: 0 }}
+                  transition={{ duration: reduceMotion ? 0 : 0.2 }}
                 >
-                  <div className="w-9 h-9 rounded-full bg-yellow-400/20 flex items-center justify-center">
-                    <span className="text-yellow-400 font-semibold text-sm">{user?.name?.charAt(0).toUpperCase()}</span>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">{user?.name}</p>
-                    <p className="text-xs text-slate-400">Mi cuenta</p>
-                  </div>
-                  <Settings className="w-4 h-4 text-slate-400" />
-                </Link>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {NAV_ITEMS.map((item, index) => {
-                  const isActive = pathname === item.href;
-                  const Icon = item.icon;
-                  return (
-                    <motion.div
-                      key={item.href}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Menú</span>
+                    <button
+                      type="button"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-slate-400"
                     >
-                      <Link
-                        href={item.href}
-                        className={`flex items-center gap-3 py-3 px-4 rounded-lg transition-all text-base ${isActive
-                            ? 'bg-yellow-400/10 text-yellow-400'
-                            : 'text-slate-300 hover:text-yellow-400 hover:bg-gray-800/50'
-                          }`}
-                        onClick={() => setMobileMenuOpen(false)}
-                      >
-                        <Icon className="w-5 h-5" />
-                        <span className="font-medium">{item.label}</span>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-              </div>
-              {isAuthenticated && (
-                <motion.button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    logout();
-                  }}
-                  className="mt-3 flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-800 text-slate-200 hover:text-yellow-400 hover:border-yellow-500/40"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <LogOut className="w-4 h-4" />
-                  {NAV_LABELS.logout}
-                </motion.button>
-              )}
-            </motion.nav>
-          )}
-        </AnimatePresence>
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  {isAuthenticated && (
+                    <Link
+                      href="/configuracion"
+                      className="mt-5 flex items-center gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3 text-slate-200"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <div className="w-9 h-9 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                        <span className="text-yellow-400 font-semibold text-sm">{user?.name?.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold">{user?.name}</p>
+                        <p className="text-xs text-slate-400">Mi cuenta</p>
+                      </div>
+                      <Settings className="w-4 h-4 text-slate-400" />
+                    </Link>
+                  )}
+                  <div className="mt-5 flex flex-col gap-2">
+                    {NAV_ITEMS.map((item) => {
+                      const isActive = pathname === item.href;
+                      const Icon = item.icon;
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm ${isActive
+                              ? 'bg-yellow-400/10 text-yellow-400'
+                              : 'text-slate-300 hover:text-yellow-400 hover:bg-gray-800/50'
+                            }`}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span className="font-medium">{item.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                  {isAuthenticated && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        logout();
+                      }}
+                      className="mt-4 flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-800 text-slate-200 hover:text-yellow-400 hover:border-yellow-500/40"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      {NAV_LABELS.logout}
+                    </button>
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
       </div>
     </motion.header>
   );

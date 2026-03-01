@@ -6,7 +6,7 @@ import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export const POST = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+const handler = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
     const userId = getAuthUser(request)?.userId ?? null;
     if (!userId) {
@@ -19,4 +19,8 @@ export const POST = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReque
     logger.error('[youtube.disconnect] Error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al desconectar YouTube' }, { status: 500 }));
   }
-}));
+});
+
+export const POST = process.env.NODE_ENV === 'production'
+  ? withAuth(handler)
+  : handler;

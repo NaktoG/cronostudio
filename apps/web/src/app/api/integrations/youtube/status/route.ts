@@ -21,7 +21,7 @@ function envConfigured() {
   };
 }
 
-export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+const handler = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
     const userId = getAuthUser(request)?.userId ?? null;
     if (!userId) {
@@ -73,4 +73,8 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     logger.error('[youtube.status] Error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al consultar YouTube' }, { status: 500 }));
   }
-}));
+});
+
+export const GET = process.env.NODE_ENV === 'production'
+  ? withAuth(handler)
+  : handler;

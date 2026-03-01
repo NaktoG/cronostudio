@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Instagram, Linkedin, Music2, Plus, Sparkles, Twitter } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getIsoWeekInfo } from '@/lib/dates';
@@ -64,6 +64,20 @@ interface DisciplineWeekly {
   streak: { current: number; best: number };
 }
 
+interface YoutubeReconcileWeekly {
+  isoYear: number;
+  isoWeek: number;
+  youtubeChannelId: string | null;
+  internalChannelId: string | null;
+  expectedSlots: Array<{ key: 'tue' | 'fri'; date: string | null; windowStart: string | null; windowEnd: string | null }>;
+  youtubeEvidence: Record<'tue' | 'fri', { matched: boolean; video: { videoId: string; title: string; publishedAt: string; url: string } | null }>;
+  publishEvents: Record<'tue' | 'fri', { matched: boolean; eventId: string | null; publishedAt: string | null }>;
+  reconciliation: Record<'tue' | 'fri', 'ok' | 'missing_publish_event' | 'missing_youtube_video' | 'mismatch'>;
+  suggestedActions: Array<{ type: string; slot: 'tue' | 'fri'; payload: Record<string, unknown> }>;
+}
+
+type DashboardTab = 'production' | 'calendar' | 'backlog' | 'integrations';
+
 interface WeeklyGoalResponse {
   goal: { targetVideos: number; diasPublicacion: string[]; horaCorte: string };
   channel: { id: string; name: string } | null;
@@ -98,12 +112,126 @@ function generatePriorityActions(productions: Production[]): PriorityAction[] {
   return actions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]).slice(0, 5);
 }
 
+const TOUR_STEPS = [
+  { id: 'week-stepper', title: 'Esta semana', description: 'Revisa Mar/Vie y el estado real del canal.' },
+  { id: 'action-dock', title: 'Acciones rápidas', description: 'Registra, planifica o verifica YouTube en 1 clic.' },
+  { id: 'pipeline', title: 'Producción', description: 'Avanza por etapas sin perder el foco.' },
+  { id: 'calendar', title: 'Calendario', description: 'Programa contenido y ajusta fechas.' },
+  { id: 'integrations', title: 'Integraciones', description: 'Conecta canales y valida datos externos.' },
+];
+
+function OnboardingTour({
+  open,
+  stepIndex,
+  onClose,
+  onNext,
+  onBack,
+  reduceMotion,
+}: {
+  open: boolean;
+  stepIndex: number;
+  onClose: () => void;
+  onNext: () => void;
+  onBack: () => void;
+  reduceMotion: boolean;
+}) {
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const step = TOUR_STEPS[stepIndex];
+
+  useEffect(() => {
+    if (!open || !step) return;
+    const anchor = document.querySelector(`[data-tour="${step.id}"]`);
+    if (anchor) {
+      setAnchorRect(anchor.getBoundingClientRect());
+    } else {
+      setAnchorRect(null);
+    }
+  }, [open, stepIndex, step]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleResize = () => {
+      const anchor = step ? document.querySelector(`[data-tour="${step.id}"]`) : null;
+      if (anchor) {
+        setAnchorRect(anchor.getBoundingClientRect());
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('scroll', handleResize, true);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleResize, true);
+    };
+  }, [open, step]);
+
+  if (!open || !step) return null;
+
+  const highlightStyle = anchorRect
+    ? {
+        top: anchorRect.top + window.scrollY - 6,
+        left: anchorRect.left + window.scrollX - 6,
+        width: anchorRect.width + 12,
+        height: anchorRect.height + 12,
+      }
+    : null;
+
+  return (
+    <div className="fixed inset-0 z-[70]">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      {highlightStyle && (
+        <div
+          className="absolute rounded-xl border border-yellow-400/70 shadow-[0_0_0_4px_rgba(250,204,21,0.15)]"
+          style={highlightStyle}
+        />
+      )}
+      <div
+        className={`absolute w-[min(90vw,360px)] rounded-xl border border-gray-800 bg-gray-950/95 p-4 text-white shadow-xl ${reduceMotion ? '' : 'transition-all duration-300'}`}
+        style={
+          anchorRect
+            ? {
+                top: anchorRect.bottom + window.scrollY + 12,
+                left: Math.min(anchorRect.left + window.scrollX, window.innerWidth - 380),
+              }
+            : { top: '20%', left: '50%', transform: 'translateX(-50%)' }
+        }
+      >
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">Guía rápida</div>
+        <h4 className="mt-2 text-lg font-semibold">{step.title}</h4>
+        <p className="mt-2 text-sm text-slate-300">{step.description}</p>
+        <div className="mt-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={stepIndex === 0}
+            className="text-xs text-slate-400 disabled:opacity-40"
+          >
+            Atrás
+          </button>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} className="text-xs text-slate-400">
+              Cerrar
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              className="rounded-md bg-yellow-400 px-3 py-1 text-xs font-semibold text-black"
+            >
+              {stepIndex === TOUR_STEPS.length - 1 ? 'Finalizar' : 'Siguiente'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DashboardContent() {
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
   const { addToast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const [productions, setProductions] = useState<Production[]>([]);
   const [pipelineStats, setPipelineStats] = useState<PipelineStats>({
     idea: 0, scripting: 0, recording: 0, editing: 0, shorts: 0, publishing: 0, published: 0
@@ -112,6 +240,7 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [weeklyStatus, setWeeklyStatus] = useState<WeeklyStatus | null>(null);
   const [disciplineWeekly, setDisciplineWeekly] = useState<DisciplineWeekly | null>(null);
+  const [reconcileWeekly, setReconcileWeekly] = useState<YoutubeReconcileWeekly | null>(null);
   const [weeklyActions, setWeeklyActions] = useState<PriorityAction[]>([]);
   const [weeklyGoal, setWeeklyGoal] = useState<WeeklyGoalResponse | null>(null);
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
@@ -122,11 +251,13 @@ function DashboardContent() {
   const [publishPlatformId, setPublishPlatformId] = useState('');
   const [publishSubmitting, setPublishSubmitting] = useState(false);
   const [quickPublishSubmitting, setQuickPublishSubmitting] = useState(false);
+  const [reconcileSubmitting, setReconcileSubmitting] = useState(false);
   const [planSubmitting, setPlanSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [ideas, setIdeas] = useState<{ id: string; title: string; status: string; priority: number }[]>([]);
   const [activeStage, setActiveStage] = useState<keyof PipelineStats | null>(null);
+  const [activeTab, setActiveTab] = useState<DashboardTab>('production');
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [calendarView, setCalendarView] = useState<'month' | 'week'>('month');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -134,7 +265,13 @@ function DashboardContent() {
   const [scheduleDate, setScheduleDate] = useState('');
   const modalRef = useRef<HTMLDivElement>(null);
   const publishRef = useRef<HTMLDivElement>(null);
+  const calendarRef = useRef<HTMLDivElement>(null);
   const fallbackIso = useMemo(() => getIsoWeekInfo(new Date()), []);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerSlot, setDrawerSlot] = useState<'tue' | 'fri' | null>(null);
+  const [focusOpen, setFocusOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
 
   useDialogFocus(modalRef, showModal);
   useDialogFocus(publishRef, Boolean(publishTarget));
@@ -148,6 +285,17 @@ function DashboardContent() {
       setSelectedChannelId(initial);
     }
   }, [isAuthenticated, searchParams]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [drawerOpen]);
 
   const fetchChannels = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -188,13 +336,16 @@ function DashboardContent() {
         isoWeek: String(isoWeek),
       });
       const query = `?${params.toString()}`;
-      const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes] = await Promise.all([
+      const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes, reconcileRes] = await Promise.all([
         authFetch('/api/productions?stats=true', { signal }),
         authFetch('/api/ideas', { signal }),
         authFetch('/api/automation-runs', { signal }),
         authFetch(`/api/weekly-status${query}`, { signal }),
         authFetch(`/api/weekly-goals${query}`, { signal }),
-        authFetch(`/api/discipline/weekly${query}`, { signal })
+        authFetch(`/api/discipline/weekly${query}`, { signal }),
+        selectedChannelId
+          ? authFetch(`/api/integrations/youtube/reconcile/weekly${query}&channelId=${selectedChannelId}`, { signal })
+          : Promise.resolve(new Response(null, { status: 204 }))
       ]);
 
       if (productionsRes.ok) {
@@ -249,6 +400,13 @@ function DashboardContent() {
         setDisciplineWeekly(disciplineData);
       } else {
         setDisciplineWeekly(null);
+      }
+
+      if (reconcileRes.ok && reconcileRes.status !== 204) {
+        const reconcileData: YoutubeReconcileWeekly = await reconcileRes.json();
+        setReconcileWeekly(reconcileData);
+      } else {
+        setReconcileWeekly(null);
       }
     } catch (e) {
       if (signal?.aborted) return;
@@ -441,6 +599,54 @@ function DashboardContent() {
   const disciplineStreakCurrent = disciplineWeekly?.streak.current ?? 0;
   const disciplineStreakBest = disciplineWeekly?.streak.best ?? 0;
 
+  const slotConfig = [
+    { key: 'tue' as const, label: 'Mar' },
+    { key: 'fri' as const, label: 'Vie' },
+  ];
+
+  const slotStatus = (slot: 'tue' | 'fri') => {
+    const reconcile = reconcileWeekly?.reconciliation[slot];
+    if (reconcile === 'ok') {
+      return { tone: 'bg-emerald-400/15 text-emerald-200 border-emerald-400/40', dot: 'bg-emerald-400', label: 'OK' };
+    }
+    if (reconcile === 'missing_publish_event') {
+      return { tone: 'bg-amber-400/15 text-amber-200 border-amber-400/40', dot: 'bg-amber-400', label: 'Registrar' };
+    }
+    if (reconcile === 'missing_youtube_video') {
+      return { tone: 'bg-slate-400/10 text-slate-300 border-slate-400/30', dot: 'bg-slate-400', label: 'Sin video' };
+    }
+    return { tone: 'bg-slate-400/10 text-slate-300 border-slate-400/30', dot: 'bg-slate-400', label: 'Pendiente' };
+  };
+
+  const registerNeedsAttention = disciplineMissing > 0 ||
+    (reconcileWeekly?.reconciliation.tue === 'missing_publish_event' || reconcileWeekly?.reconciliation.fri === 'missing_publish_event');
+
+  const drawerLabel = drawerSlot === 'tue' ? 'Martes' : drawerSlot === 'fri' ? 'Viernes' : '';
+  const drawerEvidence = drawerSlot ? reconcileWeekly?.youtubeEvidence[drawerSlot] : null;
+  const drawerPublish = drawerSlot ? reconcileWeekly?.publishEvents[drawerSlot] : null;
+  const drawerReconcile = drawerSlot ? reconcileWeekly?.reconciliation[drawerSlot] : null;
+  const drawerHasAction = drawerReconcile === 'missing_publish_event';
+
+  const plannedDays = useMemo(() => {
+    const map = { tue: 'Pendiente', fri: 'Pendiente' } as Record<'tue' | 'fri', string>;
+    const planned = weeklyStatus?.plannedProductions || [];
+    planned.forEach((item) => {
+      if (item.day === 'tuesday') map.tue = 'Planificado';
+      if (item.day === 'friday') map.fri = 'Planificado';
+    });
+    return map;
+  }, [weeklyStatus?.plannedProductions]);
+
+  const nextStepCopy = useMemo(() => {
+    if (reconcileWeekly?.reconciliation.tue === 'missing_publish_event' || reconcileWeekly?.reconciliation.fri === 'missing_publish_event') {
+      return { label: 'Falta registrar publicaciones detectadas en YouTube', action: 'Registrar' };
+    }
+    if (disciplineMissing > 0) {
+      return { label: `Falta ${disciplineMissing} publicación${disciplineMissing > 1 ? 'es' : ''} esta semana`, action: 'Registrar' };
+    }
+    return { label: 'Semana completa. Planifica la próxima.', action: 'Planificar' };
+  }, [disciplineMissing, reconcileWeekly]);
+
   const handleQuickPublish = async (targetDay: 'tuesday' | 'friday') => {
     if (!selectedChannelId) {
       addToast('Selecciona un canal primero', 'error');
@@ -464,6 +670,88 @@ function DashboardContent() {
     } finally {
       setQuickPublishSubmitting(false);
     }
+  };
+
+  const handleRegisterFromYoutube = async (slot: 'tue' | 'fri') => {
+    if (!selectedChannelId || !reconcileWeekly) {
+      addToast('Selecciona un canal primero', 'error');
+      return;
+    }
+    const action = reconcileWeekly.suggestedActions.find((item) => item.slot === slot);
+    if (!action) return;
+    setReconcileSubmitting(true);
+    try {
+      const response = await authFetch('/api/discipline/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(action.payload),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'No se pudo registrar la publicación');
+      }
+      addToast('Publicación registrada desde YouTube', 'success');
+      fetchData();
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Error al registrar publicación', 'error');
+    } finally {
+      setReconcileSubmitting(false);
+    }
+  };
+
+  const openDrawerForSlot = (slot: 'tue' | 'fri') => {
+    setDrawerSlot(slot);
+    setDrawerOpen(true);
+  };
+
+  const nextSlot = useMemo<'tue' | 'fri'>(() => {
+    if (reconcileWeekly) {
+      if (reconcileWeekly.reconciliation.tue !== 'ok') return 'tue';
+      if (reconcileWeekly.reconciliation.fri !== 'ok') return 'fri';
+    }
+    return disciplineMissing > 0 ? 'tue' : 'fri';
+  }, [reconcileWeekly, disciplineMissing]);
+
+  const handleDockRegister = () => {
+    openDrawerForSlot(nextSlot);
+  };
+
+  const handleDockPlan = () => {
+    setActiveTab('calendar');
+    if (reduceMotion) {
+      calendarRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
+    } else {
+      calendarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleDockVerify = () => {
+    fetchData();
+    openDrawerForSlot(nextSlot);
+  };
+
+  const handleTourStart = () => {
+    setTourStep(0);
+    setTourOpen(true);
+  };
+
+  const handleTourClose = () => {
+    setTourOpen(false);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('cronostudio_tour_completed', 'true');
+    }
+  };
+
+  const handleTourNext = () => {
+    if (tourStep >= TOUR_STEPS.length - 1) {
+      handleTourClose();
+      return;
+    }
+    setTourStep((step) => step + 1);
+  };
+
+  const handleTourBack = () => {
+    setTourStep((step) => Math.max(step - 1, 0));
   };
 
   const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions);
@@ -565,10 +853,10 @@ function DashboardContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden">
       <Header />
       <PageTransition className="flex-1">
-        <main className="w-full px-4 sm:px-6 lg:px-12 py-6 sm:py-8">
+        <main className="w-full max-w-full px-4 sm:px-6 lg:px-12 py-6 sm:py-8 pb-24 lg:pb-8">
             {/* Context bar */}
             <motion.div
               className="surface-card glow-hover p-4 sm:p-5 mb-6"
@@ -678,21 +966,53 @@ function DashboardContent() {
                     {DASHBOARD_COPY.header.subtitle}
                   </p>
                 </div>
-                <motion.button
-                  onClick={() => setShowModal(true)}
-                  className="inline-flex w-full items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-black rounded-lg sm:w-auto"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-                    boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
-                  }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-          <Plus className="w-4 h-4" />
-          {DASHBOARD_COPY.fab.label}
-                </motion.button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <motion.button
+                    onClick={() => setShowModal(true)}
+                    className="inline-flex w-full items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-black rounded-lg sm:w-auto"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+                      boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
+                    }}
+                    whileHover={reduceMotion ? undefined : { scale: 1.02 }}
+                    whileTap={reduceMotion ? undefined : { scale: 0.98 }}
+                  >
+            <Plus className="w-4 h-4" />
+            {DASHBOARD_COPY.fab.label}
+                  </motion.button>
+                  <button
+                    type="button"
+                    onClick={handleTourStart}
+                    className="hidden sm:inline-flex items-center justify-center gap-2 rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-yellow-400/60"
+                    title="Guíame"
+                  >
+                    Guíame
+                  </button>
+                </div>
               </div>
             </motion.div>
+
+            <div className="mb-6 flex items-center gap-2 overflow-x-auto whitespace-nowrap no-scrollbar">
+              {([
+                { key: 'production', label: 'Producción' },
+                { key: 'calendar', label: 'Calendario' },
+                { key: 'backlog', label: 'Backlog' },
+                { key: 'integrations', label: 'Integraciones' },
+              ] as { key: DashboardTab; label: string }[]).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`rounded-full border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] sm:px-4 sm:text-xs ${
+                    activeTab === tab.key
+                      ? 'border-yellow-400/60 bg-yellow-400/10 text-yellow-200'
+                      : 'border-gray-800 text-slate-400 hover:border-yellow-400/40'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
             {loading ? (
               <div className="flex justify-center py-20">
@@ -705,15 +1025,23 @@ function DashboardContent() {
             ) : (
               <div className="space-y-8">
                 {/* Pipeline */}
-                <ProductionPipeline
-                  stats={pipelineStats}
-                  activeStage={activeStage}
-                  onStageClick={(stage) => setActiveStage((current) => (current === stage ? null : stage))}
-                />
+                {activeTab === 'production' && (
+                  <div data-tour="pipeline">
+                    <ProductionPipeline
+                      stats={pipelineStats}
+                      activeStage={activeStage}
+                      onStageClick={(stage) => setActiveStage((current) => (current === stage ? null : stage))}
+                    />
+                  </div>
+                )}
 
                 {/* Main grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4 sm:gap-6 items-start">
-                  <div className="space-y-5">
+                <div className={`grid grid-cols-1 gap-4 sm:gap-6 items-start ${
+                  activeTab === 'production'
+                    ? 'lg:grid-cols-[minmax(0,1fr)_360px]'
+                    : 'lg:grid-cols-2 2xl:grid-cols-3'
+                }`}>
+                  <div className={`space-y-5 ${activeTab === 'production' || activeTab === 'backlog' ? '' : 'hidden'}`} data-tour="backlog">
                     <motion.div
                       className="surface-card glow-hover p-4 sm:p-5"
                       initial={{ opacity: 0, y: 10 }}
@@ -748,53 +1076,139 @@ function DashboardContent() {
 
                     <motion.div
                       className="surface-card glow-hover p-4 sm:p-5"
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: 0.05 }}
+                      transition={{ duration: reduceMotion ? 0 : 0.3, delay: reduceMotion ? 0 : 0.05 }}
+                      data-tour="week-stepper"
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
-                            Motor disciplinario
+                            Esta semana
                           </div>
-                          <p className="text-xs text-slate-400 mt-1">2 publicaciones por semana (Mar/Vie)</p>
+                          <p className="text-xs text-slate-400 mt-1">Semana {disciplineWeekly?.week.weekKey ?? weekLabel} · 2 publicaciones</p>
                         </div>
                         <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${disciplineStyle.badge}`}>
                           <span className={`h-2 w-2 rounded-full ${disciplineStyle.dot}`} />
                           {disciplineStatus}
                         </span>
                       </div>
-                      <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-3">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Semana</p>
+                      <div className="mt-4 flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900/40 p-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Progreso</p>
                           <p className="mt-1 text-2xl font-semibold text-white">
                             {disciplineCount}/{disciplineTarget}
                           </p>
                           <p className="text-xs text-slate-400">Faltan {disciplineMissing}</p>
                         </div>
-                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-3">
+                        <div className="text-right">
                           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Racha</p>
                           <p className="mt-1 text-lg font-semibold text-white">🔥 {disciplineStreakCurrent}</p>
                           <p className="text-xs text-slate-400">Mejor: {disciplineStreakBest}</p>
                         </div>
                       </div>
                       <div className="mt-4 grid grid-cols-2 gap-2">
+                        {slotConfig.map((slot) => {
+                          const status = slotStatus(slot.key);
+                          return (
+                            <button
+                              key={slot.key}
+                              type="button"
+                              onClick={() => openDrawerForSlot(slot.key)}
+                              className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${status.tone}`}
+                              title="Ver detalle"
+                            >
+                              <span className="flex items-center gap-2">
+                                <span className={`h-2 w-2 rounded-full ${status.dot}`} />
+                                {slot.label}
+                              </span>
+                              <span>{status.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-4 lg:hidden">
                         <button
                           type="button"
-                          onClick={() => handleQuickPublish('tuesday')}
-                          disabled={quickPublishSubmitting}
-                          className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200 hover:border-emerald-400 disabled:opacity-60"
+                          onClick={() => setFocusOpen((current) => !current)}
+                          className="w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300"
                         >
-                          Publicar Mar
+                          {focusOpen ? 'Ocultar foco' : 'Mostrar foco'}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickPublish('friday')}
-                          disabled={quickPublishSubmitting}
-                          className="rounded-lg border border-sky-400/40 bg-sky-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 hover:border-sky-400 disabled:opacity-60"
-                        >
-                          Publicar Vie
-                        </button>
+                        {focusOpen && (
+                          <div className="mt-3 space-y-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
+                            <div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Próximo paso</div>
+                              <p className="mt-1 text-sm text-slate-200">{nextStepCopy.label}</p>
+                              <button
+                                type="button"
+                                onClick={nextStepCopy.action === 'Registrar' ? handleDockRegister : handleDockPlan}
+                                className="mt-3 w-full rounded-lg bg-yellow-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                              >
+                                {nextStepCopy.action}
+                              </button>
+                            </div>
+                            <div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Verificado por YouTube</div>
+                              <div className="mt-2 flex items-center justify-between text-xs text-slate-300">
+                                <span>Mar</span>
+                                <span>{slotStatus('tue').label}</span>
+                              </div>
+                              <div className="mt-1 flex items-center justify-between text-xs text-slate-300">
+                                <span>Vie</span>
+                                <span>{slotStatus('fri').label}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openDrawerForSlot(nextSlot)}
+                                className="mt-2 w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                              >
+                                Abrir detalle
+                              </button>
+                            </div>
+                            <div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Plan semanal</div>
+                              <div className="mt-2 flex items-center justify-between text-xs text-slate-300">
+                                <span>Mar</span>
+                                <span>{plannedDays.tue}</span>
+                              </div>
+                              <div className="mt-1 flex items-center justify-between text-xs text-slate-300">
+                                <span>Vie</span>
+                                <span>{plannedDays.fri}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleDockPlan}
+                                className="mt-2 w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                              >
+                                Ir a Calendario
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab('calendar')}
+                                className="rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
+                              >
+                                Calendario
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab('backlog')}
+                                className="rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
+                              >
+                                Backlog
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActiveTab('integrations')}
+                                className="rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
+                              >
+                                Integraciones
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </motion.div>
 
@@ -888,7 +1302,103 @@ function DashboardContent() {
                   )}
                   </div>
 
-                  <div className="space-y-4">
+                  {activeTab === 'production' && (
+                    <div className="hidden space-y-4 lg:block lg:sticky lg:top-24">
+                      <div className="surface-card glow-hover p-4 sm:p-5">
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Próximo paso</div>
+                        <p className="mt-3 text-sm text-slate-200">{nextStepCopy.label}</p>
+                        <button
+                          type="button"
+                          onClick={nextStepCopy.action === 'Registrar' ? handleDockRegister : handleDockPlan}
+                          className="mt-4 w-full rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                        >
+                          {nextStepCopy.action}
+                        </button>
+                      </div>
+
+                      <div className="surface-card glow-hover p-4 sm:p-5">
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Verificado por YouTube</div>
+                        <div className="mt-3 space-y-2 text-xs text-slate-300">
+                          {slotConfig.map((slot) => {
+                            const status = slotStatus(slot.key);
+                            return (
+                              <div key={slot.key} className="flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  <span className={`h-2 w-2 rounded-full ${status.dot}`} />
+                                  {slot.label}
+                                </span>
+                                <span>{status.label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openDrawerForSlot(nextSlot)}
+                          className="mt-4 w-full rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                        >
+                          Abrir detalle
+                        </button>
+                      </div>
+
+                      <div className="surface-card glow-hover p-4 sm:p-5">
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Plan semanal</div>
+                        <div className="mt-3 space-y-2 text-xs text-slate-300">
+                          <div className="flex items-center justify-between">
+                            <span>Mar</span>
+                            <span>{plannedDays.tue}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Vie</span>
+                            <span>{plannedDays.fri}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleDockPlan}
+                          className="mt-4 w-full rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                        >
+                          Ir a Calendario
+                        </button>
+                      </div>
+
+                      <div className="surface-card glow-hover p-4 sm:p-5">
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Atajos</div>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('calendar')}
+                            className="rounded-lg border border-gray-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
+                          >
+                            Calendario
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('backlog')}
+                            className="rounded-lg border border-gray-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
+                          >
+                            Backlog
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('integrations')}
+                            className="rounded-lg border border-gray-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
+                          >
+                            Integraciones
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleDockRegister}
+                            className="rounded-lg border border-yellow-400/40 bg-yellow-400/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-200"
+                          >
+                            Registrar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className={`space-y-4 ${activeTab === 'calendar' ? '' : 'hidden'}`} data-tour="calendar" ref={calendarRef}>
                     <motion.div
                       className="surface-card glow-hover p-4 sm:p-6 sm:min-h-[520px]"
                       initial={{ opacity: 0, y: 10 }}
@@ -1098,7 +1608,7 @@ function DashboardContent() {
 
                   </div>
 
-                  <motion.div className="space-y-4">
+                  <motion.div className={`space-y-4 ${activeTab === 'integrations' ? '' : 'hidden'}`} data-tour="integrations">
                     <motion.div
                       className="surface-card glow-hover p-4 sm:p-6"
                       initial={{ opacity: 0, y: 10 }}
@@ -1137,6 +1647,161 @@ function DashboardContent() {
             )}
         </main>
       </PageTransition>
+
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-gray-950/95 backdrop-blur border-t border-gray-800 pb-[env(safe-area-inset-bottom)] lg:hidden" data-tour="action-dock">
+        <div className="grid grid-cols-3 gap-2 px-3 py-3">
+          <button
+            type="button"
+            onClick={handleDockRegister}
+            className={`flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] ${
+              registerNeedsAttention
+                ? 'bg-yellow-400 text-black'
+                : 'border border-gray-700 text-slate-200'
+            }`}
+            title="Registrar"
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/15 text-[12px] font-bold leading-none">
+              +
+            </span>
+            <span className="min-w-0 truncate">Registrar</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDockPlan}
+            className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
+            title="Planificar"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span className="min-w-0 truncate">Planificar</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDockVerify}
+            className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
+            title="YouTube"
+          >
+            <span className="min-w-0 truncate">YouTube</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="fixed bottom-6 right-6 z-40 hidden lg:block" data-tour="action-dock">
+        <div className="flex flex-col gap-2 rounded-2xl border border-gray-800 bg-gray-950/90 p-3 shadow-xl backdrop-blur">
+          <button
+            type="button"
+            onClick={handleDockRegister}
+            className={`rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${
+              registerNeedsAttention
+                ? 'bg-yellow-400 text-black'
+                : 'border border-gray-700 text-slate-200 hover:border-yellow-400/50'
+            }`}
+            title="Registrar publicación"
+          >
+            Registrar
+          </button>
+          <button
+            type="button"
+            onClick={handleDockPlan}
+            className="rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-yellow-400/50"
+            title="Planificar semana"
+          >
+            Planificar semana
+          </button>
+          <button
+            type="button"
+            onClick={handleDockVerify}
+            className="rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-yellow-400/50"
+            title="Verificar YouTube"
+          >
+            Verificar YouTube
+          </button>
+        </div>
+      </div>
+
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setDrawerOpen(false)} />
+          <div
+            className={`absolute inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t border-gray-800 bg-gray-950 p-6 lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:max-h-none lg:w-[min(92vw,420px)] lg:rounded-none lg:border-l ${
+              reduceMotion ? '' : 'transition-transform duration-300'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Detalle semanal</div>
+                <h3 className="mt-2 text-lg font-semibold text-white">{drawerLabel}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                className="text-xs text-slate-400"
+              >
+                Cerrar
+              </button>
+            </div>
+            <div className="mt-6 space-y-4">
+              <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">YouTube</div>
+                {drawerEvidence?.matched ? (
+                  <div className="mt-2 space-y-1 text-sm text-white">
+                    <p className="font-medium">{drawerEvidence.video?.title}</p>
+                    <p className="text-xs text-slate-400">{drawerEvidence.video?.publishedAt}</p>
+                    <a
+                      href={drawerEvidence.video?.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-yellow-300"
+                    >
+                      Ver en YouTube
+                    </a>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-slate-400">Sin evidencia detectada</p>
+                )}
+              </div>
+              <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Publish event</div>
+                {drawerPublish?.matched ? (
+                  <p className="mt-2 text-sm text-white">Registrado · {drawerPublish.publishedAt}</p>
+                ) : (
+                  <p className="mt-2 text-xs text-slate-400">Sin registro interno</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                {drawerHasAction && (
+                  <button
+                    type="button"
+                    onClick={() => drawerSlot && handleRegisterFromYoutube(drawerSlot)}
+                    disabled={reconcileSubmitting}
+                    className="rounded-lg bg-amber-400 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                  >
+                    Registrar 1-click
+                  </button>
+                )}
+                {drawerSlot && (
+                  <button
+                    type="button"
+                    onClick={() => handleQuickPublish(drawerSlot === 'tue' ? 'tuesday' : 'friday')}
+                    disabled={quickPublishSubmitting}
+                    className="rounded-lg border border-gray-800 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                  >
+                    Registrar manual
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <OnboardingTour
+        open={tourOpen}
+        stepIndex={tourStep}
+        onClose={handleTourClose}
+        onNext={handleTourNext}
+        onBack={handleTourBack}
+        reduceMotion={Boolean(reduceMotion)}
+      />
       <Footer />
 
       {/* Modal */}

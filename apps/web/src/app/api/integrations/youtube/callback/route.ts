@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth, withSecurityHeaders, getAuthUser } from '@/middleware/auth';
+import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { exchangeCodeForTokens } from '@/lib/youtube/oauth';
 import { fetchOwnChannel } from '@/lib/youtube/client';
@@ -11,10 +11,12 @@ export const dynamic = 'force-dynamic';
 
 const STATE_COOKIE = 'yt_oauth_state';
 const VERIFIER_COOKIE = 'yt_oauth_verifier';
+const USER_COOKIE = 'yt_oauth_user';
 
-export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getAuthUser(request)?.userId ?? null;
+    const requestId = request.headers.get('x-request-id') || null;
+    const userId = request.cookies.get(USER_COOKIE)?.value ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }
@@ -22,19 +24,83 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const state = searchParams.get('state');
+    const scopeParam = searchParams.get('scope');
+    const errorParam = searchParams.get('error');
+
+    const debug = {
+      requestId,
+      cookiePresence: {
+        state: false,
+        pkce: false,
+        user: Boolean(userId),
+      },
+      queryPresence: {
+        code: Boolean(code),
+        state: Boolean(state),
+        scope: Boolean(scopeParam),
+        error: Boolean(errorParam),
+      },
+      tokenExchange: {} as Record<string, unknown>,
+      youtubeApi: {} as Record<string, unknown>,
+      errorName: '' as string | undefined,
+      errorMessage: '' as string | undefined,
+      errorCode: '' as string | undefined,
+    };
 
     if (!code || !state) {
-      return withSecurityHeaders(NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 }));
+      return withSecurityHeaders(NextResponse.json({
+        error: 'youtube_oauth_failed',
+        details: debug,
+      }, { status: 400 }));
     }
 
     const cookieState = request.cookies.get(STATE_COOKIE)?.value || '';
     const verifier = request.cookies.get(VERIFIER_COOKIE)?.value || '';
-
-    if (!cookieState || cookieState !== state || !verifier) {
-      return withSecurityHeaders(NextResponse.json({ error: 'Estado OAuth inválido' }, { status: 400 }));
+    debug.cookiePresence = {
+      state: Boolean(cookieState),
+      pkce: Boolean(verifier),
+      user: Boolean(userId),
+    };
+    if (!debug.cookiePresence.state || !debug.cookiePresence.pkce || !debug.cookiePresence.user) {
+      logger.warn('[youtube.callback] Missing OAuth cookies', { debug });
     }
 
-    const tokenData = await exchangeCodeForTokens(code, verifier);
+    if (!cookieState || cookieState !== state || !verifier || !userId) {
+      return withSecurityHeaders(NextResponse.json({
+        error: 'youtube_oauth_failed',
+        details: debug,
+      }, { status: 400 }));
+    }
+
+    if (errorParam) {
+      debug.tokenExchange = { error: errorParam };
+      return withSecurityHeaders(NextResponse.json({
+        error: 'youtube_oauth_failed',
+        details: debug,
+      }, { status: 400 }));
+    }
+
+    let tokenData;
+    try {
+      tokenData = await exchangeCodeForTokens(code, verifier);
+      debug.tokenExchange = { ok: true };
+    } catch (error) {
+      const err = error as { status?: number; oauth?: { error?: string; error_description?: string }; code?: string };
+      debug.tokenExchange = {
+        ok: false,
+        status: err.status,
+        error: err.oauth?.error,
+        error_description: err.oauth?.error_description,
+      };
+      debug.errorName = error instanceof Error ? error.name : 'Error';
+      debug.errorMessage = error instanceof Error ? error.message : String(error);
+      debug.errorCode = err.code;
+      if (process.env.NODE_ENV !== 'production') {
+        return withSecurityHeaders(NextResponse.json({ error: 'youtube_oauth_failed', details: debug }, { status: 502 }));
+      }
+      logger.error('[youtube.callback] Error', { debug });
+      return withSecurityHeaders(NextResponse.json({ error: 'Error al conectar YouTube' }, { status: 500 }));
+    }
     const accessToken = tokenData.access_token;
     const refreshToken = tokenData.refresh_token;
     const scope = tokenData.scope;
@@ -42,7 +108,24 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
       ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString()
       : null;
 
-    const channel = await fetchOwnChannel(accessToken);
+    let channel;
+    try {
+      channel = await fetchOwnChannel(accessToken);
+    } catch (error) {
+      const err = error as { status?: number; message?: string };
+      debug.youtubeApi = {
+        step: 'channels.list',
+        status: err.status,
+        error: err.message,
+      };
+      debug.errorName = error instanceof Error ? error.name : 'Error';
+      debug.errorMessage = error instanceof Error ? error.message : String(error);
+      if (process.env.NODE_ENV !== 'production') {
+        return withSecurityHeaders(NextResponse.json({ error: 'youtube_oauth_failed', details: debug }, { status: 502 }));
+      }
+      logger.error('[youtube.callback] Error', { debug });
+      return withSecurityHeaders(NextResponse.json({ error: 'Error al conectar YouTube' }, { status: 500 }));
+    }
     const accessEnc = sealSecret(accessToken);
     const refreshEnc = refreshToken ? sealSecret(refreshToken) : null;
 
@@ -101,9 +184,18 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     const response = NextResponse.redirect(redirectUrl);
     response.cookies.set(STATE_COOKIE, '', { path: '/', maxAge: 0 });
     response.cookies.set(VERIFIER_COOKIE, '', { path: '/', maxAge: 0 });
+    response.cookies.set(USER_COOKIE, '', { path: '/', maxAge: 0 });
     return withSecurityHeaders(response);
   } catch (error) {
-    logger.error('[youtube.callback] Error', { error: String(error) });
+    const debug = {
+      requestId: request.headers.get('x-request-id') || null,
+      errorName: error instanceof Error ? error.name : 'Error',
+      errorMessage: error instanceof Error ? error.message : String(error),
+    };
+    if (process.env.NODE_ENV !== 'production') {
+      return withSecurityHeaders(NextResponse.json({ error: 'youtube_oauth_failed', details: debug }, { status: 502 }));
+    }
+    logger.error('[youtube.callback] Error', { debug });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al conectar YouTube' }, { status: 500 }));
   }
-}));
+});

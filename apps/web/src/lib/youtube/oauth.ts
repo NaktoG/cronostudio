@@ -72,14 +72,22 @@ export async function exchangeCodeForTokens(code: string, codeVerifier: string) 
     body: body.toString(),
   });
 
+  const data = await response.json();
+
   if (!response.ok) {
-    throw new Error('Failed to exchange OAuth code.');
+    const error = new Error('OAuth token exchange failed.');
+    (error as { status?: number }).status = response.status;
+    (error as { oauth?: { error?: string; error_description?: string } }).oauth = {
+      error: data?.error,
+      error_description: data?.error_description,
+    };
+    throw error;
   }
-  return response.json() as Promise<{
+  return data as {
     access_token: string;
     refresh_token?: string;
     expires_in?: number;
     scope?: string;
     token_type?: string;
-  }>;
+  };
 }
