@@ -55,6 +55,15 @@ interface WeeklyStatus {
   tasks: PriorityAction[];
 }
 
+interface DisciplineWeekly {
+  status: 'OK' | 'EN_RIESGO' | 'FALLIDA' | 'CUMPLIDA';
+  channel: { id: string; name: string; source: 'explicit' | 'default' };
+  week: { isoYear: number; isoWeek: number; startDate: string; endDate: string; weekKey: string };
+  scoreboard: { count: number; target: number };
+  deadlines: { tuesday: string | null; friday: string | null };
+  streak: { current: number; best: number };
+}
+
 interface WeeklyGoalResponse {
   goal: { targetVideos: number; diasPublicacion: string[]; horaCorte: string };
   channel: { id: string; name: string } | null;
@@ -102,6 +111,7 @@ function DashboardContent() {
   const [runs, setRuns] = useState<AutomationRun[]>([]);
   const [loading, setLoading] = useState(true);
   const [weeklyStatus, setWeeklyStatus] = useState<WeeklyStatus | null>(null);
+  const [disciplineWeekly, setDisciplineWeekly] = useState<DisciplineWeekly | null>(null);
   const [weeklyActions, setWeeklyActions] = useState<PriorityAction[]>([]);
   const [weeklyGoal, setWeeklyGoal] = useState<WeeklyGoalResponse | null>(null);
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
@@ -111,6 +121,7 @@ function DashboardContent() {
   const [publishUrl, setPublishUrl] = useState('');
   const [publishPlatformId, setPublishPlatformId] = useState('');
   const [publishSubmitting, setPublishSubmitting] = useState(false);
+  const [quickPublishSubmitting, setQuickPublishSubmitting] = useState(false);
   const [planSubmitting, setPlanSubmitting] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -177,12 +188,13 @@ function DashboardContent() {
         isoWeek: String(isoWeek),
       });
       const query = `?${params.toString()}`;
-      const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes] = await Promise.all([
+      const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes] = await Promise.all([
         authFetch('/api/productions?stats=true', { signal }),
         authFetch('/api/ideas', { signal }),
         authFetch('/api/automation-runs', { signal }),
         authFetch(`/api/weekly-status${query}`, { signal }),
-        authFetch(`/api/weekly-goals${query}`, { signal })
+        authFetch(`/api/weekly-goals${query}`, { signal }),
+        authFetch(`/api/discipline/weekly${query}`, { signal })
       ]);
 
       if (productionsRes.ok) {
@@ -230,6 +242,13 @@ function DashboardContent() {
         setWeeklyGoal(goalsData);
       } else {
         setWeeklyGoal(null);
+      }
+
+      if (disciplineRes.ok) {
+        const disciplineData: DisciplineWeekly = await disciplineRes.json();
+        setDisciplineWeekly(disciplineData);
+      } else {
+        setDisciplineWeekly(null);
       }
     } catch (e) {
       if (signal?.aborted) return;
@@ -372,6 +391,7 @@ function DashboardContent() {
     OK: { badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', dot: 'bg-emerald-400', text: 'text-emerald-200' },
     EN_RIESGO: { badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30', dot: 'bg-amber-400', text: 'text-amber-200' },
     FALLIDA: { badge: 'bg-red-500/15 text-red-300 border-red-500/30', dot: 'bg-red-400', text: 'text-red-200' },
+    CUMPLIDA: { badge: 'bg-sky-500/15 text-sky-300 border-sky-500/30', dot: 'bg-sky-400', text: 'text-sky-200' },
   };
   const weeklyStyle = weeklyStatus ? statusStyles[weeklyStatus.status] : statusStyles.OK;
   const nextConditionText = weeklyStatus?.nextCondition?.label ?? DASHBOARD_COPY.weeklyStatus.noNext;
@@ -410,6 +430,40 @@ function DashboardContent() {
     OK: 'bg-emerald-400',
     EN_RIESGO: 'bg-amber-400',
     FALLIDA: 'bg-red-400',
+    CUMPLIDA: 'bg-sky-400',
+  };
+
+  const disciplineStatus = disciplineWeekly?.status ?? 'OK';
+  const disciplineStyle = statusStyles[disciplineStatus] ?? statusStyles.OK;
+  const disciplineCount = disciplineWeekly?.scoreboard.count ?? 0;
+  const disciplineTarget = disciplineWeekly?.scoreboard.target ?? 2;
+  const disciplineMissing = Math.max(disciplineTarget - disciplineCount, 0);
+  const disciplineStreakCurrent = disciplineWeekly?.streak.current ?? 0;
+  const disciplineStreakBest = disciplineWeekly?.streak.best ?? 0;
+
+  const handleQuickPublish = async (targetDay: 'tuesday' | 'friday') => {
+    if (!selectedChannelId) {
+      addToast('Selecciona un canal primero', 'error');
+      return;
+    }
+    setQuickPublishSubmitting(true);
+    try {
+      const response = await authFetch('/api/discipline/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelId: selectedChannelId, targetDay }),
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'No se pudo registrar la publicación');
+      }
+      addToast('Publicación registrada', 'success');
+      fetchData();
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Error al registrar publicación', 'error');
+    } finally {
+      setQuickPublishSubmitting(false);
+    }
   };
 
   const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions);
@@ -689,6 +743,58 @@ function DashboardContent() {
                               title={week.status}
                             />
                           ))}
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      className="surface-card glow-hover p-4 sm:p-5"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: 0.05 }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
+                            Motor disciplinario
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">2 publicaciones por semana (Mar/Vie)</p>
+                        </div>
+                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${disciplineStyle.badge}`}>
+                          <span className={`h-2 w-2 rounded-full ${disciplineStyle.dot}`} />
+                          {disciplineStatus}
+                        </span>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-3">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Semana</p>
+                          <p className="mt-1 text-2xl font-semibold text-white">
+                            {disciplineCount}/{disciplineTarget}
+                          </p>
+                          <p className="text-xs text-slate-400">Faltan {disciplineMissing}</p>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-3">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Racha</p>
+                          <p className="mt-1 text-lg font-semibold text-white">🔥 {disciplineStreakCurrent}</p>
+                          <p className="text-xs text-slate-400">Mejor: {disciplineStreakBest}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleQuickPublish('tuesday')}
+                          disabled={quickPublishSubmitting}
+                          className="rounded-lg border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200 hover:border-emerald-400 disabled:opacity-60"
+                        >
+                          Publicar Mar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickPublish('friday')}
+                          disabled={quickPublishSubmitting}
+                          className="rounded-lg border border-sky-400/40 bg-sky-400/10 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200 hover:border-sky-400 disabled:opacity-60"
+                        >
+                          Publicar Vie
+                        </button>
                       </div>
                     </motion.div>
 
