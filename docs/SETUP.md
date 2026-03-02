@@ -62,6 +62,10 @@ Servicios adicionales:
 - `OBS_ENABLED` / `OBS_ENDPOINT` / `OBS_ALERT_WEBHOOK` / `OBS_ALERT_EMAIL` (ver `docs/OBSERVABILITY.md` para métricas y alertas)
 - `ALLOW_PUBLIC_SIGNUP` (por defecto true; pon \"false\" si quieres desactivar registros en producción)
 
+Webhooks (obligatorio si usas integraciones externas):
+- `CRONOSTUDIO_SERVICE_USER_ID` (preferido) o `CRONOSTUDIO_SERVICE_USER_EMAIL`
+- **Nota:** si no se configuran, los endpoints de webhook responden `503` con `service_user_not_configured`.
+
 Variables para email (opcional):
 - `APP_BASE_URL`
 - `SMTP_HOST`

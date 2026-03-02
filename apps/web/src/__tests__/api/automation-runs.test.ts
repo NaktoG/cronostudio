@@ -1,7 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 
 type MockRouteHandler = (request: NextRequest, ...args: unknown[]) => Promise<Response> | Response;
+
+const BASE_ENV = { ...process.env };
 
 vi.mock('@/lib/db', () => ({
   query: vi.fn(),
@@ -45,6 +47,14 @@ import { getAuthUser, type JWTPayload } from '@/middleware/auth';
 describe('Automation Runs API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env = {
+      ...BASE_ENV,
+      CRONOSTUDIO_SERVICE_USER_ID: 'service-user',
+    };
+  });
+
+  afterEach(() => {
+    process.env = BASE_ENV;
   });
 
   const ownerUser = { userId: 'user-1', email: 'demo@example.com', role: 'owner' } as JWTPayload;

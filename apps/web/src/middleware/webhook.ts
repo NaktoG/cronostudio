@@ -23,6 +23,13 @@ function getRequestIp(request: NextRequest): string {
   );
 }
 
+function isServiceUserConfigured(): boolean {
+  return Boolean(
+    process.env.CRONOSTUDIO_SERVICE_USER_ID?.trim() ||
+    process.env.CRONOSTUDIO_SERVICE_USER_EMAIL?.trim()
+  );
+}
+
 export function logWebhookAuthAttempt(request: NextRequest, status: number): void {
   logger.info('webhook.auth', {
     requestId: getRequestId(request),
@@ -47,6 +54,13 @@ export function hasValidServiceSecret(request: NextRequest): boolean {
 
 export function requireServiceSecret(request: NextRequest, hasAuthUser: boolean): { response: NextResponse | null; viaServiceSecret: boolean } {
   const viaServiceSecret = hasValidServiceSecret(request);
+  if (viaServiceSecret && !isServiceUserConfigured()) {
+    const response = withSecurityHeaders(
+      NextResponse.json({ error: 'service_user_not_configured' }, { status: 503 })
+    );
+    logWebhookAuthAttempt(request, response.status);
+    return { response, viaServiceSecret };
+  }
   if (viaServiceSecret || hasAuthUser) {
     return { response: null, viaServiceSecret };
   }

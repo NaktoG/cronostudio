@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { config } from '@/lib/config';
 import { logger } from '@/lib/logger';
+import { isValidUserRole } from '@/domain/value-objects/UserRole';
 import { getAccessCookie } from '@/lib/authCookies';
 import type { User } from '@/domain/entities/User';
 
@@ -26,6 +27,21 @@ export interface AuthenticatedRequest extends NextRequest {
   user: JWTPayload;
 }
 
+function getValidatedRole(role: unknown): User['role'] | null {
+  if (typeof role !== 'string') return null;
+  return isValidUserRole(role) ? (role as User['role']) : null;
+}
+
+function unauthorizedRoleResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      error: 'No autorizado',
+      message: 'Rol inválido en el token de acceso',
+    },
+    { status: 401 }
+  );
+}
+
 /**
  * Verifica que la request tiene un token JWT válido
  */
@@ -45,10 +61,14 @@ export function withAuth<Context = RouteContext>(handler: RouteHandler<Context>)
 
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+      const role = getValidatedRole(decoded.role);
+      if (!role) {
+        return unauthorizedRoleResponse();
+      }
       (request as AuthenticatedRequest).user = {
           userId: decoded.userId,
           email: decoded.email,
-          role: decoded.role ?? 'owner',
+          role,
       };
       return handler(request, context);
     } catch (error) {
@@ -68,10 +88,14 @@ export function withOptionalAuth<Context = RouteContext>(handler: RouteHandler<C
     if (token) {
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+        const role = getValidatedRole(decoded.role);
+        if (!role) {
+          return unauthorizedRoleResponse();
+        }
         (request as AuthenticatedRequest).user = {
           userId: decoded.userId,
           email: decoded.email,
-          role: decoded.role ?? 'owner',
+          role,
         };
       } catch {
         // Opcional, ignorar errores
@@ -123,10 +147,12 @@ export function getAuthUser(request: NextRequest): JWTPayload | null {
   if (!token) return null;
   try {
     const payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const role = getValidatedRole(payload.role);
+    if (!role) return null;
     return {
       userId: payload.userId,
       email: payload.email,
-      role: payload.role ?? 'owner',
+      role,
     };
   } catch {
     return null;
