@@ -1,4 +1,4 @@
-import { BarChart3, FileText, Image as ImageIcon, Lightbulb, Search, Tv, LayoutDashboard, Settings } from 'lucide-react';
+import { BarChart3, FileText, Image as ImageIcon, Lightbulb, Search, Tv, LayoutDashboard, Settings, Sparkles } from 'lucide-react';
 
 export const NAV_LABELS = {
   dashboard: 'Dashboard',
@@ -8,6 +8,7 @@ export const NAV_LABELS = {
   seo: 'SEO',
   channels: 'Canales',
   analytics: 'Analitica',
+  aiStudio: 'AI Studio',
   settings: 'Configuracion',
   backToDashboard: 'Volver al dashboard',
   quickAccessTitle: 'Ir a:',
@@ -25,6 +26,7 @@ export const NAV_ITEMS = [
   { href: '/seo', label: NAV_LABELS.seo, icon: Search },
   { href: '/channels', label: NAV_LABELS.channels, icon: Tv },
   { href: '/analytics', label: NAV_LABELS.analytics, icon: BarChart3 },
+  { href: '/ai', label: NAV_LABELS.aiStudio, icon: Sparkles },
 ];
 
 export const QUICK_LINKS = [
@@ -35,5 +37,6 @@ export const QUICK_LINKS = [
   { href: '/seo', label: NAV_LABELS.seo, icon: Search },
   { href: '/channels', label: NAV_LABELS.channels, icon: Tv },
   { href: '/analytics', label: NAV_LABELS.analytics, icon: BarChart3 },
+  { href: '/ai', label: NAV_LABELS.aiStudio, icon: Sparkles },
   { href: '/configuracion', label: NAV_LABELS.settings, icon: Settings },
 ];
