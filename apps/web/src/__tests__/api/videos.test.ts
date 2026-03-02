@@ -10,7 +10,10 @@ vi.mock('@/middleware/auth', () => {
   const getAuthUser = vi.fn();
   return {
     getAuthUser,
-    withSecurityHeaders: vi.fn((response: Response) => response),
+    withSecurityHeaders: vi.fn((response: Response) => {
+      response.headers.set('X-Content-Type-Options', 'nosniff');
+      return response;
+    }),
     withAuth: (handler: MockRouteHandler) => async (request: NextRequest, ...args: unknown[]) => {
       const user = getAuthUser(request);
       if (!user) {
@@ -63,6 +66,19 @@ describe('Videos API', () => {
       const request = new NextRequest('http://localhost:3000/api/videos/video-1');
       const response = await GET(request, { params: Promise.resolve({ id: 'video-1' }) });
       expect(response.status).toBe(200);
+    });
+  });
+
+  describe('GET /api/videos', () => {
+    it('returns 400 when limit is invalid', async () => {
+      vi.mocked(getAuthUser).mockReturnValue(ownerUser);
+      const { GET } = await import('@/app/api/videos/route');
+
+      const request = new NextRequest('http://localhost:3000/api/videos?limit=abc');
+      const response = await GET(request);
+
+      expect(response.status).toBe(400);
+      expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
     });
   });
 
