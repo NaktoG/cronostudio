@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
         }
 
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const result = await query(
@@ -55,10 +55,10 @@ export async function GET(request: NextRequest) {
             error: error instanceof Error ? error.message : 'Unknown error',
         });
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Failed to fetch channels' },
             { status: 500 }
-        );
+        ));
     }
 }
 
@@ -75,7 +75,7 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
         }
 
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const body = await request.json();
@@ -109,30 +109,30 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
         return withSecurityHeaders(response);
     } catch (error) {
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         // Manejar error de duplicado
         if (error instanceof Error && error.message.includes('duplicate key')) {
             // Verificar si es duplicado del mismo usuario o colisión global
             // Pero por privacidad, simplemente decimos que ya existe
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'Channel with this YouTube ID already exists' },
                 { status: 409 }
-            );
+            ));
         }
 
         logger.error('[POST /api/channels] Error', {
             error: error instanceof Error ? error.message : 'Unknown error',
         });
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Failed to create channel' },
             { status: 500 }
-        );
+        ));
     }
 }));
 
@@ -147,13 +147,13 @@ export const PUT = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIM
             userId = await getServiceUserId(request);
         }
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { searchParams } = new URL(request.url);
         const channelId = searchParams.get('id');
         if (!channelId) {
-            return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
+            return withSecurityHeaders(NextResponse.json({ error: 'ID requerido' }, { status: 400 }));
         }
 
         const body = await request.json();
@@ -173,7 +173,7 @@ export const PUT = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIM
         }
 
         if (updates.length === 0) {
-            return NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 });
+            return withSecurityHeaders(NextResponse.json({ error: 'No hay campos para actualizar' }, { status: 400 }));
         }
 
         updates.push(`updated_at = NOW()`);
@@ -189,21 +189,21 @@ export const PUT = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIM
         );
 
         if (result.rows.length === 0) {
-            return NextResponse.json({ error: 'Canal no encontrado o no autorizado' }, { status: 404 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Canal no encontrado o no autorizado' }, { status: 404 }));
         }
 
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            return withSecurityHeaders(NextResponse.json({ error: error.message }, { status: 400 }));
         }
         if (error instanceof Error && error.message.includes('duplicate key')) {
-            return NextResponse.json({ error: 'Channel with this YouTube ID already exists' }, { status: 409 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Channel with this YouTube ID already exists' }, { status: 409 }));
         }
         logger.error('[PUT /api/channels] Error', {
             error: error instanceof Error ? error.message : 'Unknown error',
         });
-        return NextResponse.json({ error: 'Failed to update channel' }, { status: 500 });
+        return withSecurityHeaders(NextResponse.json({ error: 'Failed to update channel' }, { status: 500 }));
     }
 }));
 
@@ -218,13 +218,13 @@ export const DELETE = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_
             userId = await getServiceUserId(request);
         }
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { searchParams } = new URL(request.url);
         const channelId = searchParams.get('id');
         if (!channelId) {
-            return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
+            return withSecurityHeaders(NextResponse.json({ error: 'ID requerido' }, { status: 400 }));
         }
 
         const result = await query(
@@ -233,7 +233,7 @@ export const DELETE = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_
         );
 
         if (result.rows.length === 0) {
-            return NextResponse.json({ error: 'Canal no encontrado o no autorizado' }, { status: 404 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Canal no encontrado o no autorizado' }, { status: 404 }));
         }
 
         return withSecurityHeaders(NextResponse.json({ success: true }));
@@ -241,6 +241,6 @@ export const DELETE = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_
         logger.error('[DELETE /api/channels] Error', {
             error: error instanceof Error ? error.message : 'Unknown error',
         });
-        return NextResponse.json({ error: 'Failed to delete channel' }, { status: 500 });
+        return withSecurityHeaders(NextResponse.json({ error: 'Failed to delete channel' }, { status: 500 }));
     }
 }));

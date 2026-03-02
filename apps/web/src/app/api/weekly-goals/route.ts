@@ -5,6 +5,7 @@ import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRoles } from '@/middleware/rbac';
 import { query } from '@/lib/db';
 import { getIsoWeekInfo } from '@/lib/dates';
+import { getInt, getString } from '@/lib/http/query';
 
 export const dynamic = 'force-dynamic';
 
@@ -61,11 +62,25 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const channelIdParam = searchParams.get('channelId');
-    const isoYearParam = searchParams.get('isoYear');
-    const isoWeekParam = searchParams.get('isoWeek');
+    const channelIdParam = getString(searchParams, 'channelId');
     const now = new Date();
     const isoInfo = getIsoWeekInfo(now);
+
+    if (channelIdParam) {
+      const channelIdCheck = z.string().uuid().safeParse(channelIdParam);
+      if (!channelIdCheck.success) {
+        return withSecurityHeaders(NextResponse.json({ error: 'invalid_query', field: 'channelId' }, { status: 400 }));
+      }
+    }
+
+    const isoYear = getInt(searchParams, 'isoYear', { min: 2000, max: 2100, defaultValue: isoInfo.isoYear });
+    if (isoYear === null) {
+      return withSecurityHeaders(NextResponse.json({ error: 'invalid_query', field: 'isoYear' }, { status: 400 }));
+    }
+    const isoWeek = getInt(searchParams, 'isoWeek', { min: 1, max: 53, defaultValue: isoInfo.isoWeek });
+    if (isoWeek === null) {
+      return withSecurityHeaders(NextResponse.json({ error: 'invalid_query', field: 'isoWeek' }, { status: 400 }));
+    }
 
     const channel = await resolveChannel(userId, channelIdParam);
     if (!channel.id) {
@@ -73,9 +88,6 @@ export async function GET(request: NextRequest) {
     }
 
     const channelId = channel.id;
-
-    const isoYear = isoYearParam ? Number(isoYearParam) : isoInfo.isoYear;
-    const isoWeek = isoWeekParam ? Number(isoWeekParam) : isoInfo.isoWeek;
 
     const result = await query(
       `SELECT target_videos, dias_publicacion, hora_corte
