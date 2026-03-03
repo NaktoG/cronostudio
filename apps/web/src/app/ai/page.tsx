@@ -72,8 +72,11 @@ export default function AiStudioPage() {
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
   const [outputText, setOutputText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [executing, setExecuting] = useState(false);
   const [applying, setApplying] = useState(false);
   const [selectedRun, setSelectedRun] = useState<Run | null>(null);
+  const [autoOutput, setAutoOutput] = useState<unknown | null>(null);
+  const [autoApplied, setAutoApplied] = useState<Record<string, unknown> | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   useDialogFocus(modalRef, Boolean(selectedRun));
@@ -182,12 +185,67 @@ export default function AiStudioPage() {
       setCurrentRunId(data.runId);
       setCurrentStatus(data.status);
       setOutputText('');
+      setAutoOutput(null);
+      setAutoApplied(null);
       addToast('Prompt generado', 'success');
       fetchRuns(selectedChannel);
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Error al generar prompt', 'error');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleExecuteRun = async () => {
+    if (!activeProfile) {
+      addToast('Selecciona un perfil primero', 'info');
+      return;
+    }
+    if (!selectedChannel) {
+      addToast('Selecciona un canal', 'info');
+      return;
+    }
+
+    const missingField = activeFields.find((field) => field.required && !formInputs[field.key]);
+    if (missingField) {
+      addToast(`Completa el campo: ${missingField.label}`, 'info');
+      return;
+    }
+
+    setExecuting(true);
+    try {
+      const inputPayload: Record<string, string> = {};
+      if (formInputs.topicSeed.trim()) inputPayload.topicSeed = formInputs.topicSeed.trim();
+      if (formInputs.ideaId.trim()) inputPayload.ideaId = formInputs.ideaId.trim();
+      if (formInputs.scriptId.trim()) inputPayload.scriptId = formInputs.scriptId.trim();
+
+      const response = await authFetch('/api/ai/runs/execute', {
+        method: 'POST',
+        body: JSON.stringify({
+          profileKey: activeProfile.key,
+          channelId: selectedChannel,
+          input: inputPayload,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'No se pudo ejecutar el run');
+      }
+
+      const data = await response.json();
+      setAutoOutput(data.output ?? null);
+      setAutoApplied(data.applied ?? null);
+      setCurrentRunId(data.runId ?? null);
+      setCurrentStatus('completed');
+      setPrompt(null);
+      setOutputText('');
+      addToast('Generado y aplicado', 'success');
+      fetchRuns(selectedChannel);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Error al ejecutar run', 'error');
+    } finally {
+      setExecuting(false);
     }
   };
 
@@ -281,7 +339,7 @@ export default function AiStudioPage() {
                   </span>
                   <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">AI Studio</h2>
                 </div>
-                <p className="text-sm sm:text-base text-slate-300">Perfiles internos con flujo manual-first. Genera prompt, pega JSON y aplica.</p>
+                <p className="text-sm sm:text-base text-slate-300">Perfiles internos con flujo auto-first y modo manual para control fino.</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -329,7 +387,14 @@ export default function AiStudioPage() {
                         <button
                           key={profile.key}
                           type="button"
-                          onClick={() => { setActiveProfile(profile); setPrompt(null); setCurrentRunId(null); setCurrentStatus(null); }}
+                          onClick={() => {
+                            setActiveProfile(profile);
+                            setPrompt(null);
+                            setCurrentRunId(null);
+                            setCurrentStatus(null);
+                            setAutoOutput(null);
+                            setAutoApplied(null);
+                          }}
                           className={`text-left rounded-xl border px-4 py-3 transition-all ${activeProfile?.key === profile.key
                             ? 'border-yellow-500/60 bg-yellow-500/10 text-yellow-200'
                             : 'border-gray-800 bg-gray-950/40 text-slate-200 hover:border-yellow-500/40'
@@ -380,6 +445,15 @@ export default function AiStudioPage() {
                     <Sparkles className="w-4 h-4" />
                     {submitting ? 'Generando...' : 'Generar prompt'}
                   </button>
+                  <button
+                    type="button"
+                    onClick={handleExecuteRun}
+                    disabled={executing || !activeProfile}
+                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-black rounded-lg bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    {executing ? 'Ejecutando...' : 'Generar y aplicar'}
+                  </button>
                   {prompt && (
                     <button
                       type="button"
@@ -395,8 +469,8 @@ export default function AiStudioPage() {
 
               <section className="rounded-2xl border border-gray-800 bg-gray-950/60 p-5 space-y-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-white">Prompt generado</h3>
-                  <p className="text-sm text-slate-400">Copia y pégalo en tu AI. Luego pega el JSON aquí.</p>
+                  <h3 className="text-lg font-semibold text-white">Prompt generado (modo manual)</h3>
+                  <p className="text-sm text-slate-400">Copia y pégalo en tu AI. Luego pega el JSON aquí para validar y aplicar.</p>
                 </div>
                 {prompt ? (
                   <div className="grid gap-3">
@@ -439,6 +513,27 @@ export default function AiStudioPage() {
                   </div>
                 ) : (
                   <div className="text-sm text-slate-400">Genera un prompt para continuar.</div>
+                )}
+              </section>
+
+              <section className="rounded-2xl border border-gray-800 bg-gray-950/60 p-5 space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">Resultado auto-first</h3>
+                  <p className="text-sm text-slate-400">Salida generada y aplicada automaticamente.</p>
+                </div>
+                {autoOutput ? (
+                  <div className="grid gap-3">
+                    <pre className="text-xs text-slate-200 bg-gray-900/70 border border-gray-800 rounded-lg p-3 overflow-auto max-h-64">
+                      {JSON.stringify(autoOutput, null, 2)}
+                    </pre>
+                    {autoApplied && (
+                      <div className="text-xs text-slate-300">
+                        Aplicado: {Object.keys(autoApplied).join(', ') || 'OK'}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-slate-400">Ejecuta “Generar y aplicar” para ver el resultado aqui.</div>
                 )}
               </section>
             </div>

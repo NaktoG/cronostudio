@@ -5,6 +5,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import ThemeToggle from "./components/ThemeToggle";
+import GuidePanel from "./components/GuidePanel";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
             <AuthProvider>
               <ThemeToggle />
               {children}
+              <GuidePanel />
             </AuthProvider>
           </ToastProvider>
         </ThemeProvider>
