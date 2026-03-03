@@ -1232,15 +1232,15 @@ function DashboardContent() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-3">
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-3 text-center sm:text-left">
                         {DASHBOARD_COPY.weeklyStreak.title}
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
                         <div>
                           <p className="text-xs text-slate-400">{DASHBOARD_COPY.weeklyStreak.current}</p>
                           <p className="text-lg font-semibold text-white">🔥 {streakCurrent} semanas</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-center sm:text-right">
                           <p className="text-xs text-slate-400">{DASHBOARD_COPY.weeklyStreak.best}</p>
                           <p className="text-lg font-semibold text-white">🏆 {streakBest} semanas</p>
                         </div>
@@ -1422,8 +1422,8 @@ function DashboardContent() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-center sm:text-left">
                           <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
                             {DASHBOARD_COPY.weeklyStatus.title}
                           </div>
@@ -1433,7 +1433,7 @@ function DashboardContent() {
                             </p>
                           )}
                         </div>
-                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${weeklyStyle.badge}`}>
+                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${weeklyStyle.badge} self-center sm:self-auto`}>
                           <span className={`h-2 w-2 rounded-full ${weeklyStyle.dot}`} />
                           {weeklyStatus?.status ?? 'OK'}
                         </span>
@@ -1744,7 +1744,7 @@ function DashboardContent() {
                       transition={{ delay: 0.15 }}
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                        <div>
+                        <div className="text-center sm:text-left">
                           <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.calendar.title}</div>
                           <p className="text-xs sm:text-sm text-slate-300">{DASHBOARD_COPY.calendar.subtitle}</p>
                         </div>
@@ -1953,7 +1953,7 @@ function DashboardContent() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
                     >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">{DASHBOARD_COPY.social.title}</div>
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4 text-center sm:text-left">{DASHBOARD_COPY.social.title}</div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3">
                         {DASHBOARD_COPY.social.items.map((item) => {
                           const iconMap: Record<string, ReactNode> = {
