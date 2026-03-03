@@ -23,6 +23,16 @@ type Channel = {
   name: string;
 };
 
+type IdeaOption = {
+  id: string;
+  title: string;
+};
+
+type ScriptOption = {
+  id: string;
+  title: string;
+};
+
 type Run = {
   id: string;
   channel_id: string | null;
@@ -69,6 +79,8 @@ export default function AiStudioPage() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
+  const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
+  const [scriptOptions, setScriptOptions] = useState<ScriptOption[]>([]);
   const [prompt, setPrompt] = useState<PromptPayload | null>(null);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
@@ -126,6 +138,36 @@ export default function AiStudioPage() {
     }
   }, [authFetch]);
 
+  const fetchIdeaOptions = useCallback(async (channelId: string) => {
+    if (!channelId) return;
+    try {
+      const response = await authFetch(`/api/ideas?channelId=${channelId}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      const options = Array.isArray(data)
+        ? data.map((idea: { id: string; title: string }) => ({ id: idea.id, title: idea.title }))
+        : [];
+      setIdeaOptions(options);
+    } catch (error) {
+      console.error('Error fetching ideas', error);
+    }
+  }, [authFetch]);
+
+  const fetchScriptOptions = useCallback(async (channelId: string) => {
+    if (!channelId) return;
+    try {
+      const response = await authFetch(`/api/scripts?channelId=${channelId}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      const options = Array.isArray(data)
+        ? data.map((script: { id: string; title: string }) => ({ id: script.id, title: script.title }))
+        : [];
+      setScriptOptions(options);
+    } catch (error) {
+      console.error('Error fetching scripts', error);
+    }
+  }, [authFetch]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       setLoading(false);
@@ -138,7 +180,9 @@ export default function AiStudioPage() {
   useEffect(() => {
     if (!selectedChannel) return;
     fetchRuns(selectedChannel);
-  }, [selectedChannel, fetchRuns]);
+    fetchIdeaOptions(selectedChannel);
+    fetchScriptOptions(selectedChannel);
+  }, [selectedChannel, fetchRuns, fetchIdeaOptions, fetchScriptOptions]);
 
   const activeFields = useMemo(() => {
     if (!activeProfile) return [];
@@ -437,11 +481,23 @@ export default function AiStudioPage() {
                           placeholder={field.placeholder}
                           value={formInputs[field.key]}
                           onChange={(event) => setFormInputs((prev) => ({ ...prev, [field.key]: event.target.value }))}
+                          list={field.key === 'ideaId' ? 'idea-options' : field.key === 'scriptId' ? 'script-options' : undefined}
                         />
                       </label>
                     ))}
                   </div>
                 )}
+
+                <datalist id="idea-options">
+                  {ideaOptions.map((idea) => (
+                    <option key={idea.id} value={idea.id}>{idea.title}</option>
+                  ))}
+                </datalist>
+                <datalist id="script-options">
+                  {scriptOptions.map((script) => (
+                    <option key={script.id} value={script.id}>{script.title}</option>
+                  ))}
+                </datalist>
 
                 <div className="flex flex-wrap gap-3">
                   <button
