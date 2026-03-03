@@ -81,7 +81,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         // Log seguro (sin refresh_token)
         logger.info('[POST /api/channels] Created', {
             id: result.rows[0].id,
-            userId: userId, // Logueamos quien lo creó
+            userId: userId,
             name: validatedData.name,
             youtubeChannelId: validatedData.youtubeChannelId,
         });
@@ -102,10 +102,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             ));
         }
 
-        // Manejar error de duplicado
         if (error instanceof Error && error.message.includes('duplicate key')) {
-            // Verificar si es duplicado del mismo usuario o colisión global
-            // Pero por privacidad, simplemente decimos que ya existe
             return withSecurityHeaders(NextResponse.json(
                 { error: 'Channel with this YouTube ID already exists' },
                 { status: 409 }
@@ -121,7 +118,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             { status: 500 }
         ));
     }
-}));
+});
 
 /**
  * PUT /api/channels?id=...
@@ -188,7 +185,7 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         });
         return withSecurityHeaders(NextResponse.json({ error: 'Failed to update channel' }, { status: 500 }));
     }
-}));
+});
 
 /**
  * DELETE /api/channels?id=...

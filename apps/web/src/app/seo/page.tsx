@@ -24,12 +24,19 @@ interface SeoData {
     created_at: string;
 }
 
+interface Channel {
+    id: string;
+    name: string;
+}
+
 export default function SeoPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const router = useRouter();
     const [seoData, setSeoData] = useState<SeoData[]>([]);
+    const [channels, setChannels] = useState<Channel[]>([]);
+    const [selectedChannel, setSelectedChannel] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +48,8 @@ export default function SeoPage() {
                 setError(null);
                 return;
             }
-            const response = await authFetch('/api/seo', { signal });
+            const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
+            const response = await authFetch(`/api/seo${query}`, { signal });
             if (!response.ok) {
                 throw new Error(SEO_COPY.errors.load);
             }
@@ -56,13 +64,44 @@ export default function SeoPage() {
             if (signal?.aborted) return;
             setLoading(false);
         }
-    }, [isAuthenticated, authFetch, addToast]);
+    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
 
     useEffect(() => {
         const controller = new AbortController();
         fetchSeoData(controller.signal);
         return () => controller.abort();
     }, [fetchSeoData]);
+
+    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
+        try {
+            if (!isAuthenticated) {
+                setChannels([]);
+                return;
+            }
+            const response = await authFetch('/api/channels', { signal });
+            if (response.ok) {
+                setChannels(await response.json());
+            }
+        } catch (err) {
+            if (signal?.aborted) return;
+            console.error('Error fetching channels:', err);
+        }
+    }, [isAuthenticated, authFetch]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const controller = new AbortController();
+        fetchChannels(controller.signal);
+        return () => controller.abort();
+    }, [isAuthenticated, fetchChannels]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
+        if (storedChannel && storedChannel !== selectedChannel) {
+            setSelectedChannel(storedChannel);
+        }
+    }, [selectedChannel]);
 
     const getScoreColor = (score: number) => {
         if (score >= 80) return 'text-green-400';
@@ -84,18 +123,43 @@ export default function SeoPage() {
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
                     <motion.div
-                        className="mb-8"
+                        className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-start sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
-                        <BackToDashboard />
-                        <div className="flex items-center gap-3 mb-2">
-                            <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
-                                <Search className="w-5 h-5" />
-                            </span>
-                            <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{SEO_COPY.title}</h2>
+                        <div>
+                            <BackToDashboard />
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
+                                    <Search className="w-5 h-5" />
+                                </span>
+                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{SEO_COPY.title}</h2>
+                            </div>
+                            <p className="text-sm sm:text-base text-slate-300">{SEO_COPY.subtitle}</p>
                         </div>
-                        <p className="text-sm sm:text-base text-slate-300">{SEO_COPY.subtitle}</p>
+                        {channels.length > 0 && (
+                            <div className="min-w-[220px]">
+                                <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>
+                                <select
+                                    value={selectedChannel}
+                                    onChange={(event) => {
+                                        const next = event.target.value;
+                                        setSelectedChannel(next);
+                                        if (typeof window !== 'undefined') {
+                                            window.localStorage.setItem('cronostudio.channelId', next);
+                                        }
+                                    }}
+                                    className="w-full px-4 py-2.5 bg-gray-900/70 border border-gray-800 rounded-lg text-sm text-white focus:ring-2 focus:ring-yellow-400"
+                                >
+                                    <option value="">Todos los canales</option>
+                                    {channels.map((channel) => (
+                                        <option key={channel.id} value={channel.id}>
+                                            {channel.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </motion.div>
 
                     {/* Tips Card */}

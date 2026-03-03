@@ -53,7 +53,7 @@ export default function Header() {
               whileTap={{ scale: 0.95 }}
             >
               <Image
-                src="/logo_crono.png"
+                src="/Logo_Crono_02.png"
                 alt="CronoStudio"
                 width={32}
                 height={32}
