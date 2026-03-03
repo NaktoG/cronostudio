@@ -140,13 +140,29 @@ export default function GuidePanel() {
   const [collapsed, setCollapsed] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState('');
+  const [hasStoredPreference, setHasStoredPreference] = useState(false);
 
   useEffect(() => {
     const stored = typeof window !== 'undefined'
       ? window.localStorage.getItem('cronostudio.guide.collapsed')
       : null;
-    if (stored) setCollapsed(stored === 'true');
+    if (stored !== null) {
+      setCollapsed(stored === 'true');
+      setHasStoredPreference(true);
+    }
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (hasStoredPreference) return;
+    const handleResize = () => {
+      const shouldCollapse = window.innerWidth < 1024;
+      setCollapsed(shouldCollapse);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [hasStoredPreference]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
