@@ -25,6 +25,12 @@ docker ps
 - **n8n**: http://localhost:5678
 - **Postgres**: localhost:5432 (credenciales en `.env`)
 
+## Migraciones
+
+```bash
+./scripts/migrate.sh
+```
+
 ## Ver logs
 
 ```bash
@@ -92,4 +98,9 @@ docker inspect cronostudio-postgres | grep -A 10 "NetworkSettings"
 2. n8n accesible:
    ```bash
    curl http://localhost:5678/api/v1/health
+   ```
+
+3. Smoke test API:
+   ```bash
+   ./scripts/smoke_test.sh
    ```

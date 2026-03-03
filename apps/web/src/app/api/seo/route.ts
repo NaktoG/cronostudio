@@ -58,11 +58,18 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url);
         const videoId = searchParams.get('videoId');
+        const channelId = searchParams.get('channelId');
 
-        let queryText = `SELECT s.*, v.title as video_title FROM seo_data s LEFT JOIN videos v ON s.video_id = v.id WHERE s.user_id = $1`;
+        let queryText = `SELECT s.*, v.title as video_title FROM seo_data s LEFT JOIN videos v ON s.video_id = v.id`;
+        if (channelId) {
+            queryText += ' LEFT JOIN productions p ON p.seo_id = s.id AND p.user_id = $1';
+        }
+        queryText += ' WHERE s.user_id = $1';
         const params: (string | null)[] = [userId];
+        let paramIndex = 2;
 
-        if (videoId) { queryText += ` AND s.video_id = $2`; params.push(videoId); }
+        if (videoId) { queryText += ` AND s.video_id = $${paramIndex++}`; params.push(videoId); }
+        if (channelId) { queryText += ` AND p.channel_id = $${paramIndex++}`; params.push(channelId); }
         queryText += ' ORDER BY s.created_at DESC';
 
         const result = await query(queryText, params);

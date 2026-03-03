@@ -72,6 +72,7 @@ export class PostgresIdeaRepository implements IdeaRepository {
         const fieldMap: Record<string, string> = {
             title: 'title',
             description: 'description',
+            channelId: 'channel_id',
             status: 'status',
             priority: 'priority',
             tags: 'tags',

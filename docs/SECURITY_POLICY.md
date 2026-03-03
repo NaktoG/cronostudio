@@ -4,13 +4,13 @@
 
 ### ✅ QUÉ HACER:
 - ✅ Usar `.env.example` como plantilla
-- ✅ Crear `infra/docker/.env` con valores reales (NO versionar)
+- ✅ Crear `infra/docker/.env` y `apps/web/.env.local` con valores reales (NO versionar)
 - ✅ Generar passwords con `openssl rand -base64 12`
 - ✅ Generar JWT/encryption keys con `openssl rand -hex 32`
 - ✅ Cambiar secrets trimestralmente en producción
 
 ### ❌ QUÉ NO HACER:
-- ❌ NUNCA commitear `.env` real
+- ❌ NUNCA commitear `.env` real ni `.env.local`
 - ❌ NO pegar secrets en código
 - ❌ NO loguear passwords o tokens
 - ❌ NO usar placeholders obvios como "password"

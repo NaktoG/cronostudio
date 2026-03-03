@@ -31,6 +31,7 @@ export interface CreateIdeaInput {
 export interface UpdateIdeaInput {
     title?: string;
     description?: string | null;
+    channelId?: string | null;
     status?: IdeaStatus;
     priority?: number;
     tags?: string[];

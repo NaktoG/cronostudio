@@ -1,0 +1,93 @@
+import crypto from 'crypto';
+
+const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
+const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
+
+type OAuthConfig = {
+  clientId: string;
+  clientSecret: string;
+  redirectUri: string;
+  scopes: string[];
+};
+
+function getRequiredEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`Missing ${name}. Set it in apps/web/.env.local.`);
+  }
+  return value;
+}
+
+export function getOAuthConfig(): OAuthConfig {
+  const clientId = getRequiredEnv('YOUTUBE_OAUTH_CLIENT_ID');
+  const clientSecret = getRequiredEnv('YOUTUBE_OAUTH_CLIENT_SECRET');
+  const redirectUri = getRequiredEnv('YOUTUBE_OAUTH_REDIRECT_URI');
+  const scopesRaw = process.env.YOUTUBE_OAUTH_SCOPES || 'https://www.googleapis.com/auth/youtube.readonly';
+  const scopes = scopesRaw.split(/[\s,]+/).filter(Boolean);
+  return { clientId, clientSecret, redirectUri, scopes };
+}
+
+export function generateState(): string {
+  return crypto.randomBytes(16).toString('base64url');
+}
+
+export function generateCodeVerifier(): string {
+  return crypto.randomBytes(32).toString('base64url');
+}
+
+export function generateCodeChallenge(verifier: string): string {
+  return crypto.createHash('sha256').update(verifier).digest('base64url');
+}
+
+export function buildAuthUrl(state: string, codeChallenge: string): string {
+  const config = getOAuthConfig();
+  const params = new URLSearchParams({
+    client_id: config.clientId,
+    redirect_uri: config.redirectUri,
+    response_type: 'code',
+    scope: config.scopes.join(' '),
+    access_type: 'offline',
+    prompt: 'consent',
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+  });
+  return `${AUTH_ENDPOINT}?${params.toString()}`;
+}
+
+export async function exchangeCodeForTokens(code: string, codeVerifier: string) {
+  const config = getOAuthConfig();
+  const body = new URLSearchParams({
+    code,
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    redirect_uri: config.redirectUri,
+    grant_type: 'authorization_code',
+    code_verifier: codeVerifier,
+  });
+
+  const response = await fetch(TOKEN_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const error = new Error('OAuth token exchange failed.');
+    (error as { status?: number }).status = response.status;
+    (error as { oauth?: { error?: string; error_description?: string } }).oauth = {
+      error: data?.error,
+      error_description: data?.error_description,
+    };
+    throw error;
+  }
+  return data as {
+    access_token: string;
+    refresh_token?: string;
+    expires_in?: number;
+    scope?: string;
+    token_type?: string;
+  };
+}

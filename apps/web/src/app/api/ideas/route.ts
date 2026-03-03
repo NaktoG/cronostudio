@@ -18,6 +18,7 @@ import { UpdateIdeaUseCase } from '@/application/usecases/idea/UpdateIdeaUseCase
 import { DeleteIdeaUseCase } from '@/application/usecases/idea/DeleteIdeaUseCase';
 import { PostgresIdeaRepository } from '@/infrastructure/repositories/PostgresIdeaRepository';
 import { IdeaStatus } from '@/domain/value-objects/IdeaStatus';
+import { evaluateIdeaReady } from '@/lib/ideaReady';
 
 // Schemas for HTTP validation
 const CreateIdeaSchema = z.object({
@@ -31,6 +32,7 @@ const CreateIdeaSchema = z.object({
 const UpdateIdeaSchema = z.object({
     title: z.string().min(1).max(200).optional(),
     description: z.string().optional(),
+    channelId: z.string().uuid().optional().nullable(),
     status: z.enum(['draft', 'approved', 'in_production', 'completed', 'archived']).optional(),
     priority: z.number().int().min(0).max(10).optional(),
     tags: z.array(z.string()).optional(),
@@ -133,6 +135,23 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         }
 
         const ideaRepository = new PostgresIdeaRepository();
+
+        if (data.status === 'approved') {
+            const existing = await ideaRepository.findById(ideaId);
+            if (!existing || existing.userId !== userId) {
+                return withSecurityHeaders(NextResponse.json({ error: 'Idea no encontrada' }, { status: 404 }));
+            }
+            const nextTitle = data.title ?? existing.title;
+            const nextDescription = data.description ?? existing.description;
+            const readiness = evaluateIdeaReady(nextTitle, nextDescription);
+            if (!readiness.isReady) {
+                return withSecurityHeaders(NextResponse.json({
+                    error: 'Idea no lista',
+                    details: readiness.errors,
+                }, { status: 400 }));
+            }
+        }
+
         const useCase = new UpdateIdeaUseCase(ideaRepository);
         const idea = await useCase.execute({
             ideaId,
@@ -140,6 +159,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
             updates: {
                 title: data.title,
                 description: data.description,
+                channelId: data.channelId ?? undefined,
                 status: data.status as IdeaStatus | undefined,
                 priority: data.priority,
                 tags: data.tags,

@@ -157,18 +157,28 @@ Ver [ARCHITECTURE.md](docs/ARCHITECTURE.md) para más detalles.
     docker compose -f infra/docker/docker-compose.yml up -d
    ```
 
-3. **Instalar dependencias**
+3. **Configurar entorno (Docker)**
+   ```bash
+   cp infra/docker/.env.example infra/docker/.env
+   ```
+
+4. **Configurar entorno (Web)**
+   ```bash
+   cp apps/web/.env.example apps/web/.env.local
+   ```
+
+5. **Ejecutar migraciones**
+   ```bash
+   ./scripts/migrate.sh
+   ```
+
+6. **Instalar dependencias**
    ```bash
    cd apps/web
    npm install
    ```
 
-4. **Configurar entorno (Docker)**
-   ```bash
-   cp infra/docker/.env.example infra/docker/.env
-   ```
-
-5. **Iniciar desarrollo**
+7. **Iniciar desarrollo**
    ```bash
    npm run dev
    ```

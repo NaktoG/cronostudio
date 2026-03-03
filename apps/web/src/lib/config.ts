@@ -1,125 +1,184 @@
 // lib/config.ts
 // Centralized configuration with validation
 
+import { z } from 'zod';
+
 const isProduction = process.env.NODE_ENV === 'production';
 
-function getRequiredEnv(key: string, fallbackForDev?: string): string {
-    const value = process.env[key];
+const envSchema = z
+  .object({
+    NODE_ENV: z.string().optional(),
+    PORT: z.string().optional(),
+    LOG_LEVEL: z.string().optional(),
 
-    if (value) return value;
+    JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+    JWT_EXPIRES_IN: z.string().optional(),
+    JWT_REFRESH_EXPIRES_IN: z.string().optional(),
 
-    if (!isProduction && fallbackForDev) {
-        console.warn(`WARNING: Using fallback value for ${key} in ${process.env.NODE_ENV}. Do not rely on this outside local development.`);
-        return fallbackForDev;
-    }
+    DATABASE_URL: z.string().min(1, 'DATABASE_URL is required').optional(),
 
-    throw new Error(`Missing required environment variable: ${key}`);
+    APP_BASE_URL: z.string().optional(),
+    N8N_BASE_URL: z.string().optional(),
+    CORS_ALLOWED_ORIGINS: z.string().optional(),
+
+    OBS_ENABLED: z.string().optional(),
+    OBS_ENDPOINT: z.string().optional(),
+    OBS_ALERT_WEBHOOK: z.string().optional(),
+    OBS_ALERT_EMAIL: z.string().optional(),
+
+    REDIS_URL: z.string().optional(),
+    REDIS_SKIP_TLS_VERIFY: z.string().optional(),
+
+    CRONOSTUDIO_WEBHOOK_SECRET: z.string().optional(),
+  })
+  .passthrough();
+
+function formatEnvErrors(errors: z.ZodIssue[]) {
+  const missing = errors.map((issue) => issue.path.join('.')).filter(Boolean);
+  const unique = Array.from(new Set(missing));
+  return `Missing or invalid environment variables: ${unique.join(', ')}.\n` +
+    'Set them in apps/web/.env.local (recommended) or apps/web/.env.\n' +
+    'Copy apps/web/.env.example and fill in the required values.';
 }
 
-function getOptionalEnv(key: string, defaultValue: string): string {
-    return process.env[key] || defaultValue;
+function requireDatabaseEnv() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (databaseUrl) return;
+
+  const missing: string[] = [];
+  if (!process.env.POSTGRES_HOST) missing.push('POSTGRES_HOST');
+  if (!process.env.POSTGRES_PORT) missing.push('POSTGRES_PORT');
+  if (!process.env.POSTGRES_DB) missing.push('POSTGRES_DB');
+  if (!process.env.POSTGRES_USER) missing.push('POSTGRES_USER');
+  if (!process.env.POSTGRES_PASSWORD) missing.push('POSTGRES_PASSWORD');
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required database environment variables: ${missing.join(', ')}.\n` +
+        'Set DATABASE_URL or configure all POSTGRES_* variables in apps/web/.env.local.'
+    );
+  }
 }
 
-function getArrayEnv(key: string, defaultValues: string[]): string[] {
-    const value = process.env[key];
-    if (!value) return defaultValues;
-    return value
-        .split(',')
-        .map((origin) => origin.trim())
-        .filter((origin) => origin.length > 0);
+function getArrayEnv(value: string | undefined, defaultValues: string[]): string[] {
+  if (!value) return defaultValues;
+  return value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
 }
 
-export const config = {
-    // Environment
-    nodeEnv: getOptionalEnv('NODE_ENV', 'development'),
+let cachedConfig: ReturnType<typeof buildConfig> | null = null;
+
+function buildConfig() {
+  const parsed = envSchema.safeParse(process.env);
+  if (!parsed.success) {
+    throw new Error(formatEnvErrors(parsed.error.issues));
+  }
+
+  const env = parsed.data;
+  requireDatabaseEnv();
+
+  return {
+    nodeEnv: env.NODE_ENV || 'development',
     isProduction,
 
-    // JWT Configuration
     jwt: {
-        secret: getRequiredEnv('JWT_SECRET', 'dev-secret-change-in-production'),
-        expiresIn: getOptionalEnv('JWT_EXPIRES_IN', '7d'),
-        refreshExpiresIn: getOptionalEnv('JWT_REFRESH_EXPIRES_IN', '30d'),
+      secret: env.JWT_SECRET,
+      expiresIn: env.JWT_EXPIRES_IN || '7d',
+      refreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN || '30d',
     },
 
-    // Database
     database: {
-        url: getRequiredEnv('DATABASE_URL', 'postgresql://crono:crono@localhost:5432/cronostudio'),
+      url: env.DATABASE_URL || '',
     },
 
     app: {
-        baseUrl: getOptionalEnv('APP_BASE_URL', 'http://localhost:3000'),
+      baseUrl: env.APP_BASE_URL || 'http://localhost:3000',
     },
 
     automation: {
-        n8nBaseUrl: getOptionalEnv('N8N_BASE_URL', 'http://localhost:5678'),
+      n8nBaseUrl: env.N8N_BASE_URL || 'http://localhost:5678',
     },
 
     cors: {
-        allowedOrigins: getArrayEnv('CORS_ALLOWED_ORIGINS', [
-            'http://localhost:3000',
-            'http://localhost:3001',
-        ]),
+      allowedOrigins: getArrayEnv(env.CORS_ALLOWED_ORIGINS, [
+        'http://localhost:3000',
+        'http://localhost:3001',
+      ]),
     },
 
     observability: {
-        enabled: getOptionalEnv('OBS_ENABLED', 'false') === 'true',
-        endpoint: process.env.OBS_ENDPOINT,
-        alertWebhook: process.env.OBS_ALERT_WEBHOOK,
-        alertEmail: process.env.OBS_ALERT_EMAIL,
+      enabled: (env.OBS_ENABLED || 'false') === 'true',
+      endpoint: env.OBS_ENDPOINT,
+      alertWebhook: env.OBS_ALERT_WEBHOOK,
+      alertEmail: env.OBS_ALERT_EMAIL,
     },
 
     redis: {
-        url: process.env.REDIS_URL,
-        skipTlsVerify: process.env.REDIS_SKIP_TLS_VERIFY === 'true',
+      url: env.REDIS_URL,
+      skipTlsVerify: env.REDIS_SKIP_TLS_VERIFY === 'true',
     },
 
     webhooks: {
-        secret: process.env.CRONOSTUDIO_WEBHOOK_SECRET,
+      secret: env.CRONOSTUDIO_WEBHOOK_SECRET,
     },
 
-    // Rate Limiting
     rateLimit: {
-        api: {
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 100,
-        },
-        auth: {
-            windowMs: 15 * 60 * 1000,
-            max: 5,
-        },
+      api: {
+        windowMs: 15 * 60 * 1000,
+        max: 100,
+      },
+      auth: {
+        windowMs: 15 * 60 * 1000,
+        max: 5,
+      },
     },
 
-    // Logging
     logging: {
-        level: getOptionalEnv('LOG_LEVEL', process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
+      level: env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
     },
-};
+  };
+}
+
+export function getConfig() {
+  if (!cachedConfig) {
+    cachedConfig = buildConfig();
+  }
+  return cachedConfig;
+}
+
+export const config = getConfig();
 
 // Validate critical config on startup
 export function validateConfig(): void {
-    if (config.isProduction) {
-        if (!config.jwt.secret || config.jwt.secret === 'dev-secret-change-in-production') {
-            throw new Error('CRITICAL: JWT_SECRET must be set in production!');
-        }
-        if (config.jwt.secret.length < 32) {
-            throw new Error('CRITICAL: JWT_SECRET must be at least 32 characters in production!');
-        }
-        if (!config.database.url || config.database.url.includes('localhost')) {
-            throw new Error('CRITICAL: DATABASE_URL must be set for production!');
-        }
-        if (!config.app.baseUrl || config.app.baseUrl.includes('localhost')) {
-            throw new Error('CRITICAL: APP_BASE_URL must be set for production!');
-        }
-        if (config.cors.allowedOrigins.length === 0) {
-            throw new Error('CRITICAL: CORS_ALLOWED_ORIGINS must include at least one origin in production!');
-        }
-        if (!config.redis.url) {
-            throw new Error('CRITICAL: REDIS_URL must be configured in production for rate limiting!');
-        }
-        if (config.redis.skipTlsVerify) {
-            throw new Error('CRITICAL: Disable REDIS_SKIP_TLS_VERIFY in production to avoid MITM vulnerabilities.');
-        }
+  const current = getConfig();
+
+  if (current.jwt.secret.length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters.');
+  }
+
+  if (!current.database.url && !process.env.DATABASE_URL) {
+    requireDatabaseEnv();
+  }
+
+  if (current.isProduction) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL must be set in production.');
     }
+    if (!current.app.baseUrl || current.app.baseUrl.includes('localhost')) {
+      throw new Error('APP_BASE_URL must be set for production.');
+    }
+    if (current.cors.allowedOrigins.length === 0) {
+      throw new Error('CORS_ALLOWED_ORIGINS must include at least one origin in production.');
+    }
+    if (!current.redis.url) {
+      throw new Error('REDIS_URL must be configured in production for rate limiting.');
+    }
+    if (current.redis.skipTlsVerify) {
+      throw new Error('Disable REDIS_SKIP_TLS_VERIFY in production to avoid MITM vulnerabilities.');
+    }
+  }
 }
 
 export default config;

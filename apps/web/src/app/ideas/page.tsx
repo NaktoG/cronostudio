@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent } from 'react';
+import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { Lightbulb, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
@@ -8,11 +8,17 @@ import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { IDEAS_COPY } from '../content/pages/ideas';
+import { IDEA_STATUS_LABELS, IdeaStatus } from '../content/labels';
+import useDialogFocus from '../hooks/useDialogFocus';
+import { evaluateIdeaReady } from '@/lib/ideaReady';
 
 interface Idea {
     id: string;
     title: string;
     description: string | null;
+    channelId: string | null;
     status: 'draft' | 'approved' | 'in_production' | 'completed' | 'archived';
     priority: number;
     tags: string[];
@@ -20,81 +26,198 @@ interface Idea {
     created_at: string;
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    draft: { label: 'Borrador', color: 'bg-gray-600' },
-    approved: { label: 'Aprobada', color: 'bg-green-600' },
-    in_production: { label: 'En Producción', color: 'bg-yellow-600' },
-    completed: { label: 'Completada', color: 'bg-blue-600' },
-    archived: { label: 'Archivada', color: 'bg-gray-800' },
+interface Channel {
+    id: string;
+    name: string;
+}
+
+const STATUS_LABELS: Record<IdeaStatus, { label: string; color: string }> = {
+    draft: { label: IDEA_STATUS_LABELS.draft, color: 'bg-gray-600' },
+    approved: { label: IDEA_STATUS_LABELS.approved, color: 'bg-green-600' },
+    in_production: { label: IDEA_STATUS_LABELS.in_production, color: 'bg-yellow-600' },
+    completed: { label: IDEA_STATUS_LABELS.completed, color: 'bg-blue-600' },
+    archived: { label: IDEA_STATUS_LABELS.archived, color: 'bg-gray-800' },
 };
 
 export default function IdeasPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
+    const { addToast } = useToast();
     const [ideas, setIdeas] = useState<Idea[]>([]);
+    const [channels, setChannels] = useState<Channel[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [formData, setFormData] = useState({ title: '', description: '', priority: 0 });
+    const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
+    const [formData, setFormData] = useState({
+        title: '',
+        description: '',
+        priority: 0,
+        channelId: '',
+        tagsInput: '',
+    });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [statusErrors, setStatusErrors] = useState<Record<string, string[]>>({});
     const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [visibleCount, setVisibleCount] = useState(12);
+    const modalRef = useRef<HTMLDivElement>(null);
+    const deleteRef = useRef<HTMLDivElement>(null);
 
-    const fetchIdeas = useCallback(async () => {
+    useDialogFocus(modalRef, showModal);
+    useDialogFocus(deleteRef, Boolean(deleteTarget));
+
+    const fetchIdeas = useCallback(async (signal?: AbortSignal) => {
         try {
             setLoading(true);
             if (!isAuthenticated) {
                 setIdeas([]);
                 return;
             }
-            const response = await authFetch('/api/ideas');
+            const response = await authFetch('/api/ideas', { signal });
             if (response.ok) {
                 setIdeas(await response.json());
             }
         } catch (err) {
+            if (signal?.aborted) return;
             console.error('Error:', err);
+            addToast(IDEAS_COPY.toasts.error, 'error');
         } finally {
+            if (signal?.aborted) return;
             setLoading(false);
         }
-    }, [isAuthenticated, authFetch]);
+    }, [isAuthenticated, authFetch, addToast]);
 
     useEffect(() => {
         if (!isAuthenticated) {
             setLoading(false);
             return;
         }
-        fetchIdeas();
+        const controller = new AbortController();
+        fetchIdeas(controller.signal);
+        return () => controller.abort();
     }, [isAuthenticated, fetchIdeas]);
+
+    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
+        try {
+            if (!isAuthenticated) {
+                setChannels([]);
+                return;
+            }
+            const response = await authFetch('/api/channels', { signal });
+            if (response.ok) {
+                setChannels(await response.json());
+            }
+        } catch (err) {
+            if (signal?.aborted) return;
+            console.error('Error fetching channels:', err);
+        }
+    }, [isAuthenticated, authFetch]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const controller = new AbortController();
+        fetchChannels(controller.signal);
+        return () => controller.abort();
+    }, [isAuthenticated, fetchChannels]);
+
+    useEffect(() => {
+        if (!showModal && !deleteTarget) return;
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowModal(false);
+                setDeleteTarget(null);
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [showModal, deleteTarget]);
+
+    const normalizeTags = (input: string) =>
+        input
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag.length > 0);
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         setError(null);
         try {
-            const response = await authFetch('/api/ideas', {
-                method: 'POST',
-                body: JSON.stringify(formData),
+            const targetUrl = editingIdea ? `/api/ideas?id=${editingIdea.id}` : '/api/ideas';
+            const method = editingIdea ? 'PUT' : 'POST';
+            const payload = {
+                title: formData.title,
+                description: formData.description,
+                priority: formData.priority,
+                channelId: formData.channelId ? formData.channelId : null,
+                tags: normalizeTags(formData.tagsInput),
+            };
+            const response = await authFetch(targetUrl, {
+                method,
+                body: JSON.stringify(payload),
             });
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Error al crear idea');
+                throw new Error(data.error || (editingIdea ? 'Error al actualizar idea' : 'Error al crear idea'));
             }
             setShowModal(false);
-            setFormData({ title: '', description: '', priority: 0 });
+            setEditingIdea(null);
+            setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
             await fetchIdeas();
+            addToast(editingIdea ? IDEAS_COPY.toasts.updated : IDEAS_COPY.toasts.created, 'success');
         } catch (err) {
+            addToast(err instanceof Error ? err.message : IDEAS_COPY.toasts.error, 'error');
             setError(err instanceof Error ? err.message : 'Error');
         } finally {
             setSubmitting(false);
         }
     };
 
-    const updateStatus = async (id: string, status: string) => {
-        await authFetch(`/api/ideas?id=${id}`, {
-            method: 'PUT',
-            body: JSON.stringify({ status }),
+    const startEdit = (idea: Idea) => {
+        setEditingIdea(idea);
+        setFormData({
+            title: idea.title,
+            description: idea.description ?? '',
+            priority: idea.priority ?? 0,
+            channelId: idea.channelId ?? '',
+            tagsInput: Array.isArray(idea.tags) ? idea.tags.join(', ') : '',
         });
-        await fetchIdeas();
+        setShowModal(true);
+    };
+
+    const updateStatus = async (id: string, status: string) => {
+        try {
+            if (status === 'approved') {
+                const targetIdea = ideas.find((idea) => idea.id === id);
+                if (targetIdea) {
+                    const readiness = evaluateIdeaReady(targetIdea.title, targetIdea.description);
+                    if (!readiness.isReady) {
+                        addToast(IDEAS_COPY.toasts.ideaNotReady, 'error');
+                        setStatusErrors((prev) => ({ ...prev, [id]: readiness.errors }));
+                        return;
+                    }
+                }
+            }
+            const response = await authFetch(`/api/ideas?id=${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status }),
+            });
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Error al actualizar estado');
+            }
+            setStatusErrors((prev) => {
+                if (!prev[id]) return prev;
+                const { [id]: _, ...rest } = prev;
+                return rest;
+            });
+            await fetchIdeas();
+            addToast(IDEAS_COPY.toasts.statusUpdated, 'success');
+        } catch (err) {
+            addToast(err instanceof Error ? err.message : IDEAS_COPY.toasts.error, 'error');
+            setError(err instanceof Error ? err.message : 'Error');
+        }
     };
 
     const deleteIdea = async (id: string) => {
@@ -115,7 +238,9 @@ export default function IdeasPage() {
             }
             setDeleteTarget(null);
             await fetchIdeas();
+            addToast(IDEAS_COPY.toasts.deleted, 'success');
         } catch (err) {
+            addToast(err instanceof Error ? err.message : IDEAS_COPY.toasts.error, 'error');
             setError(err instanceof Error ? err.message : 'Error');
         } finally {
             setDeleteSubmitting(false);
@@ -126,9 +251,9 @@ export default function IdeasPage() {
         <ProtectedRoute>
             <div className="min-h-screen flex flex-col">
                 <Header />
-                <main className="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
+                <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
                     <motion.div
-                        className="flex items-center justify-between mb-8"
+                        className="flex flex-col gap-4 mb-6 sm:mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                     >
@@ -138,13 +263,17 @@ export default function IdeasPage() {
                                 <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                     <Lightbulb className="w-5 h-5" />
                                 </span>
-                                <h2 className="text-4xl font-semibold text-white">Ideas</h2>
+                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{IDEAS_COPY.title}</h2>
                             </div>
-                            <p className="text-slate-300">Apunta y gestiona tus ideas para videos</p>
+                            <p className="text-sm sm:text-base text-slate-300">{IDEAS_COPY.subtitle}</p>
                         </div>
                         <motion.button
-                            onClick={() => setShowModal(true)}
-                            className="px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center gap-2"
+                            onClick={() => {
+                                setEditingIdea(null);
+                                setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
+                                setShowModal(true);
+                            }}
+                            className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
                             style={{
                                 background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
                                 boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
@@ -153,7 +282,7 @@ export default function IdeasPage() {
                             whileTap={{ scale: 0.98 }}
                         >
                             <Plus className="w-4 h-4" />
-                            Nueva Idea
+                            {IDEAS_COPY.new}
                         </motion.button>
                     </motion.div>
 
@@ -166,55 +295,109 @@ export default function IdeasPage() {
                             <div className="w-20 h-20 mx-auto mb-6 bg-gray-900/60 border border-gray-800 rounded-full flex items-center justify-center text-yellow-400">
                                 <Lightbulb className="w-8 h-8" />
                             </div>
-                            <h3 className="text-xl font-semibold text-white mb-2">No hay ideas todavia</h3>
-                            <p className="text-slate-300">Apunta tu primera idea para un video.</p>
+                            <h3 className="text-xl font-semibold text-white mb-2">{IDEAS_COPY.emptyTitle}</h3>
+                            <p className="text-slate-300 mb-6">{IDEAS_COPY.emptySubtitle}</p>
+                            <motion.button
+                                onClick={() => {
+                                    setEditingIdea(null);
+                                    setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
+                                    setShowModal(true);
+                                }}
+                                className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 sm:w-auto"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                {IDEAS_COPY.create}
+                            </motion.button>
                         </motion.div>
                     ) : (
-                        <motion.div
-                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                        >
-                            {ideas.map((idea) => (
-                                <motion.div
-                                    key={idea.id}
-                                    className="surface-panel glow-hover p-6 transition-all group"
-                                    whileHover={{ y: -4 }}
-                                >
+                        <div className="space-y-4">
+                            <motion.div
+                                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                            >
+                                {ideas.slice(0, visibleCount).map((idea) => (
+                                    <motion.div
+                                        key={idea.id}
+                                        className="surface-panel glow-hover p-6 transition-all group min-w-0"
+                                        whileHover={{ y: -4 }}
+                                    >
                                     <div className="flex items-start justify-between mb-3">
                                         <span className={`text-xs px-2 py-1 rounded ${STATUS_LABELS[idea.status]?.color || 'bg-gray-600'} text-white`}>
                                             {STATUS_LABELS[idea.status]?.label || idea.status}
                                         </span>
                                         <span className="text-xs text-yellow-400">★ {idea.priority}</span>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">
+                                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors break-words">
                                         {idea.title}
                                     </h3>
                                     {idea.description && (
-                                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">{idea.description}</p>
+                                        <p className="text-gray-400 text-sm mb-3 line-clamp-3 sm:line-clamp-2">{idea.description}</p>
                                     )}
-                                    <div className="flex gap-2 mt-4 pt-4 border-t border-gray-800">
+                                    {idea.channel_name && (
+                                        <p className="text-xs text-slate-400">{IDEAS_COPY.channelPrefix} {idea.channel_name}</p>
+                                    )}
+                                    {idea.tags?.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-3">
+                                            {idea.tags.map((tag) => (
+                                                <span key={tag} className="text-[11px] px-2 py-0.5 rounded-full bg-gray-800 text-gray-300">
+                                                    #{tag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                    <div className="mt-4 pt-4 border-t border-gray-800 flex flex-col gap-2 sm:flex-row sm:items-center">
                                         <select
                                             value={idea.status}
                                             onChange={(e) => updateStatus(idea.id, e.target.value)}
-                                            className="flex-1 text-xs bg-gray-800 border border-gray-700 rounded px-2 py-1 text-white"
+                                            className="w-full text-xs bg-gray-800 border border-gray-700 rounded px-2 py-2 text-white sm:flex-1"
                                         >
-                                            <option value="draft">Borrador</option>
-                                            <option value="approved">Aprobada</option>
-                                            <option value="in_production">En Producción</option>
-                                            <option value="completed">Completada</option>
-                                            <option value="archived">Archivada</option>
+                                        <option value="draft">{IDEA_STATUS_LABELS.draft}</option>
+                                        <option value="approved">{IDEA_STATUS_LABELS.approved}</option>
+                                        <option value="in_production">{IDEA_STATUS_LABELS.in_production}</option>
+                                        <option value="completed">{IDEA_STATUS_LABELS.completed}</option>
+                                        <option value="archived">{IDEA_STATUS_LABELS.archived}</option>
                                         </select>
-                                        <button
-                                            onClick={() => deleteIdea(idea.id)}
-                                            className="text-red-400 hover:text-red-300 text-xs px-2"
-                                        >
-                                            Eliminar
-                                        </button>
+                                        <div className="flex items-center justify-between gap-3 sm:justify-end">
+                                            <button
+                                                onClick={() => startEdit(idea)}
+                                                className="text-yellow-300 hover:text-yellow-200 text-xs px-2"
+                                            >
+                                                Editar
+                                            </button>
+                                            <button
+                                                onClick={() => deleteIdea(idea.id)}
+                                                className="text-red-400 hover:text-red-300 text-xs px-2"
+                                            >
+                                                {IDEAS_COPY.delete}
+                                            </button>
+                                        </div>
                                     </div>
-                                </motion.div>
-                            ))}
-                        </motion.div>
+                                    {statusErrors[idea.id]?.length > 0 && (
+                                        <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                                            <div className="font-semibold mb-1">{IDEAS_COPY.errors.ideaNotReadyTitle}</div>
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                {statusErrors[idea.id].map((item) => (
+                                                    <li key={item}>{item}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    </motion.div>
+                                ))}
+                            </motion.div>
+                            {ideas.length > 12 && (
+                                <div className="pt-2 flex justify-center">
+                                    <button
+                                        onClick={() => setVisibleCount(visibleCount < ideas.length ? ideas.length : 12)}
+                                        className="text-xs px-4 py-2 rounded-full border border-gray-700 text-slate-300 hover:text-white"
+                                    >
+                                        {visibleCount < ideas.length ? IDEAS_COPY.list.showMore : IDEAS_COPY.list.showLess}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </main>
                 <Footer />
@@ -229,37 +412,59 @@ export default function IdeasPage() {
                             onClick={() => setShowModal(false)}
                         >
                             <motion.div
-                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-8 w-full max-w-md"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="idea-modal-title"
+                                className="bg-gray-900 border border-yellow-500/20 rounded-2xl p-6 sm:p-8 w-full max-w-md max-h-[85vh] overflow-y-auto"
+                                ref={modalRef}
+                                tabIndex={-1}
                                 initial={{ scale: 0.9 }}
                                 animate={{ scale: 1 }}
                                 exit={{ scale: 0.9 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-2xl font-bold text-white mb-6">Nueva Idea</h3>
+                                <h3 id="idea-modal-title" className="text-2xl font-bold text-white mb-6">
+                                    {editingIdea ? IDEAS_COPY.edit : IDEAS_COPY.new}
+                                </h3>
                                 {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Título</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{IDEAS_COPY.form.title}</label>
                                         <input
                                             type="text"
                                             value={formData.title}
                                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
-                                            placeholder="Idea para video..."
+                                            placeholder={IDEAS_COPY.form.placeholderTitle}
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Descripción</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{IDEAS_COPY.form.description}</label>
                                         <textarea
                                             value={formData.description}
                                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 h-24"
-                                            placeholder="Detalles de la idea..."
+                                            placeholder={IDEAS_COPY.form.placeholderDescription}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Prioridad (0-10)</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{IDEAS_COPY.form.channel}</label>
+                                        <select
+                                            value={formData.channelId}
+                                            onChange={(e) => setFormData({ ...formData, channelId: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                        >
+                                            <option value="">{IDEAS_COPY.form.noChannel}</option>
+                                            {channels.map((channel) => (
+                                                <option key={channel.id} value={channel.id}>
+                                                    {channel.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{IDEAS_COPY.form.priority}</label>
                                         <input
                                             type="number"
                                             min="0"
@@ -269,12 +474,22 @@ export default function IdeasPage() {
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
                                         />
                                     </div>
-                                    <div className="flex gap-3 pt-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{IDEAS_COPY.form.tags}</label>
+                                        <input
+                                            type="text"
+                                            value={formData.tagsInput}
+                                            onChange={(e) => setFormData({ ...formData, tagsInput: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                            placeholder={IDEAS_COPY.form.placeholderTags}
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                         <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">
-                                            Cancelar
+                                            {IDEAS_COPY.cancel}
                                         </button>
                                         <button type="submit" disabled={submitting} className="flex-1 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-50">
-                                            {submitting ? 'Creando...' : 'Crear Idea'}
+                                            {submitting ? (editingIdea ? IDEAS_COPY.saving : IDEAS_COPY.creating) : editingIdea ? IDEAS_COPY.save : IDEAS_COPY.new}
                                         </button>
                                     </div>
                                 </form>
@@ -293,24 +508,29 @@ export default function IdeasPage() {
                             onClick={() => setDeleteTarget(null)}
                         >
                             <motion.div
-                                className="bg-gray-900 border border-red-500/20 rounded-2xl p-6 w-full max-w-md"
+                                role="dialog"
+                                aria-modal="true"
+                                aria-labelledby="idea-delete-title"
+                                className="bg-gray-900 border border-red-500/20 rounded-2xl p-6 sm:p-8 w-full max-w-md"
+                                ref={deleteRef}
+                                tabIndex={-1}
                                 initial={{ scale: 0.95, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
                                 exit={{ scale: 0.95, opacity: 0 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 className="text-xl font-bold text-white mb-2">Eliminar idea</h3>
+                                <h3 id="idea-delete-title" className="text-xl font-bold text-white mb-2">{IDEAS_COPY.deleteTitle}</h3>
                                 <p className="text-gray-400 text-sm mb-6">
-                                    ¿Seguro que quieres eliminar <span className="text-white font-semibold">{deleteTarget.title}</span>?
-                                    Esta acción no se puede deshacer.
+                                    {IDEAS_COPY.deleteConfirm} <span className="text-white font-semibold">{deleteTarget.title}</span>?
+                                    {IDEAS_COPY.deleteIrreversible}
                                 </p>
-                                <div className="flex gap-3">
+                                <div className="flex flex-col gap-3 sm:flex-row">
                                     <button
                                         type="button"
                                         onClick={() => setDeleteTarget(null)}
                                         className="flex-1 py-2.5 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
                                     >
-                                        Cancelar
+                                        {IDEAS_COPY.cancel}
                                     </button>
                                     <button
                                         type="button"
@@ -318,7 +538,7 @@ export default function IdeasPage() {
                                         disabled={deleteSubmitting}
                                         className="flex-1 py-2.5 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-400 disabled:opacity-60"
                                     >
-                                        {deleteSubmitting ? 'Eliminando...' : 'Eliminar'}
+                                        {deleteSubmitting ? IDEAS_COPY.deleting : IDEAS_COPY.delete}
                                     </button>
                                 </div>
                             </motion.div>

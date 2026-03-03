@@ -69,9 +69,11 @@ export default function ProductionCard({ production, onClick }: ProductionCardPr
     const progress = getProgress(production);
 
     return (
-        <motion.div
-            className="surface-panel glow-hover p-4 cursor-pointer"
+        <motion.button
+            type="button"
+            className="surface-panel glow-hover w-full p-4 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
             onClick={() => onClick?.(production)}
+            aria-label={`Abrir produccion ${production.title}`}
             whileHover={{ x: 4 }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -131,6 +133,6 @@ export default function ProductionCard({ production, onClick }: ProductionCardPr
                     Ver detalle →
                 </Link>
             </div>
-        </motion.div>
+        </motion.button>
     );
 }

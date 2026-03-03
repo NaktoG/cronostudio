@@ -6,10 +6,12 @@ Todas las migraciones viven en `infra/migrations/*.sql` con el formato `YYYYMMDD
 
 | Escenario | Comando |
 |-----------|---------|
-| Local / CI con `DATABASE_URL` | `DATABASE_URL=postgresql://user:pass@host:5432/db ./scripts/db/migrate.sh` |
-| Stack Docker (contendedores infra/docker) | `./scripts/db_migrate.sh` |
+| Local (stack Docker) | `./scripts/migrate.sh` |
+| CI / Postgres externo | `DATABASE_URL=postgresql://user:pass@host:5432/db ./scripts/db/migrate.sh` |
 
-Ambos scripts son idempotentes: crean la tabla `schema_migrations` y solo ejecutan archivos pendientes.
+Ambos scripts son idempotentes y solo ejecutan archivos pendientes:
+- Local (`./scripts/migrate.sh`) usa `schema_migrations`.
+- CI/externo (`./scripts/db/migrate.sh`) usa `public._migrations`.
 
 ## 🚢 Deploy en entornos existentes
 
@@ -26,7 +28,7 @@ Ambos scripts son idempotentes: crean la tabla `schema_migrations` y solo ejecut
    ```
 4. **Verificar**
    ```bash
-   psql $DATABASE_URL -c "SELECT * FROM public.schema_migrations ORDER BY applied_at DESC LIMIT 5;"
+   psql $DATABASE_URL -c "SELECT * FROM public._migrations ORDER BY executed_at DESC LIMIT 5;"
    ```
 5. **Reiniciar servicios** si la migración añade columnas usadas por el backend (`systemctl restart cronostudio-web`).
 
@@ -37,7 +39,7 @@ Ambos scripts son idempotentes: crean la tabla `schema_migrations` y solo ejecut
    ./scripts/db/create-migration.sh add_table_foo
    ```
 2. Editar el SQL siguiendo las convenciones (`BEGIN/COMMIT`, `IF NOT EXISTS`, triggers, etc.).
-3. Ejecutar en local con `./scripts/db_migrate.sh` y añadir pruebas antes de abrir un PR.
+3. Ejecutar en local con `./scripts/migrate.sh` y añadir pruebas antes de abrir un PR.
 
 ## 🧰 Troubleshooting
 

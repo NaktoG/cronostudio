@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
         const ideaId = searchParams.get('ideaId');
+        const channelId = searchParams.get('channelId');
 
         let queryText = `SELECT s.*, i.title as idea_title FROM scripts s LEFT JOIN ideas i ON s.idea_id = i.id WHERE s.user_id = $1`;
         const params: (string | null)[] = [userId];
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
 
         if (status) { queryText += ` AND s.status = $${paramIndex++}`; params.push(status); }
         if (ideaId) { queryText += ` AND s.idea_id = $${paramIndex}`; params.push(ideaId); }
+        if (channelId) { queryText += ` AND i.channel_id = $${paramIndex++}`; params.push(channelId); }
         queryText += ' ORDER BY s.created_at DESC';
 
         const result = await query(queryText, params);

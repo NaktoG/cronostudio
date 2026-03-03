@@ -4,6 +4,8 @@ import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { authenticateUserOrService } from '@/middleware/serviceAuth';
 import { query } from '@/lib/db';
+import { logger } from '@/lib/logger';
+import { getInt } from '@/lib/http/query';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +23,14 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 
         const { searchParams } = new URL(request.url);
         const channelId = searchParams.get('channelId');
-        const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
-        const offset = parseInt(searchParams.get('offset') || '0');
+        const limit = getInt(searchParams, 'limit', { min: 1, max: 100, defaultValue: 50 });
+        const offset = getInt(searchParams, 'offset', { min: 0, defaultValue: 0 });
+        if (limit === null) {
+            return withSecurityHeaders(NextResponse.json({ error: 'invalid_query', field: 'limit' }, { status: 400 }));
+        }
+        if (offset === null) {
+            return withSecurityHeaders(NextResponse.json({ error: 'invalid_query', field: 'offset' }, { status: 400 }));
+        }
 
         let queryText = `
             SELECT v.id, v.channel_id, v.youtube_video_id, v.title, v.description,
@@ -62,12 +70,14 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             }
         ));
     } catch (error) {
-        console.error('[GET /api/videos] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[GET /api/videos] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al obtener videos' },
             { status: 500 }
-        );
+        ));
     }
 });
 
@@ -93,10 +103,10 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         );
 
         if (channelCheck.rows.length === 0) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'Canal no encontrado o no autorizado' },
                 { status: 404 }
-            );
+            ));
         }
 
         // Insertar video
@@ -113,7 +123,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             ]
         );
 
-        console.log('[POST /api/videos] Video creado:', {
+        logger.info('[POST /api/videos] Video creado', {
             id: result.rows[0].id,
             title: validatedData.title,
             userId: userId,
@@ -123,24 +133,26 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         return withSecurityHeaders(response);
     } catch (error) {
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         if (error instanceof Error && error.message.includes('duplicate key')) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'Video con este YouTube ID ya existe' },
                 { status: 409 }
-            );
+            ));
         }
 
-        console.error('[POST /api/videos] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[POST /api/videos] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al crear video' },
             { status: 500 }
-        );
+        ));
     }
 });

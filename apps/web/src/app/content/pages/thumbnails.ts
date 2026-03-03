@@ -1,0 +1,41 @@
+export const THUMBNAILS_COPY = {
+  title: 'Miniaturas',
+  subtitle: 'Organiza y revisa las miniaturas de tus videos',
+  new: 'Nueva Miniatura',
+  emptyTitle: 'No hay miniaturas todavia',
+  emptySubtitle: 'Crea tu primera miniatura',
+  create: 'Crear miniatura',
+  submittingCreate: 'Creando...',
+  delete: 'Eliminar',
+  deleteConfirm: '¿Eliminar esta miniatura?',
+  cancel: 'Cancelar',
+  statusUpdated: 'Estado actualizado',
+  list: {
+    showMore: 'Ver mas',
+    showLess: 'Ver menos',
+  },
+  form: {
+    title: 'Titulo',
+    notes: 'Notas',
+    imageUrl: 'URL de imagen',
+    placeholderTitle: 'Miniatura para video...',
+    placeholderNotes: 'Detalles, estilo o variaciones...',
+    placeholderUrl: 'https://.../thumbnail.png',
+  },
+  statuses: {
+    pending: 'Pendiente',
+    designing: 'Disenando',
+    designed: 'Disenada',
+    approved: 'Aprobada',
+  },
+  toasts: {
+    created: 'Miniatura creada',
+    deleted: 'Miniatura eliminada',
+    error: 'Error',
+  },
+  errors: {
+    create: 'Error al crear miniatura',
+    update: 'Error al actualizar miniatura',
+    delete: 'Error al eliminar miniatura',
+  },
+};

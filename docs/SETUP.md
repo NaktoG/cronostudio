@@ -37,6 +37,16 @@ cp infra/docker/.env.example infra/docker/.env
 
 Editar `infra/docker/.env` con valores locales. Ver `.env.example` para referencias.
 
+Copiar template de `apps/web/.env.example` a `apps/web/.env.local`:
+
+```bash
+cp apps/web/.env.example apps/web/.env.local
+```
+
+Editar `apps/web/.env.local` con valores locales. Ver `.env.example` para referencias.
+
+**Importante:** Los archivos `.env` reales nunca se versionan. Solo se versionan los templates `.env.example`. Si necesitas un entorno nuevo, copia el template correspondiente y completa los valores localmente.
+
 Variables obligatorias (mínimo):
 - `JWT_SECRET` (mínimo 32 caracteres, sin usar valores por defecto)
 
@@ -52,6 +62,10 @@ Servicios adicionales:
 - `OBS_ENABLED` / `OBS_ENDPOINT` / `OBS_ALERT_WEBHOOK` / `OBS_ALERT_EMAIL` (ver `docs/OBSERVABILITY.md` para métricas y alertas)
 - `ALLOW_PUBLIC_SIGNUP` (por defecto true; pon \"false\" si quieres desactivar registros en producción)
 
+Webhooks (obligatorio si usas integraciones externas):
+- `CRONOSTUDIO_SERVICE_USER_ID` (preferido) o `CRONOSTUDIO_SERVICE_USER_EMAIL`
+- **Nota:** si no se configuran, los endpoints de webhook responden `503` con `service_user_not_configured`.
+
 Variables para email (opcional):
 - `APP_BASE_URL`
 - `SMTP_HOST`
@@ -66,7 +80,7 @@ Control de registro:
 QA recomendado:
 - Ver `docs/QA_AUTH_FLOW.md`
 
-**⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` a git si contiene credenciales reales y recuerda que en producción no existen valores de respaldo: cada variable crítica debe establecerse explícitamente.
+**⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` ni `apps/web/.env.local` si contienen credenciales reales y recuerda que en producción no existen valores de respaldo: cada variable crítica debe establecerse explícitamente.
 
 ### 3. Levantar infraestructura (n8n + Postgres)
 
@@ -83,7 +97,7 @@ Verificar que ambos containers están en estado `Up`:
 ### 3.1 Ejecutar migraciones de base de datos
 
 ```bash
-./scripts/db/migrate.sh
+./scripts/migrate.sh
 ```
 
 > Ver `infra/migrations/README.md` para crear nuevas migraciones (`./scripts/db/create-migration.sh <descripcion>`).
@@ -124,6 +138,13 @@ Abrir navegador: **http://localhost:3000**
 
 Deberías ver página inicial de Next.js.
 
+#### Adminer (DB UI)
+- URL: http://localhost:8080
+- Sistema: PostgreSQL
+- Servidor: postgres
+- Usuario y Password: los definidos en `infra/docker/.env`
+- Base de datos: `POSTGRES_DB` de `infra/docker/.env`
+
 ## Estructura del Proyecto
 
 ```
@@ -146,6 +167,36 @@ cronostudio/
 ```
 
 ## Workflow Típico de Desarrollo
+
+### Inicio rapido (todo automatico)
+
+```bash
+./scripts/local_start.sh
+```
+
+Para detener todo:
+
+```bash
+./scripts/local_stop.sh
+```
+
+### Ver estado local
+
+```bash
+./scripts/local_status.sh
+```
+
+### Seed local (datos demo)
+
+```bash
+./scripts/local_seed.sh
+```
+
+### Reset local (borra datos)
+
+```bash
+./scripts/local_reset.sh --yes
+```
 
 ### Iniciar día de desarrollo
 
@@ -221,5 +272,6 @@ docker compose -f infra/docker/docker-compose.yml up -d
 
 Una vez que todo esté funcionando localmente, leer:
 - [RUNBOOK.md](RUNBOOK.md) — operación diaria y mantenimiento
+- [LOCAL_HEALTH_CHECKLIST.md](LOCAL_HEALTH_CHECKLIST.md) — checklist rápido local
 - [docs/decisions/0001-stack-base.md](decisions/0001-stack-base.md) — por qué este stack
 - [docs/runbooks/01-docker-n8n-postgres.md](runbooks/01-docker-n8n-postgres.md) — guía Docker detallada

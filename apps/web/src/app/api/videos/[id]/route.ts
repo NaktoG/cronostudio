@@ -4,6 +4,7 @@ import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRoles } from '@/middleware/rbac';
 import { query } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
-        console.error('[GET /api/videos/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[GET /api/videos/:id] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return NextResponse.json(
             { error: 'Error al obtener video' },
@@ -132,9 +135,9 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         );
 
         const user = getAuthUser(request);
-        console.log('[PUT /api/videos/:id] Video actualizado:', {
+        logger.info('[PUT /api/videos/:id] Video actualizado', {
             id,
-            by: user?.email,
+            userId: user?.userId,
         });
 
         const response = NextResponse.json(result.rows[0]);
@@ -147,7 +150,9 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
             );
         }
 
-        console.error('[PUT /api/videos/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[PUT /api/videos/:id] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return NextResponse.json(
             { error: 'Error al actualizar video' },
@@ -190,15 +195,17 @@ export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (r
         }
 
         const user = getAuthUser(request);
-        console.log('[DELETE /api/videos/:id] Video eliminado:', {
+        logger.info('[DELETE /api/videos/:id] Video eliminado', {
             id,
             title: result.rows[0].title,
-            by: user?.email,
+            userId: user?.userId,
         });
 
         return new NextResponse(null, { status: 204 });
     } catch (error) {
-        console.error('[DELETE /api/videos/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[DELETE /api/videos/:id] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return NextResponse.json(
             { error: 'Error al eliminar video' },

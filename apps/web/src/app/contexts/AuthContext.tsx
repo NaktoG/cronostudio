@@ -5,6 +5,8 @@ import type { User as DomainUser } from '@/domain/entities/User';
 
 type UserRole = DomainUser['role'];
 
+type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
 interface User {
     id: string;
     email: string;
@@ -14,6 +16,7 @@ interface User {
 
 interface AuthContextType {
     user: User | null;
+    status: AuthStatus;
     isLoading: boolean;
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<void>;
@@ -25,7 +28,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USER_KEY = 'cronostudio_user';
+const LAST_KNOWN_USER_KEY = 'cronostudio_user';
 
 interface AuthProviderProps {
     children: ReactNode;
@@ -33,7 +36,7 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    const [status, setStatus] = useState<AuthStatus>('loading');
     const [error, setError] = useState<string | null>(null);
 
     const saveSession = useCallback((newUser: User) => {
@@ -41,13 +44,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
             ...newUser,
             role: newUser.role ?? 'owner',
         };
-        localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+        localStorage.setItem(LAST_KNOWN_USER_KEY, JSON.stringify(normalizedUser));
         setUser(normalizedUser);
+        setStatus('authenticated');
     }, []);
 
     const clearSession = useCallback(() => {
-        localStorage.removeItem(USER_KEY);
+        localStorage.removeItem(LAST_KNOWN_USER_KEY);
         setUser(null);
+        setStatus('unauthenticated');
     }, []);
 
     useEffect(() => {
@@ -75,16 +80,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     clearSession();
                 }
             } catch {
-                const storedUser = localStorage.getItem(USER_KEY);
-                if (storedUser) {
-                    try {
-                        setUser(JSON.parse(storedUser));
-                    } catch {
-                        clearSession();
-                    }
-                }
+                clearSession();
             } finally {
-                setIsLoading(false);
+                setStatus((current) => (current === 'loading' ? 'unauthenticated' : current));
             }
         };
 
@@ -92,7 +90,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, [saveSession, clearSession]);
 
     const login = useCallback(async (email: string, password: string) => {
-        setIsLoading(true);
+        setStatus('loading');
         setError(null);
 
         try {
@@ -115,14 +113,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Error desconocido';
             setError(message);
+            setStatus('unauthenticated');
             throw err;
-        } finally {
-            setIsLoading(false);
         }
     }, [saveSession]);
 
     const register = useCallback(async (email: string, password: string, name: string) => {
-        setIsLoading(true);
+        setStatus('loading');
         setError(null);
 
         try {
@@ -142,12 +139,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
 
             // Registro requiere verificación, no iniciamos sesión
+            setStatus('unauthenticated');
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Error desconocido';
             setError(message);
+            setStatus('unauthenticated');
             throw err;
-        } finally {
-            setIsLoading(false);
         }
     }, []);
 
@@ -167,8 +164,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const value: AuthContextType = {
         user,
-        isLoading,
-        isAuthenticated: !!user,
+        status,
+        isLoading: status === 'loading',
+        isAuthenticated: status === 'authenticated',
         login,
         register,
         logout,

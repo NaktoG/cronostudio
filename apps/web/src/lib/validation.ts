@@ -23,6 +23,18 @@ export const CreateChannelSchema = z.object({
 
 export type CreateChannelInput = z.infer<typeof CreateChannelSchema>;
 
+export const UpdateChannelSchema = z.object({
+  name: z.string().min(1, 'Nombre requerido').max(255, 'Nombre muy largo').trim().optional(),
+  youtubeChannelId: z
+    .string()
+    .min(1, 'Channel ID requerido')
+    .max(100, 'Channel ID inválido')
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Channel ID con formato inválido')
+    .optional(),
+});
+
+export type UpdateChannelInput = z.infer<typeof UpdateChannelSchema>;
+
 // Schema para query parameters
 export const ChannelQuerySchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(50),

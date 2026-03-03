@@ -3,7 +3,7 @@
 Checklist para validar registro, verificacion y recuperacion de cuenta.
 
 ## Pre-requisitos
-- Migraciones aplicadas: `./scripts/db_migrate.sh`
+- Migraciones aplicadas: `./scripts/migrate.sh`
 - SMTP configurado en `infra/docker/.env` (o se usaran logs y no se enviara email real)
 - App corriendo: `npm run dev` en `apps/web`
 

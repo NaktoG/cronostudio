@@ -4,6 +4,7 @@ import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { authenticateUserOrService } from '@/middleware/serviceAuth';
 import { query } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,18 +139,20 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         return withSecurityHeaders(response);
     } catch (error) {
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: error.message },
                 { status: 400 }
-            );
+            ));
         }
 
-        console.error('[GET /api/analytics] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[GET /api/analytics] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al obtener analytics' },
             { status: 500 }
-        );
+        ));
     }
 });
 
@@ -177,10 +180,10 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         );
 
         if (videoCheck.rows.length === 0) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'Video no encontrado o no autorizado' },
                 { status: 404 }
-            );
+            ));
         }
 
         // Upsert: insertar o actualizar si ya existe para esa fecha
@@ -202,7 +205,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             ]
         );
 
-        console.log('[POST /api/analytics] Analytics registrado:', {
+        logger.info('[POST /api/analytics] Analytics registrado', {
             id: result.rows[0].id,
             videoId: validatedData.videoId,
             date: validatedData.date,
@@ -213,17 +216,19 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         return withSecurityHeaders(response);
     } catch (error) {
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: error.message },
                 { status: 400 }
-            );
+            ));
         }
 
-        console.error('[POST /api/analytics] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('[POST /api/analytics] Error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al registrar analytics' },
             { status: 500 }
-        );
+        ));
     }
 });

@@ -14,6 +14,8 @@ export interface Production {
     readonly priority: number;
     readonly targetDate: Date | null;
     readonly publishedAt: Date | null;
+    readonly publishedUrl: string | null;
+    readonly platformId: string | null;
     readonly scriptStatus: string | null;
     readonly thumbnailStatus: string | null;
     readonly seoScore: number | null;
@@ -33,6 +35,8 @@ export interface CreateProductionInput {
     ideaId?: string | null;
     priority?: number;
     targetDate?: Date | null;
+    publishedUrl?: string | null;
+    platformId?: string | null;
 }
 
 export interface UpdateProductionInput {
@@ -44,6 +48,8 @@ export interface UpdateProductionInput {
     scriptStatus?: string | null;
     thumbnailStatus?: string | null;
     seoScore?: number | null;
+    publishedUrl?: string | null;
+    platformId?: string | null;
 }
 
 // Factory function
@@ -58,6 +64,8 @@ export function createProduction(input: CreateProductionInput): Omit<Production,
         priority: input.priority ?? 0,
         targetDate: input.targetDate ?? null,
         publishedAt: null,
+        publishedUrl: null,
+        platformId: null,
         scriptStatus: null,
         thumbnailStatus: null,
         seoScore: null,

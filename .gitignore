@@ -8,7 +8,12 @@ out/
 # Env / secrets
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!.env.*.example
+!.env.template
+!.env.sample
 
 # OS
 .DS_Store
@@ -27,6 +32,9 @@ n8n/credentials/
 # Logs
 *.log
 logs/
+
+# Session notes
+docs/SESSION_*.md
 
 # Local n8n exports (never commit)
 n8n/workflows/_exports/

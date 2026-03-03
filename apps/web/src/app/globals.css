@@ -10,6 +10,8 @@
   --border-color: rgba(255, 255, 255, 0.08);
   --accent: #f6c945;
   --accent-soft: rgba(246, 201, 69, 0.15);
+  --accent-secondary: #35d0c6;
+  --accent-secondary-soft: rgba(53, 208, 198, 0.18);
   --glow: 0 0 12px rgba(246, 201, 69, 0.12);
 }
 
@@ -32,6 +34,8 @@
   --border-color: rgba(255, 255, 255, 0.08);
   --accent: #f6c945;
   --accent-soft: rgba(246, 201, 69, 0.15);
+  --accent-secondary: #35d0c6;
+  --accent-secondary-soft: rgba(53, 208, 198, 0.18);
   --glow: 0 0 12px rgba(246, 201, 69, 0.12);
 }
 

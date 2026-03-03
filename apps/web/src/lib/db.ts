@@ -16,6 +16,22 @@ function getPool(): Pool {
 
   const databaseUrl = process.env.DATABASE_URL;
 
+  if (!databaseUrl) {
+    const missing: string[] = [];
+    if (!process.env.POSTGRES_HOST) missing.push('POSTGRES_HOST');
+    if (!process.env.POSTGRES_PORT) missing.push('POSTGRES_PORT');
+    if (!process.env.POSTGRES_DB) missing.push('POSTGRES_DB');
+    if (!process.env.POSTGRES_USER) missing.push('POSTGRES_USER');
+    if (!process.env.POSTGRES_PASSWORD) missing.push('POSTGRES_PASSWORD');
+
+    if (missing.length > 0) {
+      throw new Error(
+        `Missing required database environment variables: ${missing.join(', ')}.\n` +
+          'Set DATABASE_URL or configure all POSTGRES_* variables in apps/web/.env.local.'
+      );
+    }
+  }
+
   pool = new Pool(
     databaseUrl
       ? {
@@ -26,11 +42,11 @@ function getPool(): Pool {
           ...getSslConfig(databaseUrl),
         }
       : {
-          host: process.env.POSTGRES_HOST || 'localhost',
-          port: parseInt(process.env.POSTGRES_PORT || '5432'),
-          database: process.env.POSTGRES_DB || 'cronostudio',
-          user: process.env.POSTGRES_USER || 'cronostudio',
-          password: process.env.POSTGRES_PASSWORD || 'cronostudio',
+          host: process.env.POSTGRES_HOST as string,
+          port: parseInt(process.env.POSTGRES_PORT as string, 10),
+          database: process.env.POSTGRES_DB as string,
+          user: process.env.POSTGRES_USER as string,
+          password: process.env.POSTGRES_PASSWORD as string,
           max: 20, // Máximo de conexiones en el pool
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 2000,
