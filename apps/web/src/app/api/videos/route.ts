@@ -123,6 +123,24 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
             ]
         );
 
+        if (validatedData.productionId) {
+            if (validatedData.publishedAt) {
+                await query(
+                    `UPDATE productions
+                     SET video_id = $1, status = 'published', published_at = $2, updated_at = NOW()
+                     WHERE id = $3 AND user_id = $4`,
+                    [result.rows[0].id, validatedData.publishedAt, validatedData.productionId, userId]
+                );
+            } else {
+                await query(
+                    `UPDATE productions
+                     SET video_id = $1, status = 'publishing', updated_at = NOW()
+                     WHERE id = $2 AND user_id = $3`,
+                    [result.rows[0].id, validatedData.productionId, userId]
+                );
+            }
+        }
+
         logger.info('[POST /api/videos] Video creado', {
             id: result.rows[0].id,
             title: validatedData.title,
