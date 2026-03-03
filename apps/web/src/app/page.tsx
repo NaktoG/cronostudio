@@ -250,6 +250,7 @@ function DashboardContent() {
   const [publishTarget, setPublishTarget] = useState<Production | null>(null);
   const [publishUrl, setPublishUrl] = useState('');
   const [publishPlatformId, setPublishPlatformId] = useState('');
+  const [publishPlatformTouched, setPublishPlatformTouched] = useState(false);
   const [publishSubmitting, setPublishSubmitting] = useState(false);
   const [quickPublishSubmitting, setQuickPublishSubmitting] = useState(false);
   const [reconcileSubmitting, setReconcileSubmitting] = useState(false);
@@ -496,12 +497,28 @@ function DashboardContent() {
       setPublishTarget(null);
       setPublishUrl('');
       setPublishPlatformId('');
+      setPublishPlatformTouched(false);
       fetchData();
       addToast('Publicado', 'success');
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Error al marcar como publicado', 'error');
     } finally {
       setPublishSubmitting(false);
+    }
+  };
+
+  const extractYouTubeId = (value: string) => {
+    if (!value) return '';
+    try {
+      const url = new URL(value);
+      const id = url.searchParams.get('v');
+      if (id) return id;
+      if (url.hostname.includes('youtu.be')) {
+        return url.pathname.replace('/', '').trim();
+      }
+      return '';
+    } catch {
+      return '';
     }
   };
 
@@ -1906,26 +1923,39 @@ function DashboardContent() {
           >
             <h3 id="publish-modal-title" className="text-2xl font-semibold text-white mb-3">Marcar como publicado</h3>
             <p className="text-sm text-slate-300 mb-5">{publishTarget.title}</p>
+            <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs text-yellow-200">
+              Pegá la URL del video publicado para cerrar el pipeline y registrar el enlace.
+            </div>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">URL publicado (opcional)</label>
-                <input
-                  type="url"
-                  value={publishUrl}
-                  onChange={(event) => setPublishUrl(event.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
-                  placeholder="https://youtube.com/watch?v=..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">ID de plataforma (opcional)</label>
-                <input
-                  type="text"
-                  value={publishPlatformId}
-                  onChange={(event) => setPublishPlatformId(event.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
-                  placeholder="YouTube videoId"
-                />
+                  <input
+                    type="url"
+                    value={publishUrl}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setPublishUrl(next);
+                      if (!publishPlatformTouched) {
+                        const extracted = extractYouTubeId(next);
+                        setPublishPlatformId(extracted);
+                      }
+                    }}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">ID de plataforma (opcional)</label>
+                  <input
+                    type="text"
+                    value={publishPlatformId}
+                    onChange={(event) => {
+                      setPublishPlatformId(event.target.value);
+                      setPublishPlatformTouched(true);
+                    }}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
+                    placeholder="YouTube videoId"
+                  />
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <motion.button
