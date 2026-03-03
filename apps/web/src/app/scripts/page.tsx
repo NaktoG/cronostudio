@@ -325,7 +325,7 @@ export default function ScriptsPage() {
                                 <p className="text-sm sm:text-base text-slate-300">{SCRIPTS_COPY.subtitle}</p>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:items-center">
+                        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:items-end">
                             {channels.length > 0 && (
                                 <div className="min-w-[220px]">
                                     <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>
@@ -384,7 +384,7 @@ export default function ScriptsPage() {
                             )}
                             <motion.button
                                 onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' }); setShowModal(true); }}
-                                className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
+                                className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto sm:self-end"
                                 style={{
                                     background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
                                     boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
