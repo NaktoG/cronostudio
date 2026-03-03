@@ -137,48 +137,24 @@ export default function GuidePanel() {
     published: 0,
   });
   const [loading, setLoading] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState('');
-  const [hasStoredPreference, setHasStoredPreference] = useState(false);
 
   useEffect(() => {
     const stored = typeof window !== 'undefined'
-      ? window.localStorage.getItem('cronostudio.guide.collapsed')
+      ? window.localStorage.getItem('cronostudio.guide.open')
       : null;
     if (stored !== null) {
-      setCollapsed(stored === 'true');
-      setHasStoredPreference(true);
+      setIsOpen(stored === 'true');
     }
   }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (hasStoredPreference) return;
-    const handleResize = () => {
-      const shouldCollapse = window.innerWidth < 1024;
-      setCollapsed(shouldCollapse);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [hasStoredPreference]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
     setActiveChannelId(storedChannel);
   }, [pathname]);
-
-  useEffect(() => {
-    if (!isAuthenticated || AUTH_ROUTES.has(pathname)) return;
-    if (typeof window === 'undefined') return;
-    const key = `cronostudio.guide.tour_seen.${pathname}`;
-    const seen = window.localStorage.getItem(key);
-    if (!seen) {
-      setShowSteps(true);
-    }
-  }, [isAuthenticated, pathname]);
 
   const fetchCounts = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
@@ -276,19 +252,21 @@ export default function GuidePanel() {
 
   return (
     <div className="fixed bottom-6 right-6 z-[65] flex flex-col items-end gap-3">
-      {collapsed ? (
+      {!isOpen && (
         <button
           type="button"
           onClick={() => {
-            setCollapsed(false);
-            window.localStorage.setItem('cronostudio.guide.collapsed', 'false');
+            setIsOpen(true);
+            window.localStorage.setItem('cronostudio.guide.open', 'true');
           }}
           className="inline-flex items-center gap-2 rounded-full border border-yellow-500/40 bg-gray-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300 shadow-lg"
         >
           <HelpCircle className="h-4 w-4" />
           Guia
         </button>
-      ) : (
+      )}
+
+      {isOpen && (
         <div className="w-[min(92vw,360px)] rounded-2xl border border-gray-800 bg-gray-950/95 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -301,12 +279,12 @@ export default function GuidePanel() {
             <button
               type="button"
               onClick={() => {
-                setCollapsed(true);
-                window.localStorage.setItem('cronostudio.guide.collapsed', 'true');
+                setIsOpen(false);
+                window.localStorage.setItem('cronostudio.guide.open', 'false');
               }}
               className="text-xs text-slate-400 hover:text-yellow-300"
             >
-              Minimizar
+              Cerrar
             </button>
           </div>
 
