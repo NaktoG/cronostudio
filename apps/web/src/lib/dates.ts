@@ -144,23 +144,35 @@ const DAY_MONTH_FORMAT = new Intl.DateTimeFormat('es-AR', {
   month: '2-digit',
 });
 
+function toDate(value: Date | string): Date | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export function formatDate(value: Date | string) {
-  const date = value instanceof Date ? value : new Date(value);
+  const date = toDate(value);
+  if (!date) return '';
   return DATE_FORMAT.format(date);
 }
 
 export function formatDateTime(value: Date | string) {
-  const date = value instanceof Date ? value : new Date(value);
+  const date = toDate(value);
+  if (!date) return '';
   return DATE_TIME_FORMAT.format(date);
 }
 
 export function formatMonthYear(value: Date | string) {
-  const date = value instanceof Date ? value : new Date(value);
+  const date = toDate(value);
+  if (!date) return '';
   return MONTH_YEAR_FORMAT.format(date);
 }
 
 export function formatDayMonth(value: Date | string) {
-  const date = value instanceof Date ? value : new Date(value);
+  const date = toDate(value);
+  if (!date) return '';
   return DAY_MONTH_FORMAT.format(date);
 }
 
