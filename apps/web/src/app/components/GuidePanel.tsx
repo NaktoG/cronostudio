@@ -292,100 +292,100 @@ export default function GuidePanel() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-yellow-400/90">Modo guia</div>
-              <h3 className="mt-1 text-lg font-semibold text-white flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-yellow-300" />
-                Proximo paso recomendado
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setIsOpen(false);
-                window.localStorage.setItem('cronostudio.guide.open', 'false');
-              }}
-              className="text-xs text-slate-400 hover:text-yellow-300"
-            >
-              Cerrar
-            </button>
+            <h3 className="mt-1 text-lg font-semibold text-white flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-yellow-300" />
+              Proximo paso recomendado
+            </h3>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false);
+              window.localStorage.setItem('cronostudio.guide.open', 'false');
+            }}
+            className="text-xs text-slate-400 hover:text-yellow-300"
+          >
+            Cerrar
+          </button>
+        </div>
 
-          <div className="mt-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
-            <p className="text-sm font-semibold text-slate-100">{currentStep.title}</p>
-            <p className="text-xs text-slate-400 mt-1">{currentStep.description}</p>
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Progreso {progress}%</span>
-              <Link
-                href={currentStep.href}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-300"
+        <div className="mt-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
+          <p className="text-sm font-semibold text-slate-100">{currentStep.title}</p>
+          <p className="text-xs text-slate-400 mt-1">{currentStep.description}</p>
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Progreso {progress}%</span>
+            <Link
+              href={currentStep.href}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-300"
+            >
+              {currentStep.actionLabel}
+              <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-gray-800">
+            <div className="h-1.5 rounded-full bg-yellow-400" style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+
+        {showFull && (
+          <div className="mt-4 space-y-2">
+            {steps.map((step) => (
+              <div
+                key={step.key}
+                className="flex items-start gap-2 rounded-lg border border-gray-800 bg-gray-900/30 px-3 py-2"
               >
-                {currentStep.actionLabel}
-                <ChevronRight className="h-3 w-3" />
-              </Link>
-            </div>
-            <div className="mt-2 h-1.5 w-full rounded-full bg-gray-800">
-              <div className="h-1.5 rounded-full bg-yellow-400" style={{ width: `${progress}%` }} />
-            </div>
-          </div>
-
-          {showFull && (
-            <div className="mt-4 space-y-2">
-              {steps.map((step) => (
-                <div
-                  key={step.key}
-                  className="flex items-start gap-2 rounded-lg border border-gray-800 bg-gray-900/30 px-3 py-2"
-                >
-                  <CheckCircle2 className={`h-4 w-4 ${step.complete ? 'text-emerald-400' : 'text-slate-600'}`} />
-                  <div className="flex-1">
-                    <p className={`text-xs font-semibold ${step.complete ? 'text-emerald-200' : 'text-slate-200'}`}>
-                      {step.title}
-                    </p>
-                    <p className="text-[11px] text-slate-500">{step.description}</p>
-                  </div>
+                <CheckCircle2 className={`h-4 w-4 ${step.complete ? 'text-emerald-400' : 'text-slate-600'}`} />
+                <div className="flex-1">
+                  <p className={`text-xs font-semibold ${step.complete ? 'text-emerald-200' : 'text-slate-200'}`}>
+                    {step.title}
+                  </p>
+                  <p className="text-[11px] text-slate-500">{step.description}</p>
                 </div>
-              ))}
-            </div>
-          )}
+              </div>
+            ))}
+          </div>
+        )}
 
-          {showFull && tip && (
-            <div className="mt-4 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-yellow-400/90">En esta seccion</div>
-              <p className="mt-1 text-sm font-semibold text-white">{tip.title}</p>
-              <p className="text-xs text-slate-400 mt-1">{tip.description}</p>
-            </div>
-          )}
+        {showFull && tip && (
+          <div className="mt-4 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-yellow-400/90">En esta seccion</div>
+            <p className="mt-1 text-sm font-semibold text-white">{tip.title}</p>
+            <p className="text-xs text-slate-400 mt-1">{tip.description}</p>
+          </div>
+        )}
 
-          <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => fetchCounts()}
+            className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-yellow-300"
+            disabled={loading}
+          >
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Actualizando...' : 'Actualizar guia'}
+          </button>
+          <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => fetchCounts()}
-              className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-yellow-300"
-              disabled={loading}
+              onClick={() => setShowFull((current) => !current)}
+              className="text-[10px] uppercase tracking-[0.2em] text-slate-400 hover:text-yellow-300"
             >
-              <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Actualizando...' : 'Actualizar guia'}
+              {showFull ? 'Ver menos' : 'Ver todo'}
             </button>
-            <div className="flex items-center gap-2">
+            {sectionSteps && (
               <button
                 type="button"
-                onClick={() => setShowFull((current) => !current)}
-                className="text-[10px] uppercase tracking-[0.2em] text-slate-400 hover:text-yellow-300"
+                onClick={() => setShowSteps(true)}
+                className="text-[10px] uppercase tracking-[0.2em] text-yellow-300"
               >
-                {showFull ? 'Ver menos' : 'Ver todo'}
+                Guíame
               </button>
-              {sectionSteps && (
-                <button
-                  type="button"
-                  onClick={() => setShowSteps(true)}
-                  className="text-[10px] uppercase tracking-[0.2em] text-yellow-300"
-                >
-                  Guíame
-                </button>
-              )}
-              <span className="text-[10px] text-slate-500">{completedCount}/{steps.length} completados</span>
-            </div>
+            )}
+            <span className="text-[10px] text-slate-500">{completedCount}/{steps.length} completados</span>
           </div>
         </div>
       </div>
+
       {showSteps && sectionSteps && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
           <div className="w-[min(92vw,420px)] rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl">
