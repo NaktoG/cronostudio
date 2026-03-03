@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { CheckCircle2, FileText, Film, Lightbulb, Smartphone, Scissors, Upload, Video } from 'lucide-react';
 import { COMPONENT_COPY } from '../content/components';
 import { NEXT_ACTION_LABELS, PRODUCTION_STATUS_BADGES } from '../content/labels';
@@ -9,6 +10,9 @@ export interface Production {
     id: string;
     title: string;
     status: string;
+    channel_id?: string | null;
+    idea_id?: string | null;
+    script_id?: string | null;
     channel_name?: string;
     script_status?: string;
     thumbnail_status?: string;
@@ -62,6 +66,32 @@ function getNextAction(prod: Production): string {
         return NEXT_ACTION_LABELS[prod.status as keyof typeof NEXT_ACTION_LABELS];
     }
     return NEXT_ACTION_LABELS.published;
+}
+
+function getNextActionCta(prod: Production): { label: string; href: string; tone: string } | null {
+    if (prod.status === 'scripting' && (!prod.script_status || prod.script_status === 'draft')) {
+        const params = new URLSearchParams();
+        params.set('profile', 'script_architect');
+        if (prod.idea_id) params.set('ideaId', prod.idea_id);
+        if (prod.channel_id) params.set('channelId', prod.channel_id);
+        return { label: 'Generar guion', href: `/ai?${params.toString()}`, tone: 'text-emerald-300' };
+    }
+
+    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < 60)) {
+        const params = new URLSearchParams();
+        params.set('profile', 'titles_thumbs');
+        if (prod.idea_id) params.set('ideaId', prod.idea_id);
+        if (prod.script_id) params.set('scriptId', prod.script_id);
+        if (prod.channel_id) params.set('channelId', prod.channel_id);
+        return { label: 'SEO + Títulos', href: `/ai?${params.toString()}`, tone: 'text-sky-300' };
+    }
+
+    if ((prod.status === 'editing' || prod.status === 'shorts' || prod.status === 'publishing') && prod.thumbnail_status !== 'approved') {
+        const query = prod.channel_id ? `?channelId=${prod.channel_id}` : '';
+        return { label: 'Miniatura', href: `/thumbnails${query}`, tone: 'text-yellow-300' };
+    }
+
+    return null;
 }
 
 export default function ProductionsList({
@@ -142,6 +172,7 @@ export default function ProductionsList({
                         const badge = STATUS_BADGE[prod.status] || STATUS_BADGE.idea;
                         const Icon = badge.icon;
                         const nextAction = getNextAction(prod);
+                        const cta = getNextActionCta(prod);
 
                         const isSelected = selectedProductionId === prod.id;
                         return (
@@ -168,6 +199,15 @@ export default function ProductionsList({
                                 <div className="flex-1 min-w-0">
                                     <span className="text-sm sm:text-base font-medium text-white truncate block">{prod.title}</span>
                                     <span className="text-xs sm:text-sm text-slate-400 truncate block">{nextAction}</span>
+                                    {cta && (
+                                        <Link
+                                            href={cta.href}
+                                            onClick={(event) => event.stopPropagation()}
+                                            className={`mt-1 inline-flex items-center text-xs ${cta.tone} hover:opacity-80`}
+                                        >
+                                            {cta.label}
+                                        </Link>
+                                    )}
                                 </div>
 
                                 {prod.status === 'publishing' && onMarkPublished && (
