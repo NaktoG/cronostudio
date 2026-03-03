@@ -26,6 +26,17 @@ interface Thumbnail {
     created_at: string;
 }
 
+interface ScriptOption {
+    id: string;
+    title: string;
+}
+
+interface VideoOption {
+    id: string;
+    title: string;
+    youtube_video_id: string;
+}
+
 interface Channel {
     id: string;
     name: string;
@@ -45,6 +56,8 @@ export default function ThumbnailsPage() {
     const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [selectedChannel, setSelectedChannel] = useState('');
+    const [scriptOptions, setScriptOptions] = useState<ScriptOption[]>([]);
+    const [videoOptions, setVideoOptions] = useState<VideoOption[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({ title: '', notes: '', imageUrl: '', scriptId: '', videoId: '' });
@@ -110,6 +123,56 @@ export default function ThumbnailsPage() {
             setSelectedChannel(storedChannel);
         }
     }, [selectedChannel]);
+
+    const fetchScriptOptions = useCallback(async (signal?: AbortSignal) => {
+        if (!selectedChannel) {
+            setScriptOptions([]);
+            return;
+        }
+        try {
+            const response = await authFetch(`/api/scripts?channelId=${selectedChannel}`, { signal });
+            if (response.ok) {
+                const data = await response.json();
+                const options = Array.isArray(data)
+                    ? data.map((script) => ({ id: script.id, title: script.title }))
+                    : [];
+                setScriptOptions(options);
+            }
+        } catch (err) {
+            if (signal?.aborted) return;
+            console.error('Error fetching scripts:', err);
+        }
+    }, [authFetch, selectedChannel]);
+
+    const fetchVideoOptions = useCallback(async (signal?: AbortSignal) => {
+        if (!selectedChannel) {
+            setVideoOptions([]);
+            return;
+        }
+        try {
+            const response = await authFetch(`/api/videos?channelId=${selectedChannel}&limit=50`, { signal });
+            if (response.ok) {
+                const payload = await response.json();
+                const rows = Array.isArray(payload?.data) ? payload.data : [];
+                setVideoOptions(rows.map((video: { id: string; title: string; youtube_video_id: string }) => ({
+                    id: video.id,
+                    title: video.title,
+                    youtube_video_id: video.youtube_video_id,
+                })));
+            }
+        } catch (err) {
+            if (signal?.aborted) return;
+            console.error('Error fetching videos:', err);
+        }
+    }, [authFetch, selectedChannel]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const controller = new AbortController();
+        fetchScriptOptions(controller.signal);
+        fetchVideoOptions(controller.signal);
+        return () => controller.abort();
+    }, [isAuthenticated, fetchScriptOptions, fetchVideoOptions]);
 
     useEffect(() => {
         if (!showModal) return;
@@ -365,12 +428,23 @@ export default function ThumbnailsPage() {
                             >
                                 <h3 id="thumbnail-modal-title" className="text-2xl font-bold text-white mb-6">{THUMBNAILS_COPY.new}</h3>
                                 <form onSubmit={handleSubmit} className="space-y-4">
+                                    <datalist id="script-options">
+                                        {scriptOptions.map((script) => (
+                                            <option key={script.id} value={script.id}>{script.title}</option>
+                                        ))}
+                                    </datalist>
+                                    <datalist id="video-options">
+                                        {videoOptions.map((video) => (
+                                            <option key={video.id} value={video.id}>{video.title || video.youtube_video_id}</option>
+                                        ))}
+                                    </datalist>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">Script ID (opcional)</label>
                                         <input
                                             type="text"
                                             value={formData.scriptId}
                                             onChange={(e) => setFormData({ ...formData, scriptId: e.target.value })}
+                                            list="script-options"
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
                                             placeholder="UUID del guion"
                                         />
@@ -381,6 +455,7 @@ export default function ThumbnailsPage() {
                                             type="text"
                                             value={formData.videoId}
                                             onChange={(e) => setFormData({ ...formData, videoId: e.target.value })}
+                                            list="video-options"
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
                                             placeholder="UUID del video"
                                         />
