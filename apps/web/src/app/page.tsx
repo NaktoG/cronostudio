@@ -267,6 +267,7 @@ function DashboardContent() {
   const [publishPlatformId, setPublishPlatformId] = useState('');
   const [publishPlatformTouched, setPublishPlatformTouched] = useState(false);
   const [focusedProductionId, setFocusedProductionId] = useState<string | null>(null);
+  const [focusSearch, setFocusSearch] = useState('');
   const [publishSubmitting, setPublishSubmitting] = useState(false);
   const [quickPublishSubmitting, setQuickPublishSubmitting] = useState(false);
   const [reconcileSubmitting, setReconcileSubmitting] = useState(false);
@@ -706,6 +707,12 @@ function DashboardContent() {
     return [...base].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
   }, [activeProductions, activeStage, focusedProductionId]);
   const focusChecklist = focusProduction ? getChecklistStatus(focusProduction) : null;
+  const focusOptions = useMemo(() => {
+    return activeProductions.map((production) => ({
+      id: production.id,
+      title: production.title,
+    }));
+  }, [activeProductions]);
 
   const buildAiUrl = (profile: string, params: Record<string, string | null | undefined>) => {
     const search = new URLSearchParams();
@@ -851,6 +858,23 @@ function DashboardContent() {
     } as Partial<Record<keyof PipelineStats, { label: string; onClick: () => void }>>;
   }, [focusProduction, nextAction]);
 
+  const handleFocusSearch = (value: string) => {
+    setFocusSearch(value);
+    if (!value) {
+      setFocusedProductionId(null);
+      return;
+    }
+    const direct = focusOptions.find((option) => option.id === value);
+    if (direct) {
+      setFocusedProductionId(direct.id);
+      return;
+    }
+    const match = focusOptions.find((option) => option.title.toLowerCase() === value.toLowerCase());
+    if (match) {
+      setFocusedProductionId(match.id);
+    }
+  };
+
   const handleDockVerify = () => {
     fetchData();
     openDrawerForSlot(nextSlot);
@@ -990,6 +1014,11 @@ function DashboardContent() {
       <Header />
       <PageTransition className="flex-1">
           <main className="w-full max-w-full px-4 sm:px-6 lg:px-12 py-6 sm:py-8 pb-24 lg:pb-8">
+            <datalist id="focus-productions">
+              {focusOptions.map((option) => (
+                <option key={option.id} value={option.title} />
+              ))}
+            </datalist>
             {/* Context bar */}
             <motion.div
               className="surface-card glow-hover p-4 sm:p-5 mb-6"
@@ -1293,6 +1322,16 @@ function DashboardContent() {
                         {focusOpen && (
                           <div className="mt-3 space-y-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
                             <div>
+                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Buscar producción</label>
+                              <input
+                                value={focusSearch}
+                                onChange={(event) => handleFocusSearch(event.target.value)}
+                                list="focus-productions"
+                                placeholder="Escribe un título"
+                                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
+                              />
+                            </div>
+                            <div>
                               <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Próximo paso</div>
                               {focusProduction && (
                                 <div className="mt-1 text-xs text-slate-400">
@@ -1562,6 +1601,16 @@ function DashboardContent() {
                       </div>
 
                       <div className="surface-card glow-hover p-4 sm:p-5">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Buscar producción</label>
+                          <input
+                            value={focusSearch}
+                            onChange={(event) => handleFocusSearch(event.target.value)}
+                            list="focus-productions"
+                            placeholder="Escribe un título"
+                            className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
+                          />
+                        </div>
                         <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Próximo paso</div>
                         {focusProduction && (
                           <div className="mt-2 text-xs text-slate-400">
