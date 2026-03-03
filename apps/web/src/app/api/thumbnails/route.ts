@@ -149,6 +149,25 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
             return withSecurityHeaders(NextResponse.json({ error: 'Miniatura no encontrada' }, { status: 404 }));
         }
 
+        if (data.status === 'approved') {
+            const row = result.rows[0] as { id: string; script_id?: string | null; video_id?: string | null };
+            if (row.script_id) {
+                await query(
+                    `UPDATE productions
+                     SET thumbnail_id = $1, status = 'publishing', updated_at = NOW()
+                     WHERE script_id = $2 AND user_id = $3`,
+                    [row.id, row.script_id, userId]
+                );
+            } else if (row.video_id) {
+                await query(
+                    `UPDATE productions
+                     SET thumbnail_id = $1, status = 'publishing', updated_at = NOW()
+                     WHERE video_id = $2 AND user_id = $3`,
+                    [row.id, row.video_id, userId]
+                );
+            }
+        }
+
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
         console.error('Error updating thumbnail:', error);

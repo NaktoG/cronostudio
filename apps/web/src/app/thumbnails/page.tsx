@@ -47,7 +47,7 @@ export default function ThumbnailsPage() {
     const [selectedChannel, setSelectedChannel] = useState('');
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [formData, setFormData] = useState({ title: '', notes: '', imageUrl: '' });
+    const [formData, setFormData] = useState({ title: '', notes: '', imageUrl: '', scriptId: '', videoId: '' });
     const [submitting, setSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
     const modalRef = useRef<HTMLDivElement>(null);
@@ -128,14 +128,20 @@ export default function ThumbnailsPage() {
         try {
             const response = await authFetch('/api/thumbnails', {
                 method: 'POST',
-                body: JSON.stringify(formData),
+                body: JSON.stringify({
+                    title: formData.title,
+                    notes: formData.notes,
+                    imageUrl: formData.imageUrl,
+                    scriptId: formData.scriptId || undefined,
+                    videoId: formData.videoId || undefined,
+                }),
             });
             if (!response.ok) {
                 const data = await response.json();
                 throw new Error(data.error || THUMBNAILS_COPY.errors.create);
             }
             setShowModal(false);
-            setFormData({ title: '', notes: '', imageUrl: '' });
+            setFormData({ title: '', notes: '', imageUrl: '', scriptId: '', videoId: '' });
             await fetchThumbnails();
             addToast(THUMBNAILS_COPY.toasts.created, 'success');
         } catch (err) {
@@ -359,6 +365,26 @@ export default function ThumbnailsPage() {
                             >
                                 <h3 id="thumbnail-modal-title" className="text-2xl font-bold text-white mb-6">{THUMBNAILS_COPY.new}</h3>
                                 <form onSubmit={handleSubmit} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Script ID (opcional)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.scriptId}
+                                            onChange={(e) => setFormData({ ...formData, scriptId: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                            placeholder="UUID del guion"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Video ID (opcional)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.videoId}
+                                            onChange={(e) => setFormData({ ...formData, videoId: e.target.value })}
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                            placeholder="UUID del video"
+                                        />
+                                    </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">{THUMBNAILS_COPY.form.title}</label>
                                         <input
