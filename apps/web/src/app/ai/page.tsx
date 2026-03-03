@@ -58,6 +58,8 @@ const PROFILE_FIELDS: Record<string, { label: string; placeholder: string; key: 
 };
 
 export default function AiStudioPage() {
+  const publicModel = process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini';
+  const publicMaxTokens = process.env.NEXT_PUBLIC_OPENAI_MAX_OUTPUT_TOKENS || '800';
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
   const { addToast } = useToast();
@@ -343,6 +345,12 @@ export default function AiStudioPage() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3 justify-start sm:justify-end">
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <span className="uppercase tracking-[0.2em] text-[10px] text-slate-500">Modelo</span>
+                <span className="text-slate-300">{publicModel}</span>
+                <span className="text-slate-600">·</span>
+                <span className="text-slate-400">Max tokens {publicMaxTokens}</span>
+              </div>
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <History className="w-4 h-4" />
                 <span>{runs.length} runs</span>
