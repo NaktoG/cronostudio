@@ -840,6 +840,17 @@ function DashboardContent() {
     };
   }, [focusProduction, focusChecklist, nextStepCopy, router, handleDockRegister, handleDockPlan]);
 
+  const stageCtas = useMemo(() => {
+    if (!focusProduction) return {};
+    const stageKey = focusProduction.status as keyof PipelineStats;
+    return {
+      [stageKey]: {
+        label: nextAction.action,
+        onClick: nextAction.onClick,
+      },
+    } as Partial<Record<keyof PipelineStats, { label: string; onClick: () => void }>>;
+  }, [focusProduction, nextAction]);
+
   const handleDockVerify = () => {
     fetchData();
     openDrawerForSlot(nextSlot);
@@ -1174,6 +1185,7 @@ function DashboardContent() {
                       stats={pipelineStats}
                       activeStage={activeStage}
                       onStageClick={(stage) => setActiveStage((current) => (current === stage ? null : stage))}
+                      stageCtas={stageCtas}
                     />
                   </div>
                 )}

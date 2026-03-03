@@ -27,6 +27,7 @@ interface ProductionPipelineProps {
     stats: PipelineStats;
     onStageClick?: (stage: keyof PipelineStats) => void;
     activeStage?: keyof PipelineStats | null;
+    stageCtas?: Partial<Record<keyof PipelineStats, { label: string; onClick: () => void }>>;
 }
 
 const STAGES: { key: keyof PipelineStats; icon: typeof Lightbulb; label: string; color: string; bgColor: string }[] = [
@@ -54,7 +55,7 @@ const itemVariants = {
     visible: { opacity: 1, y: 0 }
 };
 
-export default function ProductionPipeline({ stats, onStageClick, activeStage }: ProductionPipelineProps) {
+export default function ProductionPipeline({ stats, onStageClick, activeStage, stageCtas }: ProductionPipelineProps) {
     const total = Object.values(stats).reduce((sum, count) => sum + count, 0);
 
     return (
@@ -80,6 +81,7 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage }:
                 {STAGES.map((stage, index) => {
                     const count = stats[stage.key] || 0;
                     const hasItems = count > 0;
+                    const cta = stageCtas?.[stage.key];
 
                     return (
                         <motion.button
@@ -113,6 +115,18 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage }:
                             <span className={`text-[11px] sm:text-sm font-medium ${hasItems ? stage.color : 'text-gray-600'}`}>
                                 {stage.label}
                             </span>
+
+                            {cta && hasItems && (
+                                <span
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        cta.onClick();
+                                    }}
+                                    className="mt-2 text-[10px] uppercase tracking-[0.2em] text-yellow-300 hover:text-yellow-200"
+                                >
+                                    {cta.label}
+                                </span>
+                            )}
                         </motion.button>
                     );
                 })}
