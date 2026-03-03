@@ -1220,7 +1220,7 @@ function DashboardContent() {
                 )}
 
                 {/* Main grid */}
-                <div className={`grid grid-cols-1 gap-4 sm:gap-6 items-start mx-auto w-full max-w-6xl ${
+                <div className={`grid grid-cols-1 gap-4 sm:gap-6 items-start ${
                   activeTab === 'production'
                     ? 'lg:grid-cols-[minmax(0,1fr)_360px]'
                     : 'lg:grid-cols-2 2xl:grid-cols-3'
