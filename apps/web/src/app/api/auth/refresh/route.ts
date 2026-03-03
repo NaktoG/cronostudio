@@ -42,6 +42,9 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     logger.info('auth.refresh.success', { userId: result.user.id });
     return withSecurityHeaders(response);
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Validation error')) {
+      return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+    }
     if (error instanceof AuthError) {
       logger.warn('auth.refresh.invalid', { error: error.message });
       return withSecurityHeaders(NextResponse.json({ error: 'Refresh token invalido' }, { status: 401 }));
