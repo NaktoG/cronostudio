@@ -25,7 +25,7 @@ const UpdateThumbnailSchema = z.object({
     status: z.enum(['pending', 'designing', 'designed', 'approved']).optional(),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         console.error('Error fetching thumbnails:', error);
         return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener miniaturas' }, { status: 500 }));
     }
-}
+});
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {

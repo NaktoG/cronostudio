@@ -35,7 +35,7 @@ function calculateMetrics(intro?: string, body?: string, cta?: string, outro?: s
     return { fullContent, wordCount, estimatedDuration };
 }
 
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         console.error('Error fetching scripts:', error);
         return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener guiones' }, { status: 500 }));
     }
-}
+});
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
