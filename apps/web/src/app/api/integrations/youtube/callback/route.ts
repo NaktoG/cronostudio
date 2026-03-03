@@ -48,10 +48,11 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     };
 
     if (!code || !state) {
-      return withSecurityHeaders(NextResponse.json({
-        error: 'youtube_oauth_failed',
-        details: debug,
-      }, { status: 400 }));
+      const payload: Record<string, unknown> = { error: 'youtube_oauth_failed' };
+      if (process.env.NODE_ENV !== 'production') {
+        payload.details = debug;
+      }
+      return withSecurityHeaders(NextResponse.json(payload, { status: 400 }));
     }
 
     const cookieState = request.cookies.get(STATE_COOKIE)?.value || '';
@@ -66,18 +67,20 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     }
 
     if (!cookieState || cookieState !== state || !verifier || !userId) {
-      return withSecurityHeaders(NextResponse.json({
-        error: 'youtube_oauth_failed',
-        details: debug,
-      }, { status: 400 }));
+      const payload: Record<string, unknown> = { error: 'youtube_oauth_failed' };
+      if (process.env.NODE_ENV !== 'production') {
+        payload.details = debug;
+      }
+      return withSecurityHeaders(NextResponse.json(payload, { status: 400 }));
     }
 
     if (errorParam) {
       debug.tokenExchange = { error: errorParam };
-      return withSecurityHeaders(NextResponse.json({
-        error: 'youtube_oauth_failed',
-        details: debug,
-      }, { status: 400 }));
+      const payload: Record<string, unknown> = { error: 'youtube_oauth_failed' };
+      if (process.env.NODE_ENV !== 'production') {
+        payload.details = debug;
+      }
+      return withSecurityHeaders(NextResponse.json(payload, { status: 400 }));
     }
 
     let tokenData;
