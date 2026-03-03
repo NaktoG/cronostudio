@@ -88,6 +88,8 @@ export const POST = requireRoles(['owner'])(
       runId = insert.rows[0].id as string;
 
       const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+      const maxTokensRaw = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? 1200);
+      const maxTokens = Number.isFinite(maxTokensRaw) && maxTokensRaw > 0 ? Math.floor(maxTokensRaw) : 1200;
       const startedAt = Date.now();
 
       const messages = [
@@ -104,6 +106,7 @@ export const POST = requireRoles(['owner'])(
           model,
           messages,
           temperature: 0.4,
+          max_tokens: maxTokens,
           response_format: zodResponseFormat(profile.outputSchema as any, `${profile.key}_v${profile.version}`),
         });
 
@@ -118,6 +121,7 @@ export const POST = requireRoles(['owner'])(
           model,
           messages,
           temperature: 0.4,
+          max_tokens: maxTokens,
           response_format: { type: 'json_object' },
         });
 
