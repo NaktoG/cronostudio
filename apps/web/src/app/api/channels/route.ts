@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, CreateChannelSchema, CreateChannelInput, UpdateChannelSchema, UpdateChannelInput } from '@/lib/validation';
-import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
+import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { requireRolesOrServiceSecret } from '@/middleware/rbac';
+import { authenticateUserOrService } from '@/middleware/serviceAuth';
 import { query } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { getServiceUserId } from '@/lib/serviceUser';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,17 +20,11 @@ export const dynamic = 'force-dynamic';
  * GET /api/channels
  * Lista los canales del usuario autenticado
  */
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        let userId: string | null = getAuthUser(request)?.userId ?? null;
-
-        if (!userId) {
-            userId = await getServiceUserId(request);
-        }
-
-        if (!userId) {
-            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
-        }
+        const authResult = await authenticateUserOrService(request);
+        if (authResult.response) return authResult.response;
+        const { userId } = authResult;
 
         const result = await query(
             `SELECT id, name, youtube_channel_id, subscribers, created_at, updated_at 
@@ -60,23 +53,17 @@ export async function GET(request: NextRequest) {
             { status: 500 }
         ));
     }
-}
+});
 
 /**
  * POST /api/channels
  * Crea un nuevo canal de YouTube vinculado al usuario
  */
-export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        let userId: string | null = getAuthUser(request)?.userId ?? null;
-
-        if (!userId) {
-            userId = await getServiceUserId(request);
-        }
-
-        if (!userId) {
-            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
-        }
+        const authResult = await authenticateUserOrService(request, { ownerOnly: true });
+        if (authResult.response) return authResult.response;
+        const { userId } = authResult;
 
         const body = await request.json();
 
@@ -140,15 +127,11 @@ export const POST = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LI
  * PUT /api/channels?id=...
  * Actualiza un canal del usuario
  */
-export const PUT = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        let userId: string | null = getAuthUser(request)?.userId ?? null;
-        if (!userId) {
-            userId = await getServiceUserId(request);
-        }
-        if (!userId) {
-            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
-        }
+        const authResult = await authenticateUserOrService(request, { ownerOnly: true });
+        if (authResult.response) return authResult.response;
+        const { userId } = authResult;
 
         const { searchParams } = new URL(request.url);
         const channelId = searchParams.get('id');
@@ -211,15 +194,11 @@ export const PUT = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIM
  * DELETE /api/channels?id=...
  * Elimina un canal del usuario
  */
-export const DELETE = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
+export const DELETE = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        let userId: string | null = getAuthUser(request)?.userId ?? null;
-        if (!userId) {
-            userId = await getServiceUserId(request);
-        }
-        if (!userId) {
-            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
-        }
+        const authResult = await authenticateUserOrService(request, { ownerOnly: true });
+        if (authResult.response) return authResult.response;
+        const { userId } = authResult;
 
         const { searchParams } = new URL(request.url);
         const channelId = searchParams.get('id');
@@ -243,4 +222,4 @@ export const DELETE = requireRolesOrServiceSecret(['owner'])(rateLimit(API_RATE_
         });
         return withSecurityHeaders(NextResponse.json({ error: 'Failed to delete channel' }, { status: 500 }));
     }
-}));
+});

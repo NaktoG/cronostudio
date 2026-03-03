@@ -52,7 +52,10 @@ export function hasValidServiceSecret(request: NextRequest): boolean {
   return isServiceSecretValid(secret, provided);
 }
 
-export function requireServiceSecret(request: NextRequest, hasAuthUser: boolean): { response: NextResponse | null; viaServiceSecret: boolean } {
+export function requireServiceSecret(
+  request: NextRequest,
+  hasAuthUser: boolean
+): { response: NextResponse | null; viaServiceSecret: boolean } {
   const viaServiceSecret = hasValidServiceSecret(request);
   if (viaServiceSecret && !isServiceUserConfigured()) {
     const response = withSecurityHeaders(
@@ -68,4 +71,17 @@ export function requireServiceSecret(request: NextRequest, hasAuthUser: boolean)
   const response = withSecurityHeaders(NextResponse.json({ error: 'Webhook no autorizado' }, { status: 401 }));
   logWebhookAuthAttempt(request, response.status);
   return { response, viaServiceSecret: false };
+}
+
+export function requireWebhookSecret(request: NextRequest): NextResponse | null {
+  const secret = config.webhooks.secret;
+  if (!secret) return null;
+
+  if (!hasValidServiceSecret(request)) {
+    const response = withSecurityHeaders(NextResponse.json({ error: 'Webhook no autorizado' }, { status: 401 }));
+    logWebhookAuthAttempt(request, response.status);
+    return response;
+  }
+
+  return null;
 }

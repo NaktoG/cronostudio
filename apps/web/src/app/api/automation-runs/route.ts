@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { query } from '@/lib/db';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { requireServiceSecret, logWebhookAuthAttempt } from '@/middleware/webhook';
+import { authenticateUserOrService } from '@/middleware/serviceAuth';
 import { logger } from '@/lib/logger';
 import { emitMetric } from '@/lib/observability';
 
@@ -47,49 +47,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function resolveServiceUserId(): Promise<string | null> {
-  const automationUser = await query(
-    `SELECT id
-     FROM app_users
-     WHERE role = 'automation'
-     ORDER BY created_at ASC
-     LIMIT 1`
-  );
-  if (automationUser.rows.length > 0) {
-    return automationUser.rows[0].id as string;
-  }
-
-  const ownerUser = await query(
-    `SELECT id
-     FROM app_users
-     WHERE role = 'owner'
-     ORDER BY created_at ASC
-     LIMIT 1`
-  );
-  if (ownerUser.rows.length > 0) {
-    return ownerUser.rows[0].id as string;
-  }
-
-  return null;
-}
-
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const authUser = getAuthUser(request);
-    const webhookGuard = requireServiceSecret(request, Boolean(authUser));
-    if (webhookGuard.response) return webhookGuard.response;
-
-    if (authUser && authUser.role !== 'owner' && !webhookGuard.viaServiceSecret) {
-      const response = withSecurityHeaders(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
-      logWebhookAuthAttempt(request, response.status);
-      return response;
-    }
-
-    const userId = authUser?.userId ?? (await resolveServiceUserId());
-    if (!userId) {
-      logger.error('automation_runs.create.missing_user', { path: request.nextUrl.pathname });
-      return withSecurityHeaders(NextResponse.json({ error: 'Usuario no encontrado' }, { status: 500 }));
-    }
+    const authResult = await authenticateUserOrService(request, { ownerOnly: true });
+    if (authResult.response) return authResult.response;
+    const { userId } = authResult;
 
     const body = await request.json();
     const data = CreateRunSchema.parse(body);
@@ -123,21 +85,9 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 
 export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const authUser = getAuthUser(request);
-    const webhookGuard = requireServiceSecret(request, Boolean(authUser));
-    if (webhookGuard.response) return webhookGuard.response;
-
-    if (authUser && authUser.role !== 'owner' && !webhookGuard.viaServiceSecret) {
-      const response = withSecurityHeaders(NextResponse.json({ error: 'Forbidden' }, { status: 403 }));
-      logWebhookAuthAttempt(request, response.status);
-      return response;
-    }
-
-    const userId = authUser?.userId ?? (await resolveServiceUserId());
-    if (!userId) {
-      logger.error('automation_runs.update.missing_user', { path: request.nextUrl.pathname });
-      return withSecurityHeaders(NextResponse.json({ error: 'Usuario no encontrado' }, { status: 500 }));
-    }
+    const authResult = await authenticateUserOrService(request, { ownerOnly: true });
+    if (authResult.response) return authResult.response;
+    const { userId } = authResult;
 
     const { searchParams } = new URL(request.url);
     const runId = searchParams.get('id');
