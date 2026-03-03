@@ -505,6 +505,15 @@ export default function IdeasPage() {
                                                 </option>
                                             ))}
                                         </select>
+                                        {selectedChannel && !formData.channelId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, channelId: selectedChannel })}
+                                                className="mt-2 text-xs text-yellow-300 hover:text-yellow-200"
+                                            >
+                                                Usar canal seleccionado
+                                            </button>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">{IDEAS_COPY.form.priority}</label>
