@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
+import { useState, useEffect, useCallback, FormEvent, useRef, useMemo } from 'react';
 import { Lightbulb, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
@@ -63,6 +63,21 @@ export default function IdeasPage() {
     const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
+    const tagSuggestions = useMemo(() => {
+        const map = new Map<string, number>();
+        ideas.forEach((idea) => {
+            if (selectedChannel && idea.channelId !== selectedChannel) return;
+            idea.tags?.forEach((tag) => {
+                const key = tag.trim().toLowerCase();
+                if (!key) return;
+                map.set(key, (map.get(key) ?? 0) + 1);
+            });
+        });
+        return Array.from(map.entries())
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 12)
+            .map(([tag]) => tag);
+    }, [ideas, selectedChannel]);
     const modalRef = useRef<HTMLDivElement>(null);
     const deleteRef = useRef<HTMLDivElement>(null);
 
@@ -528,10 +543,16 @@ export default function IdeasPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">{IDEAS_COPY.form.tags}</label>
+                                        <datalist id="idea-tag-options">
+                                            {tagSuggestions.map((tag) => (
+                                                <option key={tag} value={tag} />
+                                            ))}
+                                        </datalist>
                                         <input
                                             type="text"
                                             value={formData.tagsInput}
                                             onChange={(e) => setFormData({ ...formData, tagsInput: e.target.value })}
+                                            list="idea-tag-options"
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
                                             placeholder={IDEAS_COPY.form.placeholderTags}
                                         />
