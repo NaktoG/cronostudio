@@ -308,6 +308,15 @@ function DashboardContent() {
   }, [isAuthenticated, searchParams]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    const productionId = searchParams?.get('productionId');
+    if (productionId) {
+      setFocusedProductionId(productionId);
+      setFocusOpen(true);
+    }
+  }, [isAuthenticated, searchParams]);
+
+  useEffect(() => {
     if (!drawerOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {

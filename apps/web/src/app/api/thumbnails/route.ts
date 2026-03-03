@@ -38,11 +38,12 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         const channelId = searchParams.get('channelId');
 
         let queryText = `
-            SELECT t.*, s.title as script_title
+            SELECT t.*, s.title as script_title, p.id as production_id, c.id as channel_id
             FROM thumbnails t
             LEFT JOIN scripts s ON t.script_id = s.id
             LEFT JOIN ideas i ON s.idea_id = i.id
             LEFT JOIN videos v ON t.video_id = v.id
+            LEFT JOIN productions p ON (p.script_id = t.script_id OR p.video_id = t.video_id) AND p.user_id = $1
             LEFT JOIN channels c ON c.id = COALESCE(i.channel_id, v.channel_id)
             WHERE t.user_id = $1`;
         const params: (string | null)[] = [userId];

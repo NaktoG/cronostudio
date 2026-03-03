@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { Image as ImageIcon, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
@@ -24,6 +25,8 @@ interface Thumbnail {
     script_title: string | null;
     video_title: string | null;
     created_at: string;
+    production_id?: string | null;
+    channel_id?: string | null;
 }
 
 interface ScriptOption {
@@ -53,6 +56,7 @@ export default function ThumbnailsPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
+    const router = useRouter();
     const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [selectedChannel, setSelectedChannel] = useState('');
@@ -434,6 +438,21 @@ export default function ThumbnailsPage() {
                                                 <option value="designed">{THUMBNAILS_COPY.statuses.designed}</option>
                                                 <option value="approved">{THUMBNAILS_COPY.statuses.approved}</option>
                                             </select>
+                                            {thumb.production_id && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const params = new URLSearchParams({ productionId: thumb.production_id });
+                                                        if (thumb.channel_id) {
+                                                            params.set('channelId', thumb.channel_id);
+                                                        }
+                                                        router.push(`/?${params.toString()}`);
+                                                    }}
+                                                    className="text-xs text-yellow-300 hover:text-yellow-200 px-2"
+                                                >
+                                                    Ver producción
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => deleteThumbnail(thumb.id)}
                                                 className="text-red-400 hover:text-red-300 text-xs px-2"
