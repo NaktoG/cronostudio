@@ -35,11 +35,26 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
+        const channelId = searchParams.get('channelId');
 
-        let queryText = `SELECT t.*, s.title as script_title FROM thumbnails t LEFT JOIN scripts s ON t.script_id = s.id WHERE t.user_id = $1`;
+        let queryText = `
+            SELECT t.*, s.title as script_title
+            FROM thumbnails t
+            LEFT JOIN scripts s ON t.script_id = s.id
+            LEFT JOIN ideas i ON s.idea_id = i.id
+            LEFT JOIN videos v ON t.video_id = v.id
+            LEFT JOIN channels c ON c.id = COALESCE(i.channel_id, v.channel_id)
+            WHERE t.user_id = $1`;
         const params: (string | null)[] = [userId];
 
-        if (status) { queryText += ` AND t.status = $2`; params.push(status); }
+        if (status) {
+            queryText += ` AND t.status = $${params.length + 1}`;
+            params.push(status);
+        }
+        if (channelId) {
+            queryText += ` AND c.id = $${params.length + 1}`;
+            params.push(channelId);
+        }
         queryText += ' ORDER BY t.created_at DESC';
 
         const result = await query(queryText, params);
