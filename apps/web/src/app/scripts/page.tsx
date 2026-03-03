@@ -33,6 +33,11 @@ interface Channel {
     name: string;
 }
 
+interface IdeaOption {
+    id: string;
+    title: string;
+}
+
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     draft: { label: SCRIPTS_COPY.statuses.draft, color: 'bg-gray-600' },
     review: { label: SCRIPTS_COPY.statuses.review, color: 'bg-yellow-600' },
@@ -47,10 +52,11 @@ export default function ScriptsPage() {
     const [scripts, setScripts] = useState<Script[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [selectedChannel, setSelectedChannel] = useState('');
+    const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ title: '', intro: '', body: '', cta: '', outro: '' });
+    const [formData, setFormData] = useState({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
     const [deleteTarget, setDeleteTarget] = useState<Script | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
@@ -117,6 +123,33 @@ export default function ScriptsPage() {
         }
     }, [selectedChannel]);
 
+    const fetchIdeaOptions = useCallback(async (signal?: AbortSignal) => {
+        if (!selectedChannel) {
+            setIdeaOptions([]);
+            return;
+        }
+        try {
+            const response = await authFetch(`/api/ideas?channelId=${selectedChannel}`, { signal });
+            if (response.ok) {
+                const data = await response.json();
+                const options = Array.isArray(data)
+                    ? data.map((idea) => ({ id: idea.id, title: idea.title }))
+                    : [];
+                setIdeaOptions(options);
+            }
+        } catch (err) {
+            if (signal?.aborted) return;
+            console.error('Error fetching ideas:', err);
+        }
+    }, [authFetch, selectedChannel]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const controller = new AbortController();
+        fetchIdeaOptions(controller.signal);
+        return () => controller.abort();
+    }, [isAuthenticated, fetchIdeaOptions]);
+
     useEffect(() => {
         if (!showModal && !deleteTarget) return;
         const handleKey = (event: KeyboardEvent) => {
@@ -146,7 +179,7 @@ export default function ScriptsPage() {
             }
             setShowModal(false);
             setEditingId(null);
-            setFormData({ title: '', intro: '', body: '', cta: '', outro: '' });
+            setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
             await fetchScripts();
             addToast(editingId ? SCRIPTS_COPY.toasts.updated : SCRIPTS_COPY.toasts.created, 'success');
         } catch (err) {
@@ -163,6 +196,7 @@ export default function ScriptsPage() {
             body: script.body || '',
             cta: script.cta || '',
             outro: script.outro || '',
+            ideaId: script.idea_id || '',
         });
         setEditingId(script.id);
         setShowModal(true);
@@ -361,6 +395,22 @@ export default function ScriptsPage() {
                                     {editingId ? SCRIPTS_COPY.edit : SCRIPTS_COPY.new}
                                 </h3>
                                 <form onSubmit={handleSubmit} className="space-y-4">
+                                    <datalist id="idea-options">
+                                        {ideaOptions.map((idea) => (
+                                            <option key={idea.id} value={idea.id}>{idea.title}</option>
+                                        ))}
+                                    </datalist>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Idea ID (opcional)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.ideaId}
+                                            onChange={(e) => setFormData({ ...formData, ideaId: e.target.value })}
+                                            list="idea-options"
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                            placeholder="UUID de la idea"
+                                        />
+                                    </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">{SCRIPTS_COPY.fields.title}</label>
                                         <input
