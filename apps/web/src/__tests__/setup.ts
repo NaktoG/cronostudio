@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { beforeEach, vi } from 'vitest';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test_secret_change_me_32_chars_min____';

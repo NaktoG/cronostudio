@@ -4,8 +4,14 @@ import { query } from '@/lib/db';
 const queryMock = vi.fn(async () => ({ rows: [], rowCount: 0 }));
 const connectMock = vi.fn(async () => ({ release: vi.fn() }));
 
+type MockPoolInstance = {
+  query: typeof queryMock;
+  connect: typeof connectMock;
+  on: ReturnType<typeof vi.fn>;
+};
+
 vi.mock('pg', () => ({
-  Pool: vi.fn().mockImplementation(function MockPool() {
+  Pool: vi.fn().mockImplementation(function MockPool(this: MockPoolInstance) {
     this.query = queryMock;
     this.connect = connectMock;
     this.on = vi.fn();

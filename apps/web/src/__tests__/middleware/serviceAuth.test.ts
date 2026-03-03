@@ -1,13 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
+import { makeTestId } from '@/__tests__/utils/testIds';
+import { withEnv } from '@/__tests__/utils/env';
+import { makeApiRequest, WEBHOOK_HEADER } from '@/__tests__/utils/requests';
+import { makeQueryResult } from '@/__tests__/utils/db';
 
 vi.mock('@/lib/db', () => ({
   query: vi.fn(),
 }));
+const TEST_SECRET = makeTestId('secret');
+
 vi.mock('@/lib/config', () => ({
   config: {
     webhooks: {
-      secret: 'test-secret',
+      secret: TEST_SECRET,
     },
   },
 }));
@@ -32,20 +38,13 @@ import { getAuthUser, type JWTPayload } from '@/middleware/auth';
 import { authenticateUserOrService } from '@/middleware/serviceAuth';
 
 describe('authenticateUserOrService', () => {
-  const originalEnv = { ...process.env };
-
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env = { ...originalEnv };
-  });
-
-  afterEach(() => {
-    process.env = { ...originalEnv };
   });
 
   it('returns 401 when no auth and no secret provided', async () => {
     vi.mocked(getAuthUser).mockReturnValue(null);
-    const request = new NextRequest('http://localhost:3000/api/channels');
+    const request = makeApiRequest('/api/channels');
 
     const result = await authenticateUserOrService(request);
     expect(result.response?.status).toBe(401);
@@ -53,9 +52,9 @@ describe('authenticateUserOrService', () => {
 
   it('returns 401 when secret is invalid', async () => {
     vi.mocked(getAuthUser).mockReturnValue(null);
-    const request = new NextRequest('http://localhost:3000/api/channels', {
+    const request = makeApiRequest('/api/channels', {
       headers: {
-        'x-cronostudio-webhook-secret': 'invalid-secret',
+        [WEBHOOK_HEADER]: makeTestId('secret_invalid'),
       },
     });
 
@@ -65,43 +64,53 @@ describe('authenticateUserOrService', () => {
 
   it('returns 500 when service user is not configured', async () => {
     vi.mocked(getAuthUser).mockReturnValue(null);
-    delete process.env.CRONOSTUDIO_SERVICE_USER_ID;
-    delete process.env.CRONOSTUDIO_SERVICE_USER_EMAIL;
+    await withEnv({
+      CRONOSTUDIO_SERVICE_USER_ID: undefined,
+      CRONOSTUDIO_SERVICE_USER_EMAIL: undefined,
+    }, async () => {
+      const request = makeApiRequest('/api/channels', {
+        headers: {
+          [WEBHOOK_HEADER]: TEST_SECRET,
+        },
+      });
 
-    const request = new NextRequest('http://localhost:3000/api/channels', {
-      headers: {
-        'x-cronostudio-webhook-secret': 'test-secret',
-      },
+      const result = await authenticateUserOrService(request);
+      expect(result.response?.status).toBe(500);
     });
-
-    const result = await authenticateUserOrService(request);
-    expect(result.response?.status).toBe(500);
   });
 
   it('returns userId when service secret is valid and user configured', async () => {
     vi.mocked(getAuthUser).mockReturnValue(null);
-    process.env.CRONOSTUDIO_SERVICE_USER_ID = 'user_test_123';
-    vi.mocked(query).mockResolvedValueOnce({ rows: [{ id: 'user_test_123' }], rowCount: 1 });
+    const serviceUserId = makeTestId('user');
+    vi.mocked(query).mockResolvedValueOnce(makeQueryResult([{ id: serviceUserId }]))
 
-    const request = new NextRequest('http://localhost:3000/api/channels', {
-      headers: {
-        'x-cronostudio-webhook-secret': 'test-secret',
-      },
+    await withEnv({
+      CRONOSTUDIO_SERVICE_USER_ID: serviceUserId,
+    }, async () => {
+      const request = makeApiRequest('/api/channels', {
+        headers: {
+          [WEBHOOK_HEADER]: TEST_SECRET,
+        },
+      });
+
+      const result = await authenticateUserOrService(request);
+      if (result.response) {
+        throw new Error('Expected service auth to succeed');
+      }
+      expect(result.userId).toBe(serviceUserId);
+      expect(result.via).toBe('service');
     });
-
-    const result = await authenticateUserOrService(request);
-    if (result.response) {
-      throw new Error('Expected service auth to succeed');
-    }
-    expect(result.userId).toBe('user_test_123');
-    expect(result.via).toBe('service');
   });
 
   it('returns 403 when user is not owner for ownerOnly routes', async () => {
-    const memberUser = { userId: 'user_test_456', email: 'member@example.com', role: 'member' } as JWTPayload;
+    const memberUser = {
+      userId: makeTestId('user'),
+      email: `${makeTestId('email')}@example.test`,
+      role: 'collaborator',
+    } as JWTPayload;
     vi.mocked(getAuthUser).mockReturnValue(memberUser);
 
-    const request = new NextRequest('http://localhost:3000/api/channels');
+    const request = makeApiRequest('/api/channels');
     const result = await authenticateUserOrService(request, { ownerOnly: true });
     expect(result.response?.status).toBe(403);
   });

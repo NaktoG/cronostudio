@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
 
-const mockRedisClass = vi.fn().mockImplementation(function MockRedis() {
+type MockRedisInstance = {
+  on: ReturnType<typeof vi.fn>;
+};
+
+const mockRedisClass = vi.fn().mockImplementation(function MockRedis(this: MockRedisInstance) {
   this.on = vi.fn();
 });
 

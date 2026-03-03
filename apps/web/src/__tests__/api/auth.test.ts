@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { NextRequest } from 'next/server';
+import { makeApiRequest } from '@/__tests__/utils/requests';
+import { makeTestId } from '@/__tests__/utils/testIds';
+import { makeQueryResult } from '@/__tests__/utils/db';
+
+const VALID_TOKEN = makeTestId('token');
+const EXPIRED_TOKEN = makeTestId('token_expired');
+const JWT_USER_ID = makeTestId('user');
+const JWT_EMAIL = `${makeTestId('email')}@example.test`;
 
 vi.mock('@/lib/observability', () => ({
     emitMetric: vi.fn(),
@@ -10,10 +17,10 @@ vi.mock('jsonwebtoken', () => ({
     default: {
         sign: vi.fn(() => 'mock-token'),
         verify: vi.fn((token: string) => {
-            if (token === 'valid-token') {
-                return { userId: 'user-123', email: 'test@example.com' };
+            if (token === VALID_TOKEN) {
+                return { userId: JWT_USER_ID, email: JWT_EMAIL };
             }
-            if (token === 'expired-token') {
+            if (token === EXPIRED_TOKEN) {
                 const error = new Error('Token expired');
                 error.name = 'TokenExpiredError';
                 throw error;
@@ -51,19 +58,19 @@ describe('Auth API', () => {
     describe('POST /api/auth/login', () => {
         it('should return 401 for invalid credentials', async () => {
             // Mock no user found
-            vi.mocked(query).mockResolvedValueOnce({ rows: [], rowCount: 0 });
+            vi.mocked(query).mockResolvedValueOnce(makeQueryResult([]));
 
             const { POST } = await import('@/app/api/auth/login/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/login', {
+            const request = makeApiRequest('/api/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({
-                    email: 'nonexistent@example.com',
-                    password: 'password123',
+                    email: `${makeTestId('email')}@example.test`,
+                    password: makeTestId('password'),
                 }),
             });
 
-            const response = await POST(request);
+            const response = await POST(request, { params: Promise.resolve({}) });
             const data = await response.json();
 
             expect(response.status).toBe(401);
@@ -74,15 +81,15 @@ describe('Auth API', () => {
         it('should return 400 for invalid email format', async () => {
             const { POST } = await import('@/app/api/auth/login/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/login', {
+            const request = makeApiRequest('/api/auth/login', {
                 method: 'POST',
                 body: JSON.stringify({
                     email: 'invalid-email',
-                    password: 'password123',
+                    password: makeTestId('password'),
                 }),
             });
 
-            const response = await POST(request);
+            const response = await POST(request, { params: Promise.resolve({}) });
             expect(response.status).toBe(400);
             expect(emitMetricMock).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.login.success' }));
         });
@@ -92,39 +99,36 @@ describe('Auth API', () => {
         it('should return 400 for weak password', async () => {
             const { POST } = await import('@/app/api/auth/register/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/register', {
+            const request = makeApiRequest('/api/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({
-                    email: 'test@example.com',
+                    email: `${makeTestId('email')}@example.test`,
                     password: 'weak',
-                    name: 'Test User',
+                    name: makeTestId('name'),
                 }),
             });
 
-            const response = await POST(request);
+            const response = await POST(request, { params: Promise.resolve({}) });
             expect(response.status).toBe(400);
             expect(emitMetricMock).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.register.success' }));
         });
 
         it('should return 409 for duplicate email', async () => {
             // Mock existing user
-            vi.mocked(query).mockResolvedValueOnce({
-                rows: [{ id: 'existing-user' }],
-                rowCount: 1
-            });
+            vi.mocked(query).mockResolvedValueOnce(makeQueryResult([{ id: makeTestId('user') }]));
 
             const { POST } = await import('@/app/api/auth/register/route');
 
-            const request = new NextRequest('http://localhost:3000/api/auth/register', {
+            const request = makeApiRequest('/api/auth/register', {
                 method: 'POST',
                 body: JSON.stringify({
-                    email: 'existing@example.com',
-                    password: 'Password123',
-                    name: 'Test User',
+                    email: `${makeTestId('email')}@example.test`,
+                    password: makeTestId('password'),
+                    name: makeTestId('name'),
                 }),
             });
 
-            const response = await POST(request);
+            const response = await POST(request, { params: Promise.resolve({}) });
             expect(response.status).toBe(409);
             expect(emitMetricMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.register.failure' }));
         });
