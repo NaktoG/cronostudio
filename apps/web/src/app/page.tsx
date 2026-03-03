@@ -1426,7 +1426,7 @@ function DashboardContent() {
                                 </span>
                                 {!focusChecklist?.scriptReady && (
                                   <Link
-                                    href={`/ai?profile=script_architect&channelId=${selectedChannelId || ''}`}
+                                    href={`/ai?profile=script_architect${focusProduction?.idea_id ? `&ideaId=${focusProduction.idea_id}` : ''}${focusProduction?.channel_id ? `&channelId=${focusProduction.channel_id}` : ''}`}
                                     className="text-emerald-300 hover:text-emerald-200"
                                   >
                                     Generar
@@ -1440,7 +1440,7 @@ function DashboardContent() {
                                 </span>
                                 {!focusChecklist?.seoReady && (
                                   <Link
-                                    href={`/ai?profile=titles_thumbs&channelId=${selectedChannelId || ''}`}
+                                    href={`/ai?profile=titles_thumbs${focusProduction?.idea_id ? `&ideaId=${focusProduction.idea_id}` : ''}${focusProduction?.script_id ? `&scriptId=${focusProduction.script_id}` : ''}${focusProduction?.channel_id ? `&channelId=${focusProduction.channel_id}` : ''}`}
                                     className="text-sky-300 hover:text-sky-200"
                                   >
                                     Generar
@@ -1454,7 +1454,7 @@ function DashboardContent() {
                                 </span>
                                 {!focusChecklist?.thumbnailReady && (
                                   <Link
-                                    href={`/thumbnails`}
+                                    href={`/thumbnails${focusProduction?.channel_id ? `?channelId=${focusProduction.channel_id}` : ''}`}
                                     className="text-yellow-300 hover:text-yellow-200"
                                   >
                                     Ver
