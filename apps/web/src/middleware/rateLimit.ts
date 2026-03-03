@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { config } from '@/lib/config';
+import { getAuthUser } from '@/middleware/auth';
 import { getRedisClient, getRateLimitKey } from '@/lib/redis';
 import { emitMetric } from '@/lib/observability';
 
@@ -44,7 +45,8 @@ export function rateLimit(config: RateLimitConfig) {
         request.headers.get('cf-connecting-ip') ||
         'unknown';
 
-      const identifier = `${request.nextUrl.pathname}:${ip}`;
+      const userId = getAuthUser(request)?.userId;
+      const identifier = `${request.nextUrl.pathname}:${userId ? `user:${userId}` : `ip:${ip}`}`;
       const retryAfter = await checkRateLimit(identifier, config);
 
       if (retryAfter > 0) {
