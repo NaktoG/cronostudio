@@ -63,6 +63,7 @@ export default function ThumbnailsPage() {
     const [formData, setFormData] = useState({ title: '', notes: '', imageUrl: '', scriptId: '', videoId: '' });
     const [submitting, setSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const modalRef = useRef<HTMLDivElement>(null);
 
     useDialogFocus(modalRef, showModal);
@@ -231,6 +232,25 @@ export default function ThumbnailsPage() {
         }
     };
 
+    const toggleSelection = (id: string) => {
+        setSelectedIds((current) => current.includes(id)
+            ? current.filter((item) => item !== id)
+            : [...current, id]
+        );
+    };
+
+    const clearSelection = () => setSelectedIds([]);
+
+    const updateSelectedStatus = async (status: string) => {
+        if (selectedIds.length === 0) return;
+        try {
+            await Promise.all(selectedIds.map((id) => updateStatus(id, status)));
+            clearSelection();
+        } catch (err) {
+            addToast(THUMBNAILS_COPY.toasts.error, 'error');
+        }
+    };
+
     const deleteThumbnail = async (id: string) => {
         if (!confirm(THUMBNAILS_COPY.deleteConfirm)) return;
         try {
@@ -292,6 +312,32 @@ export default function ThumbnailsPage() {
                                     </select>
                                 </div>
                             )}
+                            {selectedIds.length > 0 && (
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <span className="text-xs text-slate-400">{selectedIds.length} seleccionadas</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('approved')}
+                                        className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                                    >
+                                        Aprobar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('designing')}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        Diseñar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={clearSelection}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                            )}
                             <motion.button
                                 onClick={() => setShowModal(true)}
                                 className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
@@ -338,7 +384,7 @@ export default function ThumbnailsPage() {
                                 {thumbnails.slice(0, visibleCount).map((thumb) => (
                                     <motion.div
                                         key={thumb.id}
-                                        className="surface-panel glow-hover overflow-hidden transition-all group min-w-0"
+                                        className={`surface-panel glow-hover overflow-hidden transition-all group min-w-0 ${selectedIds.includes(thumb.id) ? 'ring-2 ring-yellow-400/60' : ''}`}
                                         whileHover={{ y: -4 }}
                                     >
                                     {/* Preview */}
@@ -358,6 +404,15 @@ export default function ThumbnailsPage() {
                                     </div>
                                     <div className="p-4">
                                         <div className="flex items-center justify-between mb-2">
+                                            <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(thumb.id)}
+                                                    onChange={() => toggleSelection(thumb.id)}
+                                                    className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
+                                                />
+                                                Seleccionar
+                                            </label>
                                             <span className={`text-xs px-2 py-1 rounded ${STATUS_LABELS[thumb.status]?.color || 'bg-gray-600'} text-white`}>
                                                 {STATUS_LABELS[thumb.status]?.label || thumb.status}
                                             </span>
