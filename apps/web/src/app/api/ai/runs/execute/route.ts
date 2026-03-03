@@ -12,6 +12,8 @@ import { getAiProfile } from '@/lib/ai/profiles';
 
 export const dynamic = 'force-dynamic';
 
+const MAX_BODY_BYTES = 100_000;
+
 const ExecuteRunSchema = z.object({
   profileKey: z.string().min(1),
   channelId: z.string().uuid(),
@@ -36,6 +38,11 @@ export const POST = requireRoles(['owner'])(
       const userId = getAuthUser(request)?.userId;
       if (!userId) {
         return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+      }
+
+      const contentLength = request.headers.get('content-length');
+      if (contentLength && Number(contentLength) > MAX_BODY_BYTES) {
+        return withSecurityHeaders(NextResponse.json({ error: 'payload_too_large' }, { status: 413 }));
       }
 
       if (!process.env.OPENAI_API_KEY) {
