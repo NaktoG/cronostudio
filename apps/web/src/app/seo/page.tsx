@@ -52,6 +52,16 @@ export default function SeoPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const copyToClipboard = async (value: string, label: string) => {
+        if (!value) return;
+        try {
+            await navigator.clipboard.writeText(value);
+            addToast(`${label} copiado`, 'success');
+        } catch {
+            addToast('No se pudo copiar', 'error');
+        }
+    };
+
     const fetchSeoData = useCallback(async (signal?: AbortSignal) => {
         try {
             setLoading(true);
@@ -308,6 +318,33 @@ export default function SeoPage() {
                                             <h3 className="text-lg font-semibold text-white break-words">
                                                 {item.optimized_title}
                                             </h3>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(item.optimized_title, 'Título')}
+                                                className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
+                                            >
+                                                Copiar título
+                                            </button>
+                                            {item.description && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyToClipboard(item.description ?? '', 'Descripción')}
+                                                    className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
+                                                >
+                                                    Copiar descripción
+                                                </button>
+                                            )}
+                                            {item.tags?.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyToClipboard(item.tags.join(', '), 'Tags')}
+                                                    className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
+                                                >
+                                                    Copiar tags
+                                                </button>
+                                            )}
                                         </div>
                                             {item.video_title && (
                                                 <p className="text-sm text-gray-500">{SEO_COPY.videoPrefix} {item.video_title}</p>
