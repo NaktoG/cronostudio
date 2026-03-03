@@ -172,9 +172,18 @@ export default function ScriptsPage() {
             const url = editingId ? `/api/scripts?id=${editingId}` : '/api/scripts';
             const method = editingId ? 'PUT' : 'POST';
 
+            const payload = {
+                title: formData.title,
+                intro: formData.intro,
+                body: formData.body,
+                cta: formData.cta,
+                outro: formData.outro,
+                ...(formData.ideaId ? { ideaId: formData.ideaId } : {}),
+            };
+
             const response = await authFetch(url, {
                 method,
-                body: JSON.stringify(formData),
+                body: JSON.stringify(payload),
             });
             if (!response.ok) {
                 const data = await response.json();

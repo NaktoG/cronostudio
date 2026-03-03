@@ -178,8 +178,8 @@ export default function IdeasPage() {
                 title: formData.title,
                 description: formData.description,
                 priority: formData.priority,
-                channelId: formData.channelId ? formData.channelId : null,
                 tags: normalizeTags(formData.tagsInput),
+                ...(formData.channelId ? { channelId: formData.channelId } : {}),
             };
             const response = await authFetch(targetUrl, {
                 method,
@@ -260,6 +260,32 @@ export default function IdeasPage() {
     const updateSelectedStatus = async (status: IdeaStatus) => {
         if (selectedIds.length === 0) return;
         try {
+            if (status === 'approved') {
+                const nextErrors: Record<string, string[]> = {};
+                const readyIds: string[] = [];
+
+                selectedIds.forEach((id) => {
+                    const targetIdea = ideas.find((idea) => idea.id === id);
+                    if (!targetIdea) return;
+                    const readiness = evaluateIdeaReady(targetIdea.title, targetIdea.description);
+                    if (!readiness.isReady) {
+                        nextErrors[id] = readiness.errors;
+                    } else {
+                        readyIds.push(id);
+                    }
+                });
+
+                if (Object.keys(nextErrors).length > 0) {
+                    setStatusErrors((prev) => ({ ...prev, ...nextErrors }));
+                    addToast(IDEAS_COPY.toasts.ideaNotReady, 'error');
+                }
+
+                if (readyIds.length === 0) return;
+                await Promise.all(readyIds.map((id) => updateStatus(id, status)));
+                clearSelection();
+                return;
+            }
+
             await Promise.all(selectedIds.map((id) => updateStatus(id, status)));
             clearSelection();
         } catch (err) {

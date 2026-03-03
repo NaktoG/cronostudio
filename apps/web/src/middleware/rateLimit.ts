@@ -16,6 +16,9 @@ if (config.isProduction && !process.env.REDIS_URL && !isBuildPhase) {
 }
 
 function shouldEnforceRateLimit() {
+  if (!config.isProduction && process.env.RATE_LIMIT_DISABLE === 'true') {
+    return false;
+  }
   if (process.env.NODE_ENV === 'test') {
     if (process.env.RATE_LIMIT_DISABLE === 'true') {
       return false;
