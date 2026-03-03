@@ -1282,7 +1282,14 @@ function DashboardContent() {
                             <div>
                               <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Próximo paso</div>
                               {focusProduction && (
-                                <p className="mt-1 text-xs text-slate-400 truncate">{focusProduction.title}</p>
+                                <div className="mt-1 text-xs text-slate-400">
+                                  <p className="truncate">{focusProduction.title}</p>
+                                  <p className="mt-1 flex flex-wrap items-center gap-2">
+                                    <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
+                                    <span className="text-slate-600">•</span>
+                                    <span>{stageLabels[focusProduction.status] ?? focusProduction.status}</span>
+                                  </p>
+                                </div>
                               )}
                               <p className="mt-1 text-sm text-slate-200">{nextAction.label}</p>
                               <button
@@ -1544,7 +1551,14 @@ function DashboardContent() {
                       <div className="surface-card glow-hover p-4 sm:p-5">
                         <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Próximo paso</div>
                         {focusProduction && (
-                          <p className="mt-2 text-xs text-slate-400 truncate">{focusProduction.title}</p>
+                          <div className="mt-2 text-xs text-slate-400">
+                            <p className="truncate">{focusProduction.title}</p>
+                            <p className="mt-1 flex flex-wrap items-center gap-2">
+                              <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
+                              <span className="text-slate-600">•</span>
+                              <span>{stageLabels[focusProduction.status] ?? focusProduction.status}</span>
+                            </p>
+                          </div>
                         )}
                         <p className="mt-3 text-sm text-slate-200">{nextAction.label}</p>
                         <button
