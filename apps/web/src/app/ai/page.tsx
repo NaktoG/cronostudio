@@ -12,6 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { useSearchParams } from 'next/navigation';
 import { formatDateTime } from '@/lib/dates';
+import { useCallback } from 'react';
 
 type Profile = {
   key: string;
@@ -231,7 +232,7 @@ export default function AiStudioPage() {
     return PROFILE_FIELDS[activeProfile.key] ?? [];
   }, [activeProfile]);
 
-  const handleGeneratePrompt = async () => {
+  const handleGeneratePrompt = useCallback(async () => {
     if (!activeProfile) {
       addToast('Selecciona un perfil primero', 'info');
       return;
@@ -282,9 +283,9 @@ export default function AiStudioPage() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [activeProfile, selectedChannel, activeFields, formInputs, authFetch, addToast, fetchRuns]);
 
-  const handleExecuteRun = async () => {
+  const handleExecuteRun = useCallback(async () => {
     if (!activeProfile) {
       addToast('Selecciona un perfil primero', 'info');
       return;
@@ -335,9 +336,9 @@ export default function AiStudioPage() {
     } finally {
       setExecuting(false);
     }
-  };
+  }, [activeProfile, selectedChannel, activeFields, formInputs, authFetch, addToast, fetchRuns]);
 
-  const handleCopyPrompt = async () => {
+  const handleCopyPrompt = useCallback(async () => {
     if (!prompt) return;
     const combined = `SYSTEM:\n${prompt.system}\n\nUSER:\n${prompt.user}`;
     try {
@@ -346,7 +347,31 @@ export default function AiStudioPage() {
     } catch {
       addToast('No se pudo copiar el prompt', 'error');
     }
-  };
+  }, [prompt, addToast]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.target && (event.target as HTMLElement).tagName === 'INPUT') return;
+      if (event.target && (event.target as HTMLElement).tagName === 'TEXTAREA') return;
+      if (!activeProfile) return;
+
+      if (event.key.toLowerCase() === 'g') {
+        event.preventDefault();
+        handleGeneratePrompt();
+      }
+      if (event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        handleExecuteRun();
+      }
+      if (event.key.toLowerCase() === 'p') {
+        event.preventDefault();
+        if (prompt) handleCopyPrompt();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isAuthenticated, activeProfile, prompt, handleGeneratePrompt, handleExecuteRun, handleCopyPrompt]);
 
   const handleSubmitOutput = async () => {
     if (!currentRunId) return;
