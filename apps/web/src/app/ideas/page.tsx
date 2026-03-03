@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, FormEvent, useRef, useMemo } from 'react';
 import { Lightbulb, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
@@ -80,8 +81,10 @@ export default function IdeasPage() {
             .slice(0, 12)
             .map(([tag]) => tag);
     }, [ideas, selectedChannel]);
+    const openNewRef = useRef(false);
     const modalRef = useRef<HTMLDivElement>(null);
     const deleteRef = useRef<HTMLDivElement>(null);
+    const searchParams = useSearchParams();
 
     useDialogFocus(modalRef, showModal);
     useDialogFocus(deleteRef, Boolean(deleteTarget));
@@ -150,6 +153,17 @@ export default function IdeasPage() {
     }, [selectedChannel]);
 
     useEffect(() => {
+        if (openNewRef.current) return;
+        if (searchParams?.get('new') === '1') {
+            openNewRef.current = true;
+            setEditingIdea(null);
+            setError(null);
+            setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
+            setShowModal(true);
+        }
+    }, [searchParams]);
+
+    useEffect(() => {
         if (!showModal && !deleteTarget) return;
         const handleKey = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
@@ -201,6 +215,8 @@ export default function IdeasPage() {
             setSubmitting(false);
         }
     };
+
+    const readinessPreview = evaluateIdeaReady(formData.title, formData.description);
 
     const startEdit = (idea: Idea) => {
         setEditingIdea(idea);
@@ -581,6 +597,13 @@ export default function IdeasPage() {
                                                     <li key={item}>{item}</li>
                                                 ))}
                                             </ul>
+                                            <button
+                                                type="button"
+                                                onClick={() => startEdit(idea)}
+                                                className="mt-2 text-xs font-semibold text-yellow-300 hover:text-yellow-200"
+                                            >
+                                                Completar idea
+                                            </button>
                                         </div>
                                     )}
                                     </motion.div>
@@ -646,6 +669,20 @@ export default function IdeasPage() {
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 h-24"
                                             placeholder={IDEAS_COPY.form.placeholderDescription}
                                         />
+                                        <div className="mt-3 rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-xs text-slate-300">
+                                            <div className="font-semibold text-slate-200">Checklist para aprobar</div>
+                                            <ul className="mt-2 space-y-1">
+                                                <li className={readinessPreview.errors.includes('Falta promesa') ? 'text-red-300' : 'text-emerald-300'}>
+                                                    Promesa: “En este video vas a entender…”
+                                                </li>
+                                                <li className={readinessPreview.errors.includes('Faltan bullets (min 3)') ? 'text-red-300' : 'text-emerald-300'}>
+                                                    Bullets: minimo 3 lineas con “-”
+                                                </li>
+                                                <li className={readinessPreview.errors.includes('Falta hook (min 2 frases o 200 chars)') ? 'text-red-300' : 'text-emerald-300'}>
+                                                    Hook: 2 frases o 200 caracteres
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">{IDEAS_COPY.form.channel}</label>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { FileText, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
@@ -58,13 +59,16 @@ export default function ScriptsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+    const [error, setError] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Script | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [pipelineLoading, setPipelineLoading] = useState<string[]>([]);
+    const openNewRef = useRef(false);
     const modalRef = useRef<HTMLDivElement>(null);
     const deleteRef = useRef<HTMLDivElement>(null);
+    const searchParams = useSearchParams();
 
     useDialogFocus(modalRef, showModal);
     useDialogFocus(deleteRef, Boolean(deleteTarget));
@@ -125,6 +129,18 @@ export default function ScriptsPage() {
             setSelectedChannel(storedChannel);
         }
     }, [selectedChannel]);
+
+    useEffect(() => {
+        if (openNewRef.current) return;
+        if (searchParams?.get('new') === '1') {
+            openNewRef.current = true;
+            setEditingId(null);
+            setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+            setIdeaTitleInput('');
+            setError(null);
+            setShowModal(true);
+        }
+    }, [searchParams]);
 
     const fetchIdeaOptions = useCallback(async (signal?: AbortSignal) => {
         if (!selectedChannel) {
@@ -194,9 +210,11 @@ export default function ScriptsPage() {
             setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
             setIdeaTitleInput('');
             await fetchScripts();
+            setError(null);
             addToast(editingId ? SCRIPTS_COPY.toasts.updated : SCRIPTS_COPY.toasts.created, 'success');
         } catch (err) {
             addToast(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error, 'error');
+            setError(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error);
         } finally {
             setSubmitting(false);
         }
@@ -231,6 +249,7 @@ export default function ScriptsPage() {
             ? ideaOptions.find((idea) => idea.id === script.idea_id)?.title ?? ''
             : '';
         setIdeaTitleInput(ideaTitle);
+        setError(null);
         setFormData({
             title: script.title,
             intro: script.intro || '',
@@ -392,7 +411,13 @@ export default function ScriptsPage() {
                                 </div>
                             )}
                             <motion.button
-                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' }); setShowModal(true); }}
+                                onClick={() => {
+                                    setEditingId(null);
+                                    setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+                                    setIdeaTitleInput('');
+                                    setError(null);
+                                    setShowModal(true);
+                                }}
                                 className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto sm:self-end"
                                 style={{
                                     background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
@@ -531,6 +556,11 @@ export default function ScriptsPage() {
                                 <h3 id="script-modal-title" className="text-2xl font-bold text-white mb-6">
                                     {editingId ? SCRIPTS_COPY.edit : SCRIPTS_COPY.new}
                                 </h3>
+                                {error && (
+                                    <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                                        {error}
+                                    </div>
+                                )}
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <datalist id="idea-options">
                                         {ideaOptions.map((idea) => (
@@ -618,7 +648,14 @@ export default function ScriptsPage() {
                                         />
                                     </div>
                                     <div className="flex flex-col gap-3 pt-4 sm:flex-row">
-                                        <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowModal(false);
+                                                setError(null);
+                                            }}
+                                            className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
+                                        >
                                             {SCRIPTS_COPY.cancel}
                                         </button>
                                         <button type="submit" disabled={submitting} className="flex-1 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-50">

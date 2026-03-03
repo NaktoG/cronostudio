@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { Image as ImageIcon, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
@@ -66,9 +66,12 @@ export default function ThumbnailsPage() {
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({ title: '', notes: '', imageUrl: '', scriptId: '', videoId: '' });
     const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [visibleCount, setVisibleCount] = useState(12);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const openNewRef = useRef(false);
     const modalRef = useRef<HTMLDivElement>(null);
+    const searchParams = useSearchParams();
 
     useDialogFocus(modalRef, showModal);
 
@@ -128,6 +131,16 @@ export default function ThumbnailsPage() {
             setSelectedChannel(storedChannel);
         }
     }, [selectedChannel]);
+
+    useEffect(() => {
+        if (openNewRef.current) return;
+        if (searchParams?.get('new') === '1') {
+            openNewRef.current = true;
+            setError(null);
+            setFormData({ title: '', notes: '', imageUrl: '', scriptId: '', videoId: '' });
+            setShowModal(true);
+        }
+    }, [searchParams]);
 
     const fetchScriptOptions = useCallback(async (signal?: AbortSignal) => {
         if (!selectedChannel) {
@@ -211,9 +224,11 @@ export default function ThumbnailsPage() {
             setShowModal(false);
             setFormData({ title: '', notes: '', imageUrl: '', scriptId: '', videoId: '' });
             await fetchThumbnails();
+            setError(null);
             addToast(THUMBNAILS_COPY.toasts.created, 'success');
         } catch (err) {
             addToast(err instanceof Error ? err.message : THUMBNAILS_COPY.toasts.error, 'error');
+            setError(err instanceof Error ? err.message : THUMBNAILS_COPY.toasts.error);
         } finally {
             setSubmitting(false);
         }
@@ -344,7 +359,10 @@ export default function ThumbnailsPage() {
                                 </div>
                             )}
                             <motion.button
-                                onClick={() => setShowModal(true)}
+                                onClick={() => {
+                                    setError(null);
+                                    setShowModal(true);
+                                }}
                                 className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto sm:self-end"
                                 style={{
                                     background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
@@ -503,6 +521,11 @@ export default function ThumbnailsPage() {
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <h3 id="thumbnail-modal-title" className="text-2xl font-bold text-white mb-6">{THUMBNAILS_COPY.new}</h3>
+                                {error && (
+                                    <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                                        {error}
+                                    </div>
+                                )}
                                 <form onSubmit={handleSubmit} className="space-y-4">
                                     <datalist id="script-options">
                                         {scriptOptions.map((script) => (
@@ -567,7 +590,14 @@ export default function ThumbnailsPage() {
                                         />
                                     </div>
                                     <div className="flex flex-col gap-3 pt-4 sm:flex-row">
-                                        <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowModal(false);
+                                                setError(null);
+                                            }}
+                                            className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
+                                        >
                                             {THUMBNAILS_COPY.cancel}
                                         </button>
                                         <button type="submit" disabled={submitting} className="flex-1 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-50">
