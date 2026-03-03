@@ -64,6 +64,7 @@ export default function IdeasPage() {
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [pipelineLoading, setPipelineLoading] = useState<string[]>([]);
     const tagSuggestions = useMemo(() => {
         const map = new Map<string, number>();
         ideas.forEach((idea) => {
@@ -293,6 +294,55 @@ export default function IdeasPage() {
         }
     };
 
+    const runPipeline = async (idea: Idea) => {
+        const channelId = idea.channelId ?? selectedChannel;
+        if (!channelId) {
+            addToast('Selecciona un canal para ejecutar el pipeline', 'error');
+            return;
+        }
+        if (pipelineLoading.includes(idea.id)) return;
+        setPipelineLoading((current) => [...current, idea.id]);
+        try {
+            const scriptResponse = await authFetch('/api/ai/runs/execute', {
+                method: 'POST',
+                body: JSON.stringify({
+                    profileKey: 'script_architect',
+                    channelId,
+                    input: { ideaId: idea.id },
+                }),
+            });
+            if (!scriptResponse.ok) {
+                const data = await scriptResponse.json();
+                throw new Error(data.error || 'Error al generar guion');
+            }
+            const scriptData = await scriptResponse.json();
+            const scriptId = scriptData?.applied?.scriptId as string | undefined;
+            if (!scriptId) {
+                throw new Error('Guion no generado');
+            }
+
+            const seoResponse = await authFetch('/api/ai/runs/execute', {
+                method: 'POST',
+                body: JSON.stringify({
+                    profileKey: 'titles_thumbs',
+                    channelId,
+                    input: { ideaId: idea.id, scriptId },
+                }),
+            });
+            if (!seoResponse.ok) {
+                const data = await seoResponse.json();
+                throw new Error(data.error || 'Error al generar SEO');
+            }
+
+            await fetchIdeas();
+            addToast('Pipeline completado (guion + SEO)', 'success');
+        } catch (err) {
+            addToast(err instanceof Error ? err.message : 'Error al ejecutar pipeline', 'error');
+        } finally {
+            setPipelineLoading((current) => current.filter((id) => id !== idea.id));
+        }
+    };
+
     return (
         <ProtectedRoute>
             <div className="min-h-screen flex flex-col">
@@ -466,6 +516,14 @@ export default function IdeasPage() {
                                         <option value="archived">{IDEA_STATUS_LABELS.archived}</option>
                                         </select>
                                         <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={() => runPipeline(idea)}
+                                                disabled={pipelineLoading.includes(idea.id)}
+                                                className="text-sky-300 hover:text-sky-200 text-xs px-2 disabled:opacity-60"
+                                            >
+                                                {pipelineLoading.includes(idea.id) ? 'Pipeline...' : 'Pipeline AI'}
+                                            </button>
                                             <Link
                                                 href={`/ai?profile=script_architect&ideaId=${idea.id}${idea.channelId ? `&channelId=${idea.channelId}` : selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
                                                 className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 text-xs px-2"
