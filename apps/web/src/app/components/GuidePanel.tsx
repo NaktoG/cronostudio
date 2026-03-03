@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CheckCircle2, ChevronRight, RefreshCw, Sparkles } from 'lucide-react';
@@ -142,6 +142,7 @@ export default function GuidePanel() {
   const [showFull, setShowFull] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState('');
   const [panelRight, setPanelRight] = useState<number | null>(null);
+  const stepsDialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const stored = typeof window !== 'undefined'
@@ -171,6 +172,39 @@ export default function GuidePanel() {
     const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
     setActiveChannelId(storedChannel);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!showSteps) return;
+    const focusable = stepsDialogRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.focus();
+  }, [showSteps]);
+
+  const handleStepsKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setShowSteps(false);
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = stepsDialogRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (event.shiftKey) {
+      if (active === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -386,13 +420,20 @@ export default function GuidePanel() {
         </div>
       </div>
 
-      {showSteps && sectionSteps && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
-          <div className="w-[min(92vw,420px)] rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl">
+        {showSteps && sectionSteps && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="guide-steps-title"
+              className="w-[min(92vw,420px)] rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl"
+              ref={stepsDialogRef}
+              onKeyDown={handleStepsKeyDown}
+            >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Guía rápida</div>
-                <h4 className="mt-1 text-lg font-semibold text-white">{sectionSteps.title}</h4>
+                <h4 id="guide-steps-title" className="mt-1 text-lg font-semibold text-white">{sectionSteps.title}</h4>
               </div>
               <button
                 type="button"

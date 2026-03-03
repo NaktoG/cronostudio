@@ -4,7 +4,6 @@ import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./contexts/ToastContext";
-import ThemeToggle from "./components/ThemeToggle";
 import GuidePanel from "./components/GuidePanel";
 import GlobalShortcuts from "./components/GlobalShortcuts";
 
@@ -39,8 +38,8 @@ export default function RootLayout({
         <ThemeProvider>
           <ToastProvider>
             <AuthProvider>
-              <ThemeToggle />
-              {children}
+              <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
+              <div id="main-content">{children}</div>
               <GlobalShortcuts />
               <GuidePanel />
             </AuthProvider>

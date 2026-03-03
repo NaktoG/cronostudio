@@ -160,6 +160,7 @@ export default function Header() {
             <motion.button
               className="lg:hidden p-2.5 text-slate-300 hover:text-yellow-400 rounded-lg hover:bg-gray-800/50"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
               whileTap={{ scale: 0.95 }}
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -189,6 +190,7 @@ export default function Header() {
                     <button
                       type="button"
                       onClick={() => setMobileMenuOpen(false)}
+                      aria-label="Cerrar menú"
                       className="text-slate-400"
                     >
                       <X className="w-5 h-5" />

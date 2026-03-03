@@ -269,6 +269,7 @@ export default function ProductionsList({
                                                 type="checkbox"
                                                 checked={selectedIds.includes(prod.id)}
                                                 onChange={() => onToggleSelection(prod.id)}
+                                                aria-label={`Seleccionar producción ${prod.title}`}
                                                 className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
                                             />
                                         </label>

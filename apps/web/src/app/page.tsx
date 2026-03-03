@@ -153,6 +153,7 @@ function OnboardingTour({
 }) {
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const step = TOUR_STEPS[stepIndex];
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open || !step) return;
@@ -180,6 +181,39 @@ function OnboardingTour({
     };
   }, [open, step]);
 
+  useEffect(() => {
+    if (!open) return;
+    const focusable = dialogRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.focus();
+  }, [open, stepIndex]);
+
+  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (event.shiftKey) {
+      if (active === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
   if (!open || !step) return null;
 
   const highlightStyle = anchorRect
@@ -201,7 +235,12 @@ function OnboardingTour({
         />
       )}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tour-step-title"
         className={`absolute w-[min(90vw,360px)] rounded-xl border border-gray-800 bg-gray-950/95 p-4 text-white shadow-xl ${reduceMotion ? '' : 'transition-all duration-300'}`}
+        ref={dialogRef}
+        onKeyDown={handleDialogKeyDown}
         style={
           anchorRect
             ? {
@@ -212,7 +251,7 @@ function OnboardingTour({
         }
       >
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">Guía rápida</div>
-        <h4 className="mt-2 text-lg font-semibold">{step.title}</h4>
+        <h4 id="tour-step-title" className="mt-2 text-lg font-semibold">{step.title}</h4>
         <p className="mt-2 text-sm text-slate-300">{step.description}</p>
         <div className="mt-4 flex items-center justify-between">
           <button

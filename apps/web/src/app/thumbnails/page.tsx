@@ -277,6 +277,7 @@ export default function ThumbnailsPage() {
             <div className="min-h-screen flex flex-col">
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
+                    <h1 className="sr-only">{THUMBNAILS_COPY.title}</h1>
                     <motion.div
                         className="flex flex-col gap-4 mb-6 sm:mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
@@ -413,6 +414,7 @@ export default function ThumbnailsPage() {
                                                     type="checkbox"
                                                     checked={selectedIds.includes(thumb.id)}
                                                     onChange={() => toggleSelection(thumb.id)}
+                                                    aria-label={`Seleccionar miniatura ${thumb.title}`}
                                                     className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
                                                 />
                                                 Seleccionar

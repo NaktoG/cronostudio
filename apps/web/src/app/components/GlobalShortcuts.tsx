@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SHORTCUTS } from '../content/shortcuts';
 
@@ -13,6 +13,7 @@ function isTypingTarget(target: EventTarget | null) {
 export default function GlobalShortcuts() {
   const router = useRouter();
   const [showHelp, setShowHelp] = useState(false);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   const shortcutMap = useMemo(() => {
     return new Map([
@@ -26,6 +27,39 @@ export default function GlobalShortcuts() {
       ['g', '/start'],
     ]);
   }, []);
+
+  useEffect(() => {
+    if (!showHelp) return;
+    const focusable = dialogRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.focus();
+  }, [showHelp]);
+
+  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setShowHelp(false);
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (event.shiftKey) {
+      if (active === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
@@ -54,11 +88,18 @@ export default function GlobalShortcuts() {
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-4">
-      <div className="w-[min(92vw,420px)] rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shortcuts-title"
+        className="w-[min(92vw,420px)] rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl"
+        ref={dialogRef}
+        onKeyDown={handleDialogKeyDown}
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Atajos</div>
-            <h4 className="mt-1 text-lg font-semibold text-white">Navegación rápida</h4>
+            <h4 id="shortcuts-title" className="mt-1 text-lg font-semibold text-white">Navegación rápida</h4>
           </div>
           <button
             type="button"
