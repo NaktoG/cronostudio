@@ -77,9 +77,30 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         const data = validateInput(CreateThumbnailSchema, body);
 
         const result = await query(
-            `INSERT INTO thumbnails (user_id, script_id, video_id, title, notes, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            `INSERT INTO thumbnails (user_id, script_id, video_id, title, notes, image_url)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING *`,
             [userId, data.scriptId || null, data.videoId || null, data.title, data.notes || null, data.imageUrl || null]
         );
+
+        const thumbnailId = result.rows[0]?.id as string | undefined;
+        if (thumbnailId) {
+            if (data.scriptId) {
+                await query(
+                    `UPDATE productions
+                     SET thumbnail_id = $1, updated_at = NOW()
+                     WHERE script_id = $2 AND user_id = $3`,
+                    [thumbnailId, data.scriptId, userId]
+                );
+            } else if (data.videoId) {
+                await query(
+                    `UPDATE productions
+                     SET thumbnail_id = $1, updated_at = NOW()
+                     WHERE video_id = $2 AND user_id = $3`,
+                    [thumbnailId, data.videoId, userId]
+                );
+            }
+        }
 
         return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
     } catch (error) {
