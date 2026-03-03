@@ -121,6 +121,8 @@ const TOUR_STEPS = [
   { id: 'integrations', title: 'Integraciones', description: 'Conecta canales y valida datos externos.' },
 ];
 
+const DATE_FORMATTER = new Intl.DateTimeFormat('es-AR');
+
 function getChecklistStatus(production: Production) {
   const scriptReady = production.script_status && production.script_status !== 'draft';
   const seoReady = typeof production.seo_score === 'number' && production.seo_score >= 60;
@@ -1396,11 +1398,13 @@ function DashboardContent() {
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                               <span>Fecha objetivo:</span>
                               <span className="text-slate-200">
-                                {focusProduction.target_date ? focusProduction.target_date.slice(0, 10) : 'Sin fecha'}
+                                {focusProduction.target_date
+                                  ? DATE_FORMATTER.format(new Date(focusProduction.target_date))
+                                  : 'Sin fecha'}
                               </span>
                               <span className="text-slate-600">•</span>
                               <span>
-                                Actualizado {new Date(focusProduction.updated_at).toLocaleDateString('es-AR')}
+                                Actualizado {DATE_FORMATTER.format(new Date(focusProduction.updated_at))}
                               </span>
                             </div>
                             <div className="mt-2 space-y-2">
