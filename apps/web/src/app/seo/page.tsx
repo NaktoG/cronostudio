@@ -54,6 +54,7 @@ export default function SeoPage() {
     const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
     const [scriptOptions, setScriptOptions] = useState<ScriptOption[]>([]);
     const [showPresets, setShowPresets] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -65,6 +66,33 @@ export default function SeoPage() {
         } catch {
             addToast('No se pudo copiar', 'error');
         }
+    };
+
+    const toggleSelection = (id: string) => {
+        setSelectedIds((current) => current.includes(id)
+            ? current.filter((item) => item !== id)
+            : [...current, id]
+        );
+    };
+
+    const clearSelection = () => setSelectedIds([]);
+
+    const copySelected = async (type: 'title' | 'description' | 'tags') => {
+        if (selectedIds.length === 0) return;
+        const items = seoData.filter((item) => selectedIds.includes(item.id));
+        if (items.length === 0) return;
+        if (type === 'title') {
+            await copyToClipboard(items.map((item) => item.optimized_title).join('\n'), 'Títulos');
+        }
+        if (type === 'description') {
+            await copyToClipboard(items.map((item) => item.description || '').filter(Boolean).join('\n\n'), 'Descripciones');
+        }
+        if (type === 'tags') {
+            const tags = items.flatMap((item) => item.tags || []);
+            const unique = Array.from(new Set(tags));
+            await copyToClipboard(unique.join(', '), 'Tags');
+        }
+        clearSelection();
     };
 
     const fetchSeoData = useCallback(async (signal?: AbortSignal) => {
@@ -235,6 +263,39 @@ export default function SeoPage() {
                                 </select>
                             </div>
                         )}
+                        {selectedIds.length > 0 && (
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <span className="text-xs text-slate-400">{selectedIds.length} seleccionados</span>
+                                <button
+                                    type="button"
+                                    onClick={() => copySelected('title')}
+                                    className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                                >
+                                    Copiar títulos
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => copySelected('description')}
+                                    className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                >
+                                    Copiar descripciones
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => copySelected('tags')}
+                                    className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                >
+                                    Copiar tags
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={clearSelection}
+                                    className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                >
+                                    Limpiar
+                                </button>
+                            </div>
+                        )}
                     </motion.div>
 
                     {/* Tips Card */}
@@ -312,7 +373,7 @@ export default function SeoPage() {
                             {seoData.map((item, index) => (
                             <motion.div
                                 key={item.id}
-                                className="surface-panel glow-hover p-6 transition-all min-w-0"
+                                className={`surface-panel glow-hover p-6 transition-all min-w-0 ${selectedIds.includes(item.id) ? 'ring-2 ring-yellow-400/60' : ''}`}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.05 }}
@@ -320,6 +381,15 @@ export default function SeoPage() {
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-4">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-3 mb-2">
+                                            <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(item.id)}
+                                                    onChange={() => toggleSelection(item.id)}
+                                                    className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
+                                                />
+                                                Seleccionar
+                                            </label>
                                             <h3 className="text-lg font-semibold text-white break-words">
                                                 {item.optimized_title}
                                             </h3>
