@@ -1385,6 +1385,14 @@ function DashboardContent() {
                         {focusProduction ? (
                           <div className="mt-3 space-y-2 text-xs text-slate-300">
                             <div className="text-sm text-slate-200 font-semibold truncate">{focusProduction.title}</div>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                              <span className="uppercase tracking-[0.2em]">Estado</span>
+                              <span className="rounded-full border border-gray-800 px-2 py-0.5 text-slate-200">
+                                {stageLabels[focusProduction.status] ?? focusProduction.status}
+                              </span>
+                              <span className="text-slate-600">•</span>
+                              <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
+                            </div>
                             <div className="mt-2 space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-2">
