@@ -233,6 +233,30 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
           [context.userId, input.ideaId, idea.title, data.hook, data.fullScript, fullContent, metrics.wordCount, metrics.estimatedDuration]
         );
 
+        const productionResult = await client.query(
+          `SELECT id
+           FROM productions
+           WHERE idea_id = $1 AND user_id = $2
+           ORDER BY created_at DESC
+           LIMIT 1`,
+          [input.ideaId, context.userId]
+        );
+
+        if (productionResult.rows.length > 0) {
+          await client.query(
+            `UPDATE productions
+             SET script_id = $1, status = 'scripting', updated_at = NOW()
+             WHERE id = $2 AND user_id = $3`,
+            [scriptResult.rows[0].id, productionResult.rows[0].id, context.userId]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO productions (user_id, channel_id, title, status, idea_id, script_id)
+             VALUES ($1, $2, $3, 'scripting', $4, $5)`,
+            [context.userId, context.channelId, idea.title, input.ideaId, scriptResult.rows[0].id]
+          );
+        }
+
         await client.query(
           `UPDATE ideas SET status = 'in_production' WHERE id = $1 AND user_id = $2`,
           [input.ideaId, context.userId]
