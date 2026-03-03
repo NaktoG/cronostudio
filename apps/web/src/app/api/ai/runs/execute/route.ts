@@ -88,6 +88,7 @@ export const POST = requireRoles(['owner'])(
       runId = insert.rows[0].id as string;
 
       const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+      const startedAt = Date.now();
 
       const messages = [
         { role: 'system' as const, content: prompt.system },
@@ -96,6 +97,7 @@ export const POST = requireRoles(['owner'])(
 
       // 2) Pedir salida estructurada a OpenAI (ideal)
       let outputParsed: unknown;
+      let tokenUsage: unknown = null;
 
       try {
         const completion = await openai.chat.completions.parse({
@@ -107,6 +109,7 @@ export const POST = requireRoles(['owner'])(
 
         // @ts-expect-error openai SDK attaches .parsed when using .parse()
         outputParsed = completion.choices?.[0]?.message?.parsed;
+        tokenUsage = completion.usage ?? null;
       } catch (err) {
         // Fallback: JSON mode + validación local
         logger.warn('ai_runs.execute.openai.parse_fallback', { runId, error: String(err) });
@@ -129,6 +132,7 @@ export const POST = requireRoles(['owner'])(
         }
 
         outputParsed = json;
+        tokenUsage = completion.usage ?? null;
       }
 
       // 3) Validar contra el schema del perfil (igual que submit)
@@ -152,9 +156,24 @@ export const POST = requireRoles(['owner'])(
       // 4) Guardar output + completar run
       await query(
         `UPDATE ai_runs
-         SET output_json = $1, status = 'completed', error = NULL, updated_at = NOW()
-         WHERE id = $2 AND user_id = $3`,
-        [JSON.stringify(outputResult.data), runId, userId]
+         SET output_json = $1,
+             status = 'completed',
+             error = NULL,
+             provider = $2,
+             model = $3,
+             latency_ms = $4,
+             token_usage = $5,
+             updated_at = NOW()
+         WHERE id = $6 AND user_id = $7`,
+        [
+          JSON.stringify(outputResult.data),
+          'openai',
+          model,
+          Date.now() - startedAt,
+          tokenUsage ? JSON.stringify(tokenUsage) : null,
+          runId,
+          userId,
+        ]
       );
 
       // 5) Aplicar (igual que apply)
