@@ -53,6 +53,7 @@ export default function ScriptsPage() {
     const [channels, setChannels] = useState<Channel[]>([]);
     const [selectedChannel, setSelectedChannel] = useState('');
     const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
+    const [ideaTitleInput, setIdeaTitleInput] = useState('');
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -180,6 +181,7 @@ export default function ScriptsPage() {
             setShowModal(false);
             setEditingId(null);
             setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+            setIdeaTitleInput('');
             await fetchScripts();
             addToast(editingId ? SCRIPTS_COPY.toasts.updated : SCRIPTS_COPY.toasts.created, 'success');
         } catch (err) {
@@ -190,6 +192,10 @@ export default function ScriptsPage() {
     };
 
     const openEdit = (script: Script) => {
+        const ideaTitle = script.idea_id
+            ? ideaOptions.find((idea) => idea.id === script.idea_id)?.title ?? ''
+            : '';
+        setIdeaTitleInput(ideaTitle);
         setFormData({
             title: script.title,
             intro: script.intro || '',
@@ -400,6 +406,11 @@ export default function ScriptsPage() {
                                             <option key={idea.id} value={idea.id}>{idea.title}</option>
                                         ))}
                                     </datalist>
+                                    <datalist id="idea-title-options">
+                                        {ideaOptions.map((idea) => (
+                                            <option key={idea.id} value={idea.title} />
+                                        ))}
+                                    </datalist>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">Idea ID (opcional)</label>
                                         <input
@@ -409,6 +420,24 @@ export default function ScriptsPage() {
                                             list="idea-options"
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
                                             placeholder="UUID de la idea"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Idea (por título)</label>
+                                        <input
+                                            type="text"
+                                            value={ideaTitleInput}
+                                            onChange={(e) => {
+                                                const next = e.target.value;
+                                                setIdeaTitleInput(next);
+                                                const match = ideaOptions.find((idea) => idea.title.toLowerCase() === next.toLowerCase());
+                                                if (match) {
+                                                    setFormData((prev) => ({ ...prev, ideaId: match.id }));
+                                                }
+                                            }}
+                                            list="idea-title-options"
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                            placeholder="Buscar por título"
                                         />
                                     </div>
                                     <div>
