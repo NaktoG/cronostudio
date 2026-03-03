@@ -126,6 +126,8 @@ export function withSecurityHeaders(response: NextResponse): NextResponse {
       `style-src ${config.csp.styleSrc.join(' ')}`,
       `font-src ${config.csp.fontSrc.join(' ')}`,
       `connect-src ${config.csp.connectSrc.join(' ')}`,
+      "object-src 'none'",
+      "frame-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
       "frame-ancestors 'none'",
