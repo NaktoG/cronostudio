@@ -36,6 +36,10 @@ interface ProductionsListProps {
     showCreateButton?: boolean;
     selectedProductionId?: string | null;
     emptyActions?: Array<{ label: string; onClick: () => void; tone?: 'primary' | 'ghost' }>;
+    selectedIds?: string[];
+    onToggleSelection?: (id: string) => void;
+    onClearSelection?: () => void;
+    onBulkStatus?: (status: string) => void;
 }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
@@ -106,6 +110,10 @@ export default function ProductionsList({
     showCreateButton = true,
     selectedProductionId,
     emptyActions = [],
+    selectedIds = [],
+    onToggleSelection,
+    onClearSelection,
+    onBulkStatus,
 }: ProductionsListProps) {
     return (
         <motion.div
@@ -129,16 +137,51 @@ export default function ProductionsList({
                         </button>
                     )}
                 </div>
-                {showCreateButton && (
-                    <motion.button
-                        onClick={onCreateNew}
-                        className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        {COMPONENT_COPY.productionsList.new}
-                    </motion.button>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                    {selectedIds.length > 0 && onBulkStatus && (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{selectedIds.length} seleccionadas</span>
+                            <button
+                                type="button"
+                                onClick={() => onBulkStatus('recording')}
+                                className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
+                            >
+                                Grabación
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onBulkStatus('editing')}
+                                className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
+                            >
+                                Edición
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onBulkStatus('publishing')}
+                                className="rounded-lg bg-emerald-400 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-black"
+                            >
+                                Publicar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onClearSelection?.()}
+                                className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
+                            >
+                                Limpiar
+                            </button>
+                        </div>
+                    )}
+                    {showCreateButton && (
+                        <motion.button
+                            onClick={onCreateNew}
+                            className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            {COMPONENT_COPY.productionsList.new}
+                        </motion.button>
+                    )}
+                </div>
             </div>
 
             {/* Productions list */}
@@ -208,6 +251,19 @@ export default function ProductionsList({
                             >
                                 {/* Status badge with icon */}
                                 <div className="flex items-center gap-2">
+                                    {onToggleSelection && (
+                                        <label
+                                            className="inline-flex items-center gap-2 text-xs text-slate-300"
+                                            onClick={(event) => event.stopPropagation()}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(prod.id)}
+                                                onChange={() => onToggleSelection(prod.id)}
+                                                className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
+                                            />
+                                        </label>
+                                    )}
                                     <span className="w-8 h-8 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                         <Icon className="w-4 h-4" />
                                     </span>

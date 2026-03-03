@@ -268,6 +268,7 @@ function DashboardContent() {
   const [publishPlatformTouched, setPublishPlatformTouched] = useState(false);
   const [focusedProductionId, setFocusedProductionId] = useState<string | null>(null);
   const [focusSearch, setFocusSearch] = useState('');
+  const [selectedProductionIds, setSelectedProductionIds] = useState<string[]>([]);
   const [publishSubmitting, setPublishSubmitting] = useState(false);
   const [quickPublishSubmitting, setQuickPublishSubmitting] = useState(false);
   const [reconcileSubmitting, setReconcileSubmitting] = useState(false);
@@ -872,6 +873,30 @@ function DashboardContent() {
     const match = focusOptions.find((option) => option.title.toLowerCase() === value.toLowerCase());
     if (match) {
       setFocusedProductionId(match.id);
+    }
+  };
+
+  const toggleProductionSelection = (id: string) => {
+    setSelectedProductionIds((current) => current.includes(id)
+      ? current.filter((item) => item !== id)
+      : [...current, id]
+    );
+  };
+
+  const clearProductionSelection = () => setSelectedProductionIds([]);
+
+  const bulkUpdateProductions = async (status: string) => {
+    if (selectedProductionIds.length === 0) return;
+    try {
+      await Promise.all(selectedProductionIds.map((id) => authFetch(`/api/productions?id=${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      })));
+      clearProductionSelection();
+      fetchData();
+      addToast('Producciones actualizadas', 'success');
+    } catch (error) {
+      addToast('Error al actualizar producciones', 'error');
     }
   };
 
@@ -1526,6 +1551,10 @@ function DashboardContent() {
                         { label: 'Crear producción', onClick: () => setShowModal(true) },
                         { label: 'AI Studio', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
                       ]}
+                      selectedIds={selectedProductionIds}
+                      onToggleSelection={toggleProductionSelection}
+                      onClearSelection={clearProductionSelection}
+                      onBulkStatus={bulkUpdateProductions}
                     />
                   )}
                   </div>
