@@ -851,6 +851,13 @@ function DashboardContent() {
   };
 
   const nextAction = useMemo(() => {
+    if (!focusProduction) {
+      return {
+        label: 'No hay producciones activas. Crea la primera para empezar el pipeline.',
+        action: 'Crear contenido',
+        onClick: () => setShowModal(true),
+      };
+    }
     if (focusProduction && focusChecklist) {
       if (!focusChecklist.scriptReady) {
         return {
@@ -1431,6 +1438,9 @@ function DashboardContent() {
                                   </p>
                                 </div>
                               )}
+                              {!focusProduction && (
+                                <p className="mt-2 text-xs text-slate-400">Aún no hay producciones activas.</p>
+                              )}
                               <p className="mt-1 text-sm text-slate-200">{nextAction.label}</p>
                               <button
                                 type="button"
@@ -1711,7 +1721,25 @@ function DashboardContent() {
                             </div>
                           </div>
                         ) : (
-                          <div className="mt-3 text-xs text-slate-400">No hay producciones activas.</div>
+                          <div className="mt-3 space-y-3 text-xs text-slate-400">
+                            <p>No hay producciones activas.</p>
+                            <div className="flex flex-col gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setShowModal(true)}
+                                className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                              >
+                                Crear contenido
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => router.push('/ideas?new=1')}
+                                className="w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                              >
+                                Crear idea
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
 
