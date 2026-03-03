@@ -29,6 +29,16 @@ interface Channel {
     name: string;
 }
 
+interface IdeaOption {
+    id: string;
+    title: string;
+}
+
+interface ScriptOption {
+    id: string;
+    title: string;
+}
+
 export default function SeoPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
@@ -37,6 +47,8 @@ export default function SeoPage() {
     const [seoData, setSeoData] = useState<SeoData[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
     const [selectedChannel, setSelectedChannel] = useState('');
+    const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
+    const [scriptOptions, setScriptOptions] = useState<ScriptOption[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -102,6 +114,54 @@ export default function SeoPage() {
             setSelectedChannel(storedChannel);
         }
     }, [selectedChannel]);
+
+    const fetchIdeaOptions = useCallback(async (signal?: AbortSignal) => {
+        if (!selectedChannel) {
+            setIdeaOptions([]);
+            return;
+        }
+        try {
+            const response = await authFetch(`/api/ideas?channelId=${selectedChannel}`, { signal });
+            if (response.ok) {
+                const data = await response.json();
+                const options = Array.isArray(data)
+                    ? data.map((idea) => ({ id: idea.id, title: idea.title }))
+                    : [];
+                setIdeaOptions(options);
+            }
+        } catch (err) {
+            if (signal?.aborted) return;
+            console.error('Error fetching ideas:', err);
+        }
+    }, [authFetch, selectedChannel]);
+
+    const fetchScriptOptions = useCallback(async (signal?: AbortSignal) => {
+        if (!selectedChannel) {
+            setScriptOptions([]);
+            return;
+        }
+        try {
+            const response = await authFetch(`/api/scripts?channelId=${selectedChannel}`, { signal });
+            if (response.ok) {
+                const data = await response.json();
+                const options = Array.isArray(data)
+                    ? data.map((script) => ({ id: script.id, title: script.title }))
+                    : [];
+                setScriptOptions(options);
+            }
+        } catch (err) {
+            if (signal?.aborted) return;
+            console.error('Error fetching scripts:', err);
+        }
+    }, [authFetch, selectedChannel]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const controller = new AbortController();
+        fetchIdeaOptions(controller.signal);
+        fetchScriptOptions(controller.signal);
+        return () => controller.abort();
+    }, [isAuthenticated, fetchIdeaOptions, fetchScriptOptions]);
 
     const getScoreColor = (score: number) => {
         if (score >= 80) return 'text-green-400';
@@ -224,6 +284,16 @@ export default function SeoPage() {
                         </motion.div>
                     ) : (
                         <motion.div className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                            <datalist id="seo-idea-options">
+                                {ideaOptions.map((idea) => (
+                                    <option key={idea.id} value={idea.id}>{idea.title}</option>
+                                ))}
+                            </datalist>
+                            <datalist id="seo-script-options">
+                                {scriptOptions.map((script) => (
+                                    <option key={script.id} value={script.id}>{script.title}</option>
+                                ))}
+                            </datalist>
                             {seoData.map((item, index) => (
                             <motion.div
                                 key={item.id}
@@ -242,6 +312,20 @@ export default function SeoPage() {
                                             {item.video_title && (
                                                 <p className="text-sm text-gray-500">{SEO_COPY.videoPrefix} {item.video_title}</p>
                                             )}
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                <input
+                                                    type="text"
+                                                    list="seo-idea-options"
+                                                    placeholder="Idea ID"
+                                                    className="w-40 rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    list="seo-script-options"
+                                                    placeholder="Script ID"
+                                                    className="w-40 rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
+                                                />
+                                            </div>
                                         </div>
                                         <div className="text-right">
                                             <div className={`text-3xl font-bold ${getScoreColor(item.score)}`}>
