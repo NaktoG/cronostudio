@@ -496,6 +496,10 @@ function DashboardContent() {
 
   const handlePublish = async () => {
     if (!publishTarget) return;
+    if (publishMissing.length > 0) {
+      addToast(`Completa: ${publishMissing.join(', ')}`, 'error');
+      return;
+    }
     setPublishSubmitting(true);
     try {
       const response = await authFetch('/api/productions/publish', {
@@ -810,6 +814,14 @@ function DashboardContent() {
     return [...base].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
   }, [activeProductions, activeStage, focusedProductionId]);
   const focusChecklist = focusProduction ? getChecklistStatus(focusProduction) : null;
+  const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
+  const publishMissing = publishChecklist
+    ? [
+        !publishChecklist.scriptReady ? 'Guion' : null,
+        !publishChecklist.seoReady ? 'SEO' : null,
+        !publishChecklist.thumbnailReady ? 'Miniatura' : null,
+      ].filter(Boolean)
+    : [];
   const filteredProductions = activeStage
     ? activeProductions.filter((production) => production.status === activeStage)
     : activeProductions;
@@ -2045,6 +2057,11 @@ function DashboardContent() {
             <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs text-yellow-200">
               Pegá la URL del video publicado para cerrar el pipeline y registrar el enlace.
             </div>
+            {publishMissing.length > 0 && (
+              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+                Faltan pasos: {publishMissing.join(', ')}
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">URL publicado (opcional)</label>
@@ -2091,7 +2108,7 @@ function DashboardContent() {
                   className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  disabled={publishSubmitting}
+                  disabled={publishSubmitting || publishMissing.length > 0}
                 >
                   {publishSubmitting ? 'Guardando...' : 'Marcar como publicado'}
                 </motion.button>
