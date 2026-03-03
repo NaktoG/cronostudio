@@ -62,6 +62,7 @@ export default function ScriptsPage() {
     const [submitting, setSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [pipelineLoading, setPipelineLoading] = useState<string[]>([]);
     const modalRef = useRef<HTMLDivElement>(null);
     const deleteRef = useRef<HTMLDivElement>(null);
 
@@ -251,6 +252,50 @@ export default function ScriptsPage() {
         }
     };
 
+    const runPublishPipeline = async (script: Script) => {
+        const channelId = selectedChannel;
+        if (!channelId) {
+            addToast('Selecciona un canal para ejecutar el pipeline', 'error');
+            return;
+        }
+        if (pipelineLoading.includes(script.id)) return;
+        setPipelineLoading((current) => [...current, script.id]);
+        try {
+            const seoResponse = await authFetch('/api/ai/runs/execute', {
+                method: 'POST',
+                body: JSON.stringify({
+                    profileKey: 'titles_thumbs',
+                    channelId,
+                    input: { ideaId: script.idea_id, scriptId: script.id },
+                }),
+            });
+            if (!seoResponse.ok) {
+                const data = await seoResponse.json();
+                throw new Error(data.error || 'Error al generar SEO');
+            }
+
+            const thumbResponse = await authFetch('/api/thumbnails', {
+                method: 'POST',
+                body: JSON.stringify({
+                    title: script.title,
+                    scriptId: script.id,
+                    notes: 'Generado desde pipeline',
+                }),
+            });
+            if (!thumbResponse.ok) {
+                const data = await thumbResponse.json();
+                throw new Error(data.error || 'Error al crear miniatura');
+            }
+
+            await fetchScripts();
+            addToast('Pipeline completado (SEO + miniatura)', 'success');
+        } catch (err) {
+            addToast(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error, 'error');
+        } finally {
+            setPipelineLoading((current) => current.filter((id) => id !== script.id));
+        }
+    };
+
     const formatDuration = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -404,6 +449,14 @@ export default function ScriptsPage() {
                                             )}
                                         </div>
                                         <div className="flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => runPublishPipeline(script)}
+                                                disabled={pipelineLoading.includes(script.id)}
+                                                className="text-sky-300 hover:text-sky-200 text-xs px-2 disabled:opacity-60"
+                                            >
+                                                {pipelineLoading.includes(script.id) ? 'Pipeline...' : 'Pipeline Publicar'}
+                                            </button>
                                             <Link
                                                 href={`/ai?profile=retention_editor&scriptId=${script.id}${selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
                                                 className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 text-xs px-2"
