@@ -26,6 +26,11 @@ interface Thumbnail {
     created_at: string;
 }
 
+interface Channel {
+    id: string;
+    name: string;
+}
+
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     pending: { label: THUMBNAILS_COPY.statuses.pending, color: 'bg-gray-600' },
     designing: { label: THUMBNAILS_COPY.statuses.designing, color: 'bg-yellow-600' },
@@ -38,6 +43,8 @@ export default function ThumbnailsPage() {
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const [thumbnails, setThumbnails] = useState<Thumbnail[]>([]);
+    const [channels, setChannels] = useState<Channel[]>([]);
+    const [selectedChannel, setSelectedChannel] = useState('');
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({ title: '', notes: '', imageUrl: '' });
@@ -54,7 +61,8 @@ export default function ThumbnailsPage() {
                 setThumbnails([]);
                 return;
             }
-            const response = await authFetch('/api/thumbnails', { signal });
+            const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
+            const response = await authFetch(`/api/thumbnails${query}`, { signal });
             if (response.ok) setThumbnails(await response.json());
         } catch (err) {
             if (signal?.aborted) return;
@@ -64,13 +72,44 @@ export default function ThumbnailsPage() {
             if (signal?.aborted) return;
             setLoading(false);
         }
-    }, [isAuthenticated, authFetch, addToast]);
+    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
 
     useEffect(() => {
         const controller = new AbortController();
         fetchThumbnails(controller.signal);
         return () => controller.abort();
     }, [fetchThumbnails]);
+
+    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
+        try {
+            if (!isAuthenticated) {
+                setChannels([]);
+                return;
+            }
+            const response = await authFetch('/api/channels', { signal });
+            if (response.ok) {
+                setChannels(await response.json());
+            }
+        } catch (err) {
+            if (signal?.aborted) return;
+            console.error('Error fetching channels:', err);
+        }
+    }, [isAuthenticated, authFetch]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const controller = new AbortController();
+        fetchChannels(controller.signal);
+        return () => controller.abort();
+    }, [isAuthenticated, fetchChannels]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
+        if (storedChannel && storedChannel !== selectedChannel) {
+            setSelectedChannel(storedChannel);
+        }
+    }, [selectedChannel]);
 
     useEffect(() => {
         if (!showModal) return;
@@ -160,19 +199,44 @@ export default function ThumbnailsPage() {
                             </div>
                             <p className="text-sm sm:text-base text-slate-300">{THUMBNAILS_COPY.subtitle}</p>
                         </div>
-                        <motion.button
-                            onClick={() => setShowModal(true)}
-                            className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
-                            style={{
-                                background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-                                boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
-                            }}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                        >
-                            <Plus className="w-4 h-4" />
-                            {THUMBNAILS_COPY.new}
-                        </motion.button>
+                        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:items-center">
+                            {channels.length > 0 && (
+                                <div className="min-w-[220px]">
+                                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>
+                                    <select
+                                        value={selectedChannel}
+                                        onChange={(event) => {
+                                            const next = event.target.value;
+                                            setSelectedChannel(next);
+                                            if (typeof window !== 'undefined') {
+                                                window.localStorage.setItem('cronostudio.channelId', next);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-2.5 bg-gray-900/70 border border-gray-800 rounded-lg text-sm text-white focus:ring-2 focus:ring-yellow-400"
+                                    >
+                                        <option value="">Todos los canales</option>
+                                        {channels.map((channel) => (
+                                            <option key={channel.id} value={channel.id}>
+                                                {channel.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            <motion.button
+                                onClick={() => setShowModal(true)}
+                                className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+                                    boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
+                                }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <Plus className="w-4 h-4" />
+                                {THUMBNAILS_COPY.new}
+                            </motion.button>
+                        </div>
                     </motion.div>
 
                     {loading ? (
