@@ -12,6 +12,7 @@ import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { CHANNELS_COPY } from '../content/pages/channels';
 import useDialogFocus from '../hooks/useDialogFocus';
+import { formatDate } from '@/lib/dates';
 
 interface Channel {
     id: string;
@@ -287,7 +288,7 @@ export default function ChannelsPage() {
 
                                     <div className="mt-4 pt-4 border-t border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <span className="text-xs text-gray-500">
-                                            {CHANNELS_COPY.createdAt} {new Date(channel.created_at).toLocaleDateString('es-ES')}
+                                            {CHANNELS_COPY.createdAt} {formatDate(channel.created_at)}
                                         </span>
                                         <div className="flex flex-wrap items-center gap-3">
                                             <button

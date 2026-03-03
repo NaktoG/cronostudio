@@ -47,7 +47,7 @@ function getUserId(request: NextRequest): string | null {
  * GET /api/ideas
  * List all ideas for authenticated user
  */
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getUserId(request);
         if (!userId) {
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         logger.error('Error fetching ideas', { error: String(error) });
         return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener ideas' }, { status: 500 }));
     }
-}
+});
 
 /**
  * POST /api/ideas

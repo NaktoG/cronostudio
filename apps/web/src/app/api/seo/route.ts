@@ -48,7 +48,7 @@ function calculateSeoScore(title?: string, description?: string, tags?: string[]
     return Math.min(score, 100);
 }
 
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         console.error('Error fetching SEO data:', error);
         return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener datos SEO' }, { status: 500 }));
     }
-}
+});
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {

@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
                 whileHover={{ scale: 1.05, rotate: 4 }}
               >
                 <Image
-                  src="/logo_crono.png"
+                  src="/Logo_Crono_02.png"
                   alt="CronoStudio"
                   width={40}
                   height={40}

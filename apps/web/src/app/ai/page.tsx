@@ -10,6 +10,8 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import useDialogFocus from '../hooks/useDialogFocus';
+import { useSearchParams } from 'next/navigation';
+import { formatDateTime } from '@/lib/dates';
 
 type Profile = {
   key: string;
@@ -21,6 +23,16 @@ type Profile = {
 type Channel = {
   id: string;
   name: string;
+};
+
+type IdeaOption = {
+  id: string;
+  title: string;
+};
+
+type ScriptOption = {
+  id: string;
+  title: string;
 };
 
 type Run = {
@@ -58,6 +70,9 @@ const PROFILE_FIELDS: Record<string, { label: string; placeholder: string; key: 
 };
 
 export default function AiStudioPage() {
+  const searchParams = useSearchParams();
+  const publicModel = process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini';
+  const publicMaxTokens = process.env.NEXT_PUBLIC_OPENAI_MAX_OUTPUT_TOKENS || '800';
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
   const { addToast } = useToast();
@@ -67,6 +82,8 @@ export default function AiStudioPage() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
+  const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
+  const [scriptOptions, setScriptOptions] = useState<ScriptOption[]>([]);
   const [prompt, setPrompt] = useState<PromptPayload | null>(null);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<string | null>(null);
@@ -78,6 +95,7 @@ export default function AiStudioPage() {
   const [autoOutput, setAutoOutput] = useState<unknown | null>(null);
   const [autoApplied, setAutoApplied] = useState<Record<string, unknown> | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const queryInitializedRef = useRef(false);
 
   useDialogFocus(modalRef, Boolean(selectedRun));
 
@@ -124,6 +142,36 @@ export default function AiStudioPage() {
     }
   }, [authFetch]);
 
+  const fetchIdeaOptions = useCallback(async (channelId: string) => {
+    if (!channelId) return;
+    try {
+      const response = await authFetch(`/api/ideas?channelId=${channelId}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      const options = Array.isArray(data)
+        ? data.map((idea: { id: string; title: string }) => ({ id: idea.id, title: idea.title }))
+        : [];
+      setIdeaOptions(options);
+    } catch (error) {
+      console.error('Error fetching ideas', error);
+    }
+  }, [authFetch]);
+
+  const fetchScriptOptions = useCallback(async (channelId: string) => {
+    if (!channelId) return;
+    try {
+      const response = await authFetch(`/api/scripts?channelId=${channelId}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      const options = Array.isArray(data)
+        ? data.map((script: { id: string; title: string }) => ({ id: script.id, title: script.title }))
+        : [];
+      setScriptOptions(options);
+    } catch (error) {
+      console.error('Error fetching scripts', error);
+    }
+  }, [authFetch]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       setLoading(false);
@@ -136,7 +184,47 @@ export default function AiStudioPage() {
   useEffect(() => {
     if (!selectedChannel) return;
     fetchRuns(selectedChannel);
-  }, [selectedChannel, fetchRuns]);
+    fetchIdeaOptions(selectedChannel);
+    fetchScriptOptions(selectedChannel);
+  }, [selectedChannel, fetchRuns, fetchIdeaOptions, fetchScriptOptions]);
+
+  useEffect(() => {
+    if (queryInitializedRef.current) return;
+    if (!searchParams) return;
+
+    const profileKey = searchParams.get('profile');
+    const channelId = searchParams.get('channelId');
+    const ideaId = searchParams.get('ideaId');
+    const scriptId = searchParams.get('scriptId');
+
+    if (!profileKey && !channelId && !ideaId && !scriptId) return;
+
+    if (profileKey && profiles.length === 0) {
+      return;
+    }
+
+    if (channelId) {
+      setSelectedChannel(channelId);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('cronostudio.channelId', channelId);
+      }
+    }
+
+    if (profileKey) {
+      const match = profiles.find((profile) => profile.key === profileKey);
+      if (match) setActiveProfile(match);
+    }
+
+    if (ideaId || scriptId) {
+      setFormInputs((prev) => ({
+        ...prev,
+        ideaId: ideaId ?? prev.ideaId,
+        scriptId: scriptId ?? prev.scriptId,
+      }));
+    }
+
+    queryInitializedRef.current = true;
+  }, [searchParams, profiles]);
 
   const activeFields = useMemo(() => {
     if (!activeProfile) return [];
@@ -344,6 +432,12 @@ export default function AiStudioPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3 justify-start sm:justify-end">
               <div className="flex items-center gap-2 text-xs text-slate-400">
+                <span className="uppercase tracking-[0.2em] text-[10px] text-slate-500">Modelo</span>
+                <span className="text-slate-300">{publicModel}</span>
+                <span className="text-slate-600">·</span>
+                <span className="text-slate-400">Max tokens {publicMaxTokens}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-slate-400">
                 <History className="w-4 h-4" />
                 <span>{runs.length} runs</span>
               </div>
@@ -429,11 +523,23 @@ export default function AiStudioPage() {
                           placeholder={field.placeholder}
                           value={formInputs[field.key]}
                           onChange={(event) => setFormInputs((prev) => ({ ...prev, [field.key]: event.target.value }))}
+                          list={field.key === 'ideaId' ? 'idea-options' : field.key === 'scriptId' ? 'script-options' : undefined}
                         />
                       </label>
                     ))}
                   </div>
                 )}
+
+                <datalist id="idea-options">
+                  {ideaOptions.map((idea) => (
+                    <option key={idea.id} value={idea.id}>{idea.title}</option>
+                  ))}
+                </datalist>
+                <datalist id="script-options">
+                  {scriptOptions.map((script) => (
+                    <option key={script.id} value={script.id}>{script.title}</option>
+                  ))}
+                </datalist>
 
                 <div className="flex flex-wrap gap-3">
                   <button
@@ -559,7 +665,7 @@ export default function AiStudioPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-semibold text-slate-100">{run.profile_key}</p>
-                          <p className="text-xs text-slate-500">{new Date(run.created_at).toLocaleString()}</p>
+                          <p className="text-xs text-slate-500">{formatDateTime(run.created_at)}</p>
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full ${statusBadge(run.status)}`}>{run.status}</span>
                       </div>

@@ -120,6 +120,62 @@ export function setTimeOnDateUtc(date: Date, timeHHmm: string): Date {
   return updated;
 }
 
+const DATE_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
+const DATE_TIME_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const MONTH_YEAR_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  month: 'long',
+  year: 'numeric',
+});
+
+const DAY_MONTH_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: '2-digit',
+});
+
+function toDate(value: Date | string): Date | null {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function formatDate(value: Date | string) {
+  const date = toDate(value);
+  if (!date) return '';
+  return DATE_FORMAT.format(date);
+}
+
+export function formatDateTime(value: Date | string) {
+  const date = toDate(value);
+  if (!date) return '';
+  return DATE_TIME_FORMAT.format(date);
+}
+
+export function formatMonthYear(value: Date | string) {
+  const date = toDate(value);
+  if (!date) return '';
+  return MONTH_YEAR_FORMAT.format(date);
+}
+
+export function formatDayMonth(value: Date | string) {
+  const date = toDate(value);
+  if (!date) return '';
+  return DAY_MONTH_FORMAT.format(date);
+}
+
 export function getWeekdayDate(startOfWeek: Date, weekday: string): Date | null {
   const map: Record<string, number> = {
     monday: 0,

@@ -25,7 +25,7 @@ const UpdateThumbnailSchema = z.object({
     status: z.enum(['pending', 'designing', 'designed', 'approved']).optional(),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
 
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         console.error('Error fetching thumbnails:', error);
         return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener miniaturas' }, { status: 500 }));
     }
-}
+});
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
@@ -77,9 +77,30 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         const data = validateInput(CreateThumbnailSchema, body);
 
         const result = await query(
-            `INSERT INTO thumbnails (user_id, script_id, video_id, title, notes, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            `INSERT INTO thumbnails (user_id, script_id, video_id, title, notes, image_url)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING *`,
             [userId, data.scriptId || null, data.videoId || null, data.title, data.notes || null, data.imageUrl || null]
         );
+
+        const thumbnailId = result.rows[0]?.id as string | undefined;
+        if (thumbnailId) {
+            if (data.scriptId) {
+                await query(
+                    `UPDATE productions
+                     SET thumbnail_id = $1, updated_at = NOW()
+                     WHERE script_id = $2 AND user_id = $3`,
+                    [thumbnailId, data.scriptId, userId]
+                );
+            } else if (data.videoId) {
+                await query(
+                    `UPDATE productions
+                     SET thumbnail_id = $1, updated_at = NOW()
+                     WHERE video_id = $2 AND user_id = $3`,
+                    [thumbnailId, data.videoId, userId]
+                );
+            }
+        }
 
         return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
     } catch (error) {
@@ -126,6 +147,25 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
 
         if (result.rows.length === 0) {
             return withSecurityHeaders(NextResponse.json({ error: 'Miniatura no encontrada' }, { status: 404 }));
+        }
+
+        if (data.status === 'approved') {
+            const row = result.rows[0] as { id: string; script_id?: string | null; video_id?: string | null };
+            if (row.script_id) {
+                await query(
+                    `UPDATE productions
+                     SET thumbnail_id = $1, status = 'publishing', updated_at = NOW()
+                     WHERE script_id = $2 AND user_id = $3`,
+                    [row.id, row.script_id, userId]
+                );
+            } else if (row.video_id) {
+                await query(
+                    `UPDATE productions
+                     SET thumbnail_id = $1, status = 'publishing', updated_at = NOW()
+                     WHERE video_id = $2 AND user_id = $3`,
+                    [row.id, row.video_id, userId]
+                );
+            }
         }
 
         return withSecurityHeaders(NextResponse.json(result.rows[0]));

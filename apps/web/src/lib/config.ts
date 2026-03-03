@@ -30,6 +30,12 @@ const envSchema = z
     REDIS_SKIP_TLS_VERIFY: z.string().optional(),
 
     CRONOSTUDIO_WEBHOOK_SECRET: z.string().optional(),
+
+    CSP_CONNECT_SRC: z.string().optional(),
+    CSP_IMG_SRC: z.string().optional(),
+    CSP_SCRIPT_SRC: z.string().optional(),
+    CSP_STYLE_SRC: z.string().optional(),
+    CSP_FONT_SRC: z.string().optional(),
   })
   .passthrough();
 
@@ -122,6 +128,14 @@ function buildConfig() {
 
     webhooks: {
       secret: env.CRONOSTUDIO_WEBHOOK_SECRET,
+    },
+
+    csp: {
+      connectSrc: getArrayEnv(env.CSP_CONNECT_SRC, ["'self'"]),
+      imgSrc: getArrayEnv(env.CSP_IMG_SRC, ["'self'", 'data:', 'https:']),
+      scriptSrc: getArrayEnv(env.CSP_SCRIPT_SRC, ["'self'"]),
+      styleSrc: getArrayEnv(env.CSP_STYLE_SRC, ["'self'", "'unsafe-inline'"]),
+      fontSrc: getArrayEnv(env.CSP_FONT_SRC, ["'self'", 'data:', 'https://fonts.gstatic.com']),
     },
 
     rateLimit: {

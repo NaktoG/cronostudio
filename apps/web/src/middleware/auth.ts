@@ -121,11 +121,15 @@ export function withSecurityHeaders(response: NextResponse): NextResponse {
     'Content-Security-Policy',
     [
       "default-src 'self'",
-      "img-src 'self' data: https:",
-      "script-src 'self'",
-      "style-src 'self' 'unsafe-inline'",
-      "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self'",
+      `img-src ${config.csp.imgSrc.join(' ')}`,
+      `script-src ${config.csp.scriptSrc.join(' ')}`,
+      `style-src ${config.csp.styleSrc.join(' ')}`,
+      `font-src ${config.csp.fontSrc.join(' ')}`,
+      `connect-src ${config.csp.connectSrc.join(' ')}`,
+      "object-src 'none'",
+      "frame-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
       "frame-ancestors 'none'",
     ].join('; ')
   );

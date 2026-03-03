@@ -9,6 +9,8 @@ import { getAiProfile } from '@/lib/ai/profiles';
 
 export const dynamic = 'force-dynamic';
 
+const MAX_BODY_BYTES = 200_000;
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
@@ -29,6 +31,11 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
     const userId = getAuthUser(request)?.userId;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+    }
+
+    const contentLength = request.headers.get('content-length');
+    if (contentLength && Number(contentLength) > MAX_BODY_BYTES) {
+      return withSecurityHeaders(NextResponse.json({ error: 'payload_too_large' }, { status: 413 }));
     }
 
     const { id } = await params;

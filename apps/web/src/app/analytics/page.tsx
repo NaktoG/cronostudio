@@ -10,6 +10,7 @@ import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { ANALYTICS_COPY } from '../content/pages/analytics';
+import { formatDate, formatMonthYear } from '@/lib/dates';
 
 interface AnalyticsData {
     period: string;
@@ -348,11 +349,9 @@ function AnalyticsContent() {
                             const views = Number(item.total_views) || 0;
                             const percentage = (views / maxViews) * 100;
                             const date = new Date(item.period);
-                            const formattedDate = date.toLocaleDateString('es-ES', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: groupBy === 'month' ? 'numeric' : undefined,
-                            });
+                            const formattedDate = groupBy === 'month'
+                                ? formatMonthYear(date)
+                                : formatDate(date);
 
                             return (
                                 <motion.div

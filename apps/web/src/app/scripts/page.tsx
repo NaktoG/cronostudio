@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
@@ -11,6 +11,7 @@ import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { SCRIPTS_COPY } from '../content/pages/scripts';
 import useDialogFocus from '../hooks/useDialogFocus';
+import Link from 'next/link';
 
 interface Script {
     id: string;
@@ -22,8 +23,14 @@ interface Script {
     status: string;
     word_count: number;
     estimated_duration_seconds: number;
+    idea_id?: string | null;
     idea_title: string | null;
     created_at: string;
+}
+
+interface Channel {
+    id: string;
+    name: string;
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -38,6 +45,8 @@ export default function ScriptsPage() {
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const [scripts, setScripts] = useState<Script[]>([]);
+    const [channels, setChannels] = useState<Channel[]>([]);
+    const [selectedChannel, setSelectedChannel] = useState('');
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -58,7 +67,8 @@ export default function ScriptsPage() {
                 setScripts([]);
                 return;
             }
-            const response = await authFetch('/api/scripts', { signal });
+            const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
+            const response = await authFetch(`/api/scripts${query}`, { signal });
             if (response.ok) setScripts(await response.json());
         } catch (err) {
             if (signal?.aborted) return;
@@ -68,13 +78,44 @@ export default function ScriptsPage() {
             if (signal?.aborted) return;
             setLoading(false);
         }
-    }, [isAuthenticated, authFetch, addToast]);
+    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
 
     useEffect(() => {
         const controller = new AbortController();
         fetchScripts(controller.signal);
         return () => controller.abort();
     }, [fetchScripts]);
+
+    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
+        try {
+            if (!isAuthenticated) {
+                setChannels([]);
+                return;
+            }
+            const response = await authFetch('/api/channels', { signal });
+            if (response.ok) {
+                setChannels(await response.json());
+            }
+        } catch (err) {
+            if (signal?.aborted) return;
+            console.error('Error fetching channels:', err);
+        }
+    }, [isAuthenticated, authFetch]);
+
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        const controller = new AbortController();
+        fetchChannels(controller.signal);
+        return () => controller.abort();
+    }, [isAuthenticated, fetchChannels]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
+        if (storedChannel && storedChannel !== selectedChannel) {
+            setSelectedChannel(storedChannel);
+        }
+    }, [selectedChannel]);
 
     useEffect(() => {
         if (!showModal && !deleteTarget) return;
@@ -173,19 +214,44 @@ export default function ScriptsPage() {
                                 <p className="text-sm sm:text-base text-slate-300">{SCRIPTS_COPY.subtitle}</p>
                             </div>
                         </div>
-                        <motion.button
-                            onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '' }); setShowModal(true); }}
-                            className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
-                            style={{
-                                background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-                                boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
-                            }}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                        >
-                            <Plus className="w-4 h-4" />
-                            {SCRIPTS_COPY.new}
-                        </motion.button>
+                        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:items-center">
+                            {channels.length > 0 && (
+                                <div className="min-w-[220px]">
+                                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>
+                                    <select
+                                        value={selectedChannel}
+                                        onChange={(event) => {
+                                            const next = event.target.value;
+                                            setSelectedChannel(next);
+                                            if (typeof window !== 'undefined') {
+                                                window.localStorage.setItem('cronostudio.channelId', next);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-2.5 bg-gray-900/70 border border-gray-800 rounded-lg text-sm text-white focus:ring-2 focus:ring-yellow-400"
+                                    >
+                                        <option value="">Todos los canales</option>
+                                        {channels.map((channel) => (
+                                            <option key={channel.id} value={channel.id}>
+                                                {channel.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            <motion.button
+                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '' }); setShowModal(true); }}
+                                className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+                                    boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
+                                }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <Plus className="w-4 h-4" />
+                                {SCRIPTS_COPY.new}
+                            </motion.button>
+                        </div>
                     </motion.div>
 
                     {loading ? (
@@ -230,7 +296,21 @@ export default function ScriptsPage() {
                                                 <p className="text-sm text-gray-500 mt-1">{SCRIPTS_COPY.ideaPrefix} {script.idea_title}</p>
                                             )}
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-wrap gap-2">
+                                            <Link
+                                                href={`/ai?profile=retention_editor&scriptId=${script.id}${selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
+                                                className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 text-xs px-2"
+                                            >
+                                                <Sparkles className="w-3 h-3" />
+                                                Retención
+                                            </Link>
+                                            <Link
+                                                href={`/ai?profile=titles_thumbs&scriptId=${script.id}${script.idea_id ? `&ideaId=${script.idea_id}` : ''}${selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
+                                                className="inline-flex items-center gap-1 text-sky-300 hover:text-sky-200 text-xs px-2"
+                                            >
+                                                <Sparkles className="w-3 h-3" />
+                                                SEO + Títulos
+                                            </Link>
                                             <button onClick={() => openEdit(script)} className="px-3 py-1 text-sm text-yellow-400 hover:text-yellow-300">
                                                 {SCRIPTS_COPY.edit}
                                             </button>

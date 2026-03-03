@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
-import { Lightbulb, Plus } from 'lucide-react';
+import { Lightbulb, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
@@ -13,6 +13,7 @@ import { IDEAS_COPY } from '../content/pages/ideas';
 import { IDEA_STATUS_LABELS, IdeaStatus } from '../content/labels';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { evaluateIdeaReady } from '@/lib/ideaReady';
+import Link from 'next/link';
 
 interface Idea {
     id: string;
@@ -45,6 +46,7 @@ export default function IdeasPage() {
     const { addToast } = useToast();
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [channels, setChannels] = useState<Channel[]>([]);
+    const [selectedChannel, setSelectedChannel] = useState('');
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
@@ -74,7 +76,8 @@ export default function IdeasPage() {
                 setIdeas([]);
                 return;
             }
-            const response = await authFetch('/api/ideas', { signal });
+            const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
+            const response = await authFetch(`/api/ideas${query}`, { signal });
             if (response.ok) {
                 setIdeas(await response.json());
             }
@@ -86,7 +89,7 @@ export default function IdeasPage() {
             if (signal?.aborted) return;
             setLoading(false);
         }
-    }, [isAuthenticated, authFetch, addToast]);
+    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -120,6 +123,14 @@ export default function IdeasPage() {
         fetchChannels(controller.signal);
         return () => controller.abort();
     }, [isAuthenticated, fetchChannels]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
+        if (storedChannel && storedChannel !== selectedChannel) {
+            setSelectedChannel(storedChannel);
+        }
+    }, [selectedChannel]);
 
     useEffect(() => {
         if (!showModal && !deleteTarget) return;
@@ -267,23 +278,48 @@ export default function IdeasPage() {
                             </div>
                             <p className="text-sm sm:text-base text-slate-300">{IDEAS_COPY.subtitle}</p>
                         </div>
-                        <motion.button
-                            onClick={() => {
-                                setEditingIdea(null);
-                                setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
-                                setShowModal(true);
-                            }}
-                            className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
-                            style={{
-                                background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-                                boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
-                            }}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                        >
-                            <Plus className="w-4 h-4" />
-                            {IDEAS_COPY.new}
-                        </motion.button>
+                        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:items-center">
+                            {channels.length > 0 && (
+                                <div className="min-w-[220px]">
+                                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>
+                                    <select
+                                        value={selectedChannel}
+                                        onChange={(event) => {
+                                            const next = event.target.value;
+                                            setSelectedChannel(next);
+                                            if (typeof window !== 'undefined') {
+                                                window.localStorage.setItem('cronostudio.channelId', next);
+                                            }
+                                        }}
+                                        className="w-full px-4 py-2.5 bg-gray-900/70 border border-gray-800 rounded-lg text-sm text-white focus:ring-2 focus:ring-yellow-400"
+                                    >
+                                        <option value="">Todos los canales</option>
+                                        {channels.map((channel) => (
+                                            <option key={channel.id} value={channel.id}>
+                                                {channel.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            <motion.button
+                                onClick={() => {
+                                    setEditingIdea(null);
+                                    setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
+                                    setShowModal(true);
+                                }}
+                                className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+                                    boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
+                                }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <Plus className="w-4 h-4" />
+                                {IDEAS_COPY.new}
+                            </motion.button>
+                        </div>
                     </motion.div>
 
                     {loading ? (
@@ -359,7 +395,14 @@ export default function IdeasPage() {
                                         <option value="completed">{IDEA_STATUS_LABELS.completed}</option>
                                         <option value="archived">{IDEA_STATUS_LABELS.archived}</option>
                                         </select>
-                                        <div className="flex items-center justify-between gap-3 sm:justify-end">
+                                        <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                                            <Link
+                                                href={`/ai?profile=script_architect&ideaId=${idea.id}${idea.channelId ? `&channelId=${idea.channelId}` : selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
+                                                className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 text-xs px-2"
+                                            >
+                                                <Sparkles className="w-3 h-3" />
+                                                Guion AI
+                                            </Link>
                                             <button
                                                 onClick={() => startEdit(idea)}
                                                 className="text-yellow-300 hover:text-yellow-200 text-xs px-2"

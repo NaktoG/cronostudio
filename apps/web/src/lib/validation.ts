@@ -127,6 +127,7 @@ export type ResendVerificationInput = z.infer<typeof ResendVerificationSchema>;
 
 export const CreateVideoSchema = z.object({
   channelId: z.string().uuid('ID de canal inválido'),
+  productionId: z.string().uuid('ID de producción inválido').optional(),
   youtubeVideoId: z
     .string()
     .min(1, 'Video ID requerido')

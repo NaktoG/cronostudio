@@ -49,7 +49,7 @@ function getUserId(request: NextRequest): string | null {
  * GET /api/productions
  * List productions with optional pipeline stats
  */
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getUserId(request);
         if (!userId) {
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener producciones' }, { status: 500 }));
     }
-}
+});
 
 /**
  * POST /api/productions

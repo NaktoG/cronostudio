@@ -30,7 +30,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
         // Use AuthService for login
         const result = await authService.login(validatedData.email, validatedData.password);
 
-        logger.info('User logged in', { userId: result.user.id, email: result.user.email });
+        logger.info('User logged in', { userId: result.user.id });
 
         const response = NextResponse.json({
             message: 'Login exitoso',

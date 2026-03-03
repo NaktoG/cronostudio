@@ -2,10 +2,10 @@
 
 import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getIsoWeekInfo } from '@/lib/dates';
+import { formatDate, formatDateTime, formatMonthYear, getIsoWeekInfo } from '@/lib/dates';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -120,6 +120,21 @@ const TOUR_STEPS = [
   { id: 'calendar', title: 'Calendario', description: 'Programa contenido y ajusta fechas.' },
   { id: 'integrations', title: 'Integraciones', description: 'Conecta canales y valida datos externos.' },
 ];
+
+
+function getChecklistStatus(production: Production) {
+  const scriptReady = production.script_status && production.script_status !== 'draft';
+  const seoReady = typeof production.seo_score === 'number' && production.seo_score >= 60;
+  const thumbnailReady = production.thumbnail_status === 'approved';
+  const published = production.status === 'published';
+
+  return {
+    scriptReady,
+    seoReady,
+    thumbnailReady,
+    published,
+  };
+}
 
 function OnboardingTour({
   open,
@@ -250,6 +265,8 @@ function DashboardContent() {
   const [publishTarget, setPublishTarget] = useState<Production | null>(null);
   const [publishUrl, setPublishUrl] = useState('');
   const [publishPlatformId, setPublishPlatformId] = useState('');
+  const [publishPlatformTouched, setPublishPlatformTouched] = useState(false);
+  const [focusedProductionId, setFocusedProductionId] = useState<string | null>(null);
   const [publishSubmitting, setPublishSubmitting] = useState(false);
   const [quickPublishSubmitting, setQuickPublishSubmitting] = useState(false);
   const [reconcileSubmitting, setReconcileSubmitting] = useState(false);
@@ -479,6 +496,10 @@ function DashboardContent() {
 
   const handlePublish = async () => {
     if (!publishTarget) return;
+    if (publishMissing.length > 0) {
+      addToast(`Completa: ${publishMissing.join(', ')}`, 'error');
+      return;
+    }
     setPublishSubmitting(true);
     try {
       const response = await authFetch('/api/productions/publish', {
@@ -496,12 +517,28 @@ function DashboardContent() {
       setPublishTarget(null);
       setPublishUrl('');
       setPublishPlatformId('');
+      setPublishPlatformTouched(false);
       fetchData();
       addToast('Publicado', 'success');
     } catch (error) {
       addToast(error instanceof Error ? error.message : 'Error al marcar como publicado', 'error');
     } finally {
       setPublishSubmitting(false);
+    }
+  };
+
+  const extractYouTubeId = (value: string) => {
+    if (!value) return '';
+    try {
+      const url = new URL(value);
+      const id = url.searchParams.get('v');
+      if (id) return id;
+      if (url.hostname.includes('youtu.be')) {
+        return url.pathname.replace('/', '').trim();
+      }
+      return '';
+    } catch {
+      return '';
     }
   };
 
@@ -564,7 +601,7 @@ function DashboardContent() {
   const weeklyStyle = weeklyStatus ? statusStyles[weeklyStatus.status] : statusStyles.OK;
   const nextConditionText = weeklyStatus?.nextCondition?.label ?? DASHBOARD_COPY.weeklyStatus.noNext;
   const nextConditionDue = weeklyStatus?.nextCondition?.dueAt
-    ? new Date(weeklyStatus.nextCondition.dueAt).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    ? formatDateTime(weeklyStatus.nextCondition.dueAt)
     : null;
   const goalData = weeklyGoal?.goal ?? weeklyStatus?.goal ?? null;
   const weekLabel = loading
@@ -766,6 +803,25 @@ function DashboardContent() {
 
   const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions);
   const activeProductions = productions.filter(p => p.status !== 'published');
+  const focusProduction = useMemo(() => {
+    const base = activeStage
+      ? activeProductions.filter((production) => production.status === activeStage)
+      : activeProductions;
+    if (focusedProductionId) {
+      const match = base.find((production) => production.id === focusedProductionId);
+      if (match) return match;
+    }
+    return [...base].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
+  }, [activeProductions, activeStage, focusedProductionId]);
+  const focusChecklist = focusProduction ? getChecklistStatus(focusProduction) : null;
+  const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
+  const publishMissing = publishChecklist
+    ? [
+        !publishChecklist.scriptReady ? 'Guion' : null,
+        !publishChecklist.seoReady ? 'SEO' : null,
+        !publishChecklist.thumbnailReady ? 'Miniatura' : null,
+      ].filter(Boolean)
+    : [];
   const filteredProductions = activeStage
     ? activeProductions.filter((production) => production.status === activeStage)
     : activeProductions;
@@ -1323,6 +1379,8 @@ function DashboardContent() {
                   ) : (
                     <ProductionsList
                       productions={filteredProductions}
+                      selectedProductionId={focusedProductionId}
+                      onProductionClick={(production) => setFocusedProductionId(production.id)}
                       onMarkPublished={(production) => setPublishTarget(production)}
                       onCreateNew={() => setShowModal(true)}
                       filterLabel={activeStage ? stageLabels[activeStage] : null}
@@ -1335,6 +1393,96 @@ function DashboardContent() {
 
                   {activeTab === 'production' && (
                     <div className="hidden space-y-4 lg:block lg:sticky lg:top-24">
+                      <div className="surface-card glow-hover p-4 sm:p-5">
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Checklist final</div>
+                        {focusProduction ? (
+                          <div className="mt-3 space-y-2 text-xs text-slate-300">
+                            <div className="text-sm text-slate-200 font-semibold truncate">{focusProduction.title}</div>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                              <span className="uppercase tracking-[0.2em]">Estado</span>
+                              <span className="rounded-full border border-gray-800 px-2 py-0.5 text-slate-200">
+                                {stageLabels[focusProduction.status] ?? focusProduction.status}
+                              </span>
+                              <span className="text-slate-600">•</span>
+                              <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                              <span>Fecha objetivo:</span>
+                              <span className="text-slate-200">
+                                {focusProduction.target_date
+                                  ? formatDate(focusProduction.target_date)
+                                  : 'Sin fecha'}
+                              </span>
+                              <span className="text-slate-600">•</span>
+                              <span>
+                                Actualizado {formatDate(focusProduction.updated_at)}
+                              </span>
+                            </div>
+                            <div className="mt-2 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  {focusChecklist?.scriptReady ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <XCircle className="h-3 w-3 text-slate-500" />}
+                                  Guion listo
+                                </span>
+                                {!focusChecklist?.scriptReady && (
+                                  <Link
+                                    href={`/ai?profile=script_architect&channelId=${selectedChannelId || ''}`}
+                                    className="text-emerald-300 hover:text-emerald-200"
+                                  >
+                                    Generar
+                                  </Link>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  {focusChecklist?.seoReady ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <XCircle className="h-3 w-3 text-slate-500" />}
+                                  SEO aprobado
+                                </span>
+                                {!focusChecklist?.seoReady && (
+                                  <Link
+                                    href={`/ai?profile=titles_thumbs&channelId=${selectedChannelId || ''}`}
+                                    className="text-sky-300 hover:text-sky-200"
+                                  >
+                                    Generar
+                                  </Link>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  {focusChecklist?.thumbnailReady ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <XCircle className="h-3 w-3 text-slate-500" />}
+                                  Miniatura aprobada
+                                </span>
+                                {!focusChecklist?.thumbnailReady && (
+                                  <Link
+                                    href={`/thumbnails`}
+                                    className="text-yellow-300 hover:text-yellow-200"
+                                  >
+                                    Ver
+                                  </Link>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  {focusChecklist?.published ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <XCircle className="h-3 w-3 text-slate-500" />}
+                                  Publicado
+                                </span>
+                                {!focusChecklist?.published && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setPublishTarget(focusProduction)}
+                                    className="text-yellow-300 hover:text-yellow-200"
+                                  >
+                                    Marcar
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 text-xs text-slate-400">No hay producciones activas.</div>
+                        )}
+                      </div>
+
                       <div className="surface-card glow-hover p-4 sm:p-5">
                         <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Próximo paso</div>
                         <p className="mt-3 text-sm text-slate-200">{nextStepCopy.label}</p>
@@ -1484,7 +1632,7 @@ function DashboardContent() {
                       </div>
 
                       <div className="text-sm sm:text-base font-semibold text-white mb-3 capitalize">
-                        {calendarMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                        {formatMonthYear(calendarMonth)}
                       </div>
 
                       <div className="grid grid-cols-7 gap-1 sm:gap-2 text-[9px] sm:text-[10px] text-slate-400 mb-2">
@@ -1576,7 +1724,7 @@ function DashboardContent() {
                               <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
                                 <span className="truncate">{production.title}</span>
                                 <div className="flex items-center gap-2 text-xs text-slate-400">
-                                  <span>{production.target_date?.slice(0, 10)}</span>
+                                  <span>{production.target_date ? formatDate(production.target_date) : ''}</span>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1607,7 +1755,7 @@ function DashboardContent() {
                                 <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
                                   <span className="truncate">{production.title}</span>
                                   <div className="flex items-center gap-2 text-xs text-slate-400">
-                                    <span>{production.target_date?.slice(0, 10)}</span>
+                                    <span>{production.target_date ? formatDate(production.target_date) : ''}</span>
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -1906,26 +2054,44 @@ function DashboardContent() {
           >
             <h3 id="publish-modal-title" className="text-2xl font-semibold text-white mb-3">Marcar como publicado</h3>
             <p className="text-sm text-slate-300 mb-5">{publishTarget.title}</p>
+            <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs text-yellow-200">
+              Pegá la URL del video publicado para cerrar el pipeline y registrar el enlace.
+            </div>
+            {publishMissing.length > 0 && (
+              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+                Faltan pasos: {publishMissing.join(', ')}
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">URL publicado (opcional)</label>
-                <input
-                  type="url"
-                  value={publishUrl}
-                  onChange={(event) => setPublishUrl(event.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
-                  placeholder="https://youtube.com/watch?v=..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">ID de plataforma (opcional)</label>
-                <input
-                  type="text"
-                  value={publishPlatformId}
-                  onChange={(event) => setPublishPlatformId(event.target.value)}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
-                  placeholder="YouTube videoId"
-                />
+                  <input
+                    type="url"
+                    value={publishUrl}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setPublishUrl(next);
+                      if (!publishPlatformTouched) {
+                        const extracted = extractYouTubeId(next);
+                        setPublishPlatformId(extracted);
+                      }
+                    }}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
+                    placeholder="https://youtube.com/watch?v=..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">ID de plataforma (opcional)</label>
+                  <input
+                    type="text"
+                    value={publishPlatformId}
+                    onChange={(event) => {
+                      setPublishPlatformId(event.target.value);
+                      setPublishPlatformTouched(true);
+                    }}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
+                    placeholder="YouTube videoId"
+                  />
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <motion.button
@@ -1942,7 +2108,7 @@ function DashboardContent() {
                   className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  disabled={publishSubmitting}
+                  disabled={publishSubmitting || publishMissing.length > 0}
                 >
                   {publishSubmitting ? 'Guardando...' : 'Marcar como publicado'}
                 </motion.button>

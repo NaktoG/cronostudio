@@ -12,6 +12,8 @@ import { getAiProfile } from '@/lib/ai/profiles';
 
 export const dynamic = 'force-dynamic';
 
+const MAX_BODY_BYTES = 100_000;
+
 const ExecuteRunSchema = z.object({
   profileKey: z.string().min(1),
   channelId: z.string().uuid(),
@@ -36,6 +38,11 @@ export const POST = requireRoles(['owner'])(
       const userId = getAuthUser(request)?.userId;
       if (!userId) {
         return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+      }
+
+      const contentLength = request.headers.get('content-length');
+      if (contentLength && Number(contentLength) > MAX_BODY_BYTES) {
+        return withSecurityHeaders(NextResponse.json({ error: 'payload_too_large' }, { status: 413 }));
       }
 
       if (!process.env.OPENAI_API_KEY) {
@@ -88,6 +95,9 @@ export const POST = requireRoles(['owner'])(
       runId = insert.rows[0].id as string;
 
       const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+      const maxTokensRaw = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS ?? 1200);
+      const maxTokens = Number.isFinite(maxTokensRaw) && maxTokensRaw > 0 ? Math.floor(maxTokensRaw) : 1200;
+      const startedAt = Date.now();
 
       const messages = [
         { role: 'system' as const, content: prompt.system },
@@ -96,17 +106,20 @@ export const POST = requireRoles(['owner'])(
 
       // 2) Pedir salida estructurada a OpenAI (ideal)
       let outputParsed: unknown;
+      let tokenUsage: unknown = null;
 
       try {
         const completion = await openai.chat.completions.parse({
           model,
           messages,
           temperature: 0.4,
+          max_tokens: maxTokens,
           response_format: zodResponseFormat(profile.outputSchema as any, `${profile.key}_v${profile.version}`),
         });
 
         // @ts-expect-error openai SDK attaches .parsed when using .parse()
         outputParsed = completion.choices?.[0]?.message?.parsed;
+        tokenUsage = completion.usage ?? null;
       } catch (err) {
         // Fallback: JSON mode + validación local
         logger.warn('ai_runs.execute.openai.parse_fallback', { runId, error: String(err) });
@@ -115,6 +128,7 @@ export const POST = requireRoles(['owner'])(
           model,
           messages,
           temperature: 0.4,
+          max_tokens: maxTokens,
           response_format: { type: 'json_object' },
         });
 
@@ -129,6 +143,7 @@ export const POST = requireRoles(['owner'])(
         }
 
         outputParsed = json;
+        tokenUsage = completion.usage ?? null;
       }
 
       // 3) Validar contra el schema del perfil (igual que submit)
@@ -143,7 +158,7 @@ export const POST = requireRoles(['owner'])(
 
         return withSecurityHeaders(
           NextResponse.json(
-            { error: 'invalid_output', runId, details: outputResult.error.errors, prompt },
+            { error: 'invalid_output', runId, details: outputResult.error.errors },
             { status: 400 }
           )
         );
@@ -152,9 +167,24 @@ export const POST = requireRoles(['owner'])(
       // 4) Guardar output + completar run
       await query(
         `UPDATE ai_runs
-         SET output_json = $1, status = 'completed', error = NULL, updated_at = NOW()
-         WHERE id = $2 AND user_id = $3`,
-        [JSON.stringify(outputResult.data), runId, userId]
+         SET output_json = $1,
+             status = 'completed',
+             error = NULL,
+             provider = $2,
+             model = $3,
+             latency_ms = $4,
+             token_usage = $5,
+             updated_at = NOW()
+         WHERE id = $6 AND user_id = $7`,
+        [
+          JSON.stringify(outputResult.data),
+          'openai',
+          model,
+          Date.now() - startedAt,
+          tokenUsage ? JSON.stringify(tokenUsage) : null,
+          runId,
+          userId,
+        ]
       );
 
       // 5) Aplicar (igual que apply)

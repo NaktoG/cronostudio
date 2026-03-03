@@ -396,9 +396,21 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
             [context.userId, null, data.titles[0], data.description, data.tags, data.tags, JSON.stringify({ titles: data.titles, thumbnailTexts: data.thumbnailTexts })]
           );
           seoId = insertResult.rows[0].id as string;
-          if (production?.id) {
-            await client.query('UPDATE productions SET seo_id = $1 WHERE id = $2 AND user_id = $3', [seoId, production.id, context.userId]);
-          }
+        }
+
+        if (production?.id) {
+          await client.query(
+            `UPDATE productions
+             SET seo_id = $1, status = 'publishing', updated_at = NOW()
+             WHERE id = $2 AND user_id = $3`,
+            [seoId, production.id, context.userId]
+          );
+        } else {
+          await client.query(
+            `INSERT INTO productions (user_id, channel_id, title, status, idea_id, script_id, seo_id)
+             VALUES ($1, $2, $3, 'publishing', $4, $5, $6)`,
+            [context.userId, context.channelId, data.titles[0], input.ideaId, input.scriptId ?? null, seoId]
+          );
         }
 
         return { applied: { seoId, titles: data.titles, thumbnailTexts: data.thumbnailTexts } };
