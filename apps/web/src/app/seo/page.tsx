@@ -18,6 +18,10 @@ interface SeoData {
     description: string | null;
     tags: string[];
     keywords: string[];
+    suggestions?: {
+        titles?: string[];
+        thumbnailTexts?: string[];
+    } | null;
     score: number;
     video_title: string | null;
     youtube_video_id: string | null;
@@ -49,6 +53,7 @@ export default function SeoPage() {
     const [selectedChannel, setSelectedChannel] = useState('');
     const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
     const [scriptOptions, setScriptOptions] = useState<ScriptOption[]>([]);
+    const [showPresets, setShowPresets] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -389,6 +394,56 @@ export default function SeoPage() {
                                                 <span className="text-xs text-gray-500">
                                                     +{item.tags.length - 8} más
                                                 </span>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {(item.suggestions?.titles?.length || item.suggestions?.thumbnailTexts?.length) && (
+                                        <div className="mt-2 rounded-lg border border-gray-800 bg-gray-900/60 p-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPresets((current) => !current)}
+                                                className="text-xs uppercase tracking-[0.2em] text-yellow-300"
+                                            >
+                                                {showPresets ? 'Ocultar presets' : 'Ver presets'}
+                                            </button>
+                                            {showPresets && (
+                                                <div className="mt-3 space-y-3">
+                                                    {item.suggestions?.titles?.length ? (
+                                                        <div>
+                                                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Títulos sugeridos</div>
+                                                            <div className="mt-2 flex flex-col gap-2">
+                                                                {item.suggestions.titles.slice(0, 6).map((title) => (
+                                                                    <button
+                                                                        key={title}
+                                                                        type="button"
+                                                                        onClick={() => copyToClipboard(title, 'Título sugerido')}
+                                                                        className="text-left text-xs text-slate-200 rounded-lg border border-gray-800 px-3 py-2 hover:border-yellow-400/50"
+                                                                    >
+                                                                        {title}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
+                                                    {item.suggestions?.thumbnailTexts?.length ? (
+                                                        <div>
+                                                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Textos de miniatura</div>
+                                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                                {item.suggestions.thumbnailTexts.slice(0, 6).map((text) => (
+                                                                    <button
+                                                                        key={text}
+                                                                        type="button"
+                                                                        onClick={() => copyToClipboard(text, 'Texto de miniatura')}
+                                                                        className="text-xs text-slate-200 rounded-full border border-gray-800 px-3 py-1 hover:border-yellow-400/50"
+                                                                    >
+                                                                        {text}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
                                             )}
                                         </div>
                                     )}
