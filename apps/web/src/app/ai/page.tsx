@@ -12,7 +12,6 @@ import { useToast } from '../contexts/ToastContext';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { useSearchParams } from 'next/navigation';
 import { formatDateTime } from '@/lib/dates';
-import { useCallback } from 'react';
 
 type Profile = {
   key: string;
