@@ -147,7 +147,7 @@ export const POST = requireRoles(['owner'])(
 
         return withSecurityHeaders(
           NextResponse.json(
-            { error: 'invalid_output', runId, details: outputResult.error.errors, prompt },
+            { error: 'invalid_output', runId, details: outputResult.error.errors },
             { status: 400 }
           )
         );
