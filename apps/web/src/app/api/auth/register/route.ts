@@ -42,7 +42,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
             name: validatedData.name,
         });
 
-        logger.info('User registered', { userId: user.id, email: user.email });
+        logger.info('User registered', { userId: user.id });
 
         const rawToken = generateToken();
         const tokenHash = hashToken(rawToken);
