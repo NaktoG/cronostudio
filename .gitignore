@@ -32,3 +32,6 @@ n8n/credentials/
 # Logs
 *.log
 logs/
+
+# Session notes
+docs/SESSION_*.md
