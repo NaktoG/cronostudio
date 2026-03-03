@@ -330,7 +330,16 @@ export default function SeoPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                         >
-                            {error}
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <span>{error}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => fetchSeoData()}
+                                    className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
+                                >
+                                    Reintentar
+                                </button>
+                            </div>
                         </motion.div>
                     ) : seoData.length === 0 ? (
                         <motion.div className="text-center py-20" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>

@@ -49,6 +49,7 @@ export default function IdeasPage() {
     const [channels, setChannels] = useState<Channel[]>([]);
     const [selectedChannel, setSelectedChannel] = useState('');
     const [loading, setLoading] = useState(true);
+    const [listError, setListError] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
     const [formData, setFormData] = useState({
@@ -92,6 +93,7 @@ export default function IdeasPage() {
     const fetchIdeas = useCallback(async (signal?: AbortSignal) => {
         try {
             setLoading(true);
+            setListError(null);
             if (!isAuthenticated) {
                 setIdeas([]);
                 return;
@@ -100,11 +102,16 @@ export default function IdeasPage() {
             const response = await authFetch(`/api/ideas${query}`, { signal });
             if (response.ok) {
                 setIdeas(await response.json());
+                setListError(null);
+            } else {
+                const data = await response.json().catch(() => null);
+                setListError(data?.error || IDEAS_COPY.toasts.error);
             }
         } catch (err) {
             if (signal?.aborted) return;
             console.error('Error:', err);
             addToast(IDEAS_COPY.toasts.error, 'error');
+            setListError(err instanceof Error ? err.message : IDEAS_COPY.toasts.error);
         } finally {
             if (signal?.aborted) return;
             setLoading(false);
@@ -217,6 +224,19 @@ export default function IdeasPage() {
     };
 
     const readinessPreview = evaluateIdeaReady(formData.title, formData.description);
+    const ideaTemplate = 'Promesa: En este video vas a entender ...\nBullets:\n- Punto 1\n- Punto 2\n- Punto 3\nHook: Escribe 2 frases o 200 caracteres...';
+    const applyTemplate = () => {
+        setFormData((prev) => {
+            const base = prev.description?.trim();
+            if (!base) {
+                return { ...prev, description: ideaTemplate };
+            }
+            if (base.includes('Promesa:') || base.includes('Bullets:') || base.includes('Hook:')) {
+                return prev;
+            }
+            return { ...prev, description: `${base}\n\n${ideaTemplate}` };
+        });
+    };
 
     const startEdit = (idea: Idea) => {
         setEditingIdea(idea);
@@ -459,6 +479,7 @@ export default function IdeasPage() {
                             <motion.button
                                 onClick={() => {
                                     setEditingIdea(null);
+                                    setError(null);
                                     setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
                                     setShowModal(true);
                                 }}
@@ -476,6 +497,25 @@ export default function IdeasPage() {
                         </div>
                     </motion.div>
 
+                    {listError && !loading && (
+                        <motion.div
+                            className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                        >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <span>{listError}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => fetchIdeas()}
+                                    className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
+                                >
+                                    Reintentar
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
                     {loading ? (
                         <div className="flex justify-center py-20">
                             <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
@@ -490,6 +530,7 @@ export default function IdeasPage() {
                             <motion.button
                                 onClick={() => {
                                     setEditingIdea(null);
+                                    setError(null);
                                     setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
                                     setShowModal(true);
                                 }}

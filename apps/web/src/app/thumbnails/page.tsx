@@ -63,6 +63,7 @@ export default function ThumbnailsPage() {
     const [scriptOptions, setScriptOptions] = useState<ScriptOption[]>([]);
     const [videoOptions, setVideoOptions] = useState<VideoOption[]>([]);
     const [loading, setLoading] = useState(true);
+    const [listError, setListError] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [formData, setFormData] = useState({ title: '', notes: '', imageUrl: '', scriptId: '', videoId: '' });
     const [submitting, setSubmitting] = useState(false);
@@ -78,17 +79,25 @@ export default function ThumbnailsPage() {
     const fetchThumbnails = useCallback(async (signal?: AbortSignal) => {
         try {
             setLoading(true);
+            setListError(null);
             if (!isAuthenticated) {
                 setThumbnails([]);
                 return;
             }
             const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
             const response = await authFetch(`/api/thumbnails${query}`, { signal });
-            if (response.ok) setThumbnails(await response.json());
+            if (response.ok) {
+                setThumbnails(await response.json());
+                setListError(null);
+            } else {
+                const data = await response.json().catch(() => null);
+                setListError(data?.error || THUMBNAILS_COPY.toasts.error);
+            }
         } catch (err) {
             if (signal?.aborted) return;
             console.error('Error:', err);
             addToast(THUMBNAILS_COPY.toasts.error, 'error');
+            setListError(err instanceof Error ? err.message : THUMBNAILS_COPY.toasts.error);
         } finally {
             if (signal?.aborted) return;
             setLoading(false);
@@ -377,6 +386,25 @@ export default function ThumbnailsPage() {
                         </div>
                     </motion.div>
 
+                    {listError && !loading && (
+                        <motion.div
+                            className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                        >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <span>{listError}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => fetchThumbnails()}
+                                    className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
+                                >
+                                    Reintentar
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
                     {loading ? (
                         <div className="flex justify-center py-20">
                             <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
@@ -389,7 +417,10 @@ export default function ThumbnailsPage() {
                             <h3 className="text-xl font-semibold text-white mb-2">{THUMBNAILS_COPY.emptyTitle}</h3>
                             <p className="text-slate-300 mb-6">{THUMBNAILS_COPY.emptySubtitle}</p>
                             <motion.button
-                                onClick={() => setShowModal(true)}
+                                onClick={() => {
+                                    setError(null);
+                                    setShowModal(true);
+                                }}
                                 className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 sm:w-auto"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -588,6 +619,7 @@ export default function ThumbnailsPage() {
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
                                             placeholder={THUMBNAILS_COPY.form.placeholderUrl}
                                         />
+                                        <p className="mt-1 text-xs text-slate-400">Podés dejarlo vacío y cargar la URL más tarde.</p>
                                     </div>
                                     <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                         <button

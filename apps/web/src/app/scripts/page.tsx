@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
+import { useState, useEffect, useCallback, FormEvent, useRef, useMemo } from 'react';
 import { FileText, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
@@ -56,6 +56,7 @@ export default function ScriptsPage() {
     const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
     const [ideaTitleInput, setIdeaTitleInput] = useState('');
     const [loading, setLoading] = useState(true);
+    const [listError, setListError] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
@@ -76,17 +77,25 @@ export default function ScriptsPage() {
     const fetchScripts = useCallback(async (signal?: AbortSignal) => {
         try {
             setLoading(true);
+            setListError(null);
             if (!isAuthenticated) {
                 setScripts([]);
                 return;
             }
             const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
             const response = await authFetch(`/api/scripts${query}`, { signal });
-            if (response.ok) setScripts(await response.json());
+            if (response.ok) {
+                setScripts(await response.json());
+                setListError(null);
+            } else {
+                const data = await response.json().catch(() => null);
+                setListError(data?.error || SCRIPTS_COPY.toasts.error);
+            }
         } catch (err) {
             if (signal?.aborted) return;
             console.error('Error:', err);
             addToast(SCRIPTS_COPY.toasts.error, 'error');
+            setListError(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error);
         } finally {
             if (signal?.aborted) return;
             setLoading(false);
@@ -141,6 +150,13 @@ export default function ScriptsPage() {
             setShowModal(true);
         }
     }, [searchParams]);
+
+    const matchedIdea = useMemo(() => {
+        if (!ideaTitleInput) return null;
+        const normalized = ideaTitleInput.trim().toLowerCase();
+        if (!normalized) return null;
+        return ideaOptions.find((idea) => idea.title.toLowerCase() === normalized) ?? null;
+    }, [ideaOptions, ideaTitleInput]);
 
     const fetchIdeaOptions = useCallback(async (signal?: AbortSignal) => {
         if (!selectedChannel) {
@@ -432,6 +448,25 @@ export default function ScriptsPage() {
                         </div>
                     </motion.div>
 
+                    {listError && !loading && (
+                        <motion.div
+                            className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                        >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <span>{listError}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => fetchScripts()}
+                                    className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
+                                >
+                                    Reintentar
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
                     {loading ? (
                         <div className="flex justify-center py-20">
                             <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
@@ -444,7 +479,13 @@ export default function ScriptsPage() {
                             <h3 className="text-xl font-semibold text-white mb-2">{SCRIPTS_COPY.emptyTitle}</h3>
                             <p className="text-slate-300 mb-6">{SCRIPTS_COPY.emptySubtitle}</p>
                             <motion.button
-                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' }); setShowModal(true); }}
+                                onClick={() => {
+                                    setEditingId(null);
+                                    setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+                                    setIdeaTitleInput('');
+                                    setError(null);
+                                    setShowModal(true);
+                                }}
                                 className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 sm:w-auto"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
