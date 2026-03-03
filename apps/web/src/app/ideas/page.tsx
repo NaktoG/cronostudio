@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
-import { Lightbulb, Plus } from 'lucide-react';
+import { Lightbulb, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
@@ -13,6 +13,7 @@ import { IDEAS_COPY } from '../content/pages/ideas';
 import { IDEA_STATUS_LABELS, IdeaStatus } from '../content/labels';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { evaluateIdeaReady } from '@/lib/ideaReady';
+import Link from 'next/link';
 
 interface Idea {
     id: string;
@@ -394,7 +395,14 @@ export default function IdeasPage() {
                                         <option value="completed">{IDEA_STATUS_LABELS.completed}</option>
                                         <option value="archived">{IDEA_STATUS_LABELS.archived}</option>
                                         </select>
-                                        <div className="flex items-center justify-between gap-3 sm:justify-end">
+                                        <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+                                            <Link
+                                                href={`/ai?profile=script_architect&ideaId=${idea.id}${idea.channelId ? `&channelId=${idea.channelId}` : selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
+                                                className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 text-xs px-2"
+                                            >
+                                                <Sparkles className="w-3 h-3" />
+                                                Guion AI
+                                            </Link>
                                             <button
                                                 onClick={() => startEdit(idea)}
                                                 className="text-yellow-300 hover:text-yellow-200 text-xs px-2"

@@ -10,6 +10,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import useDialogFocus from '../hooks/useDialogFocus';
+import { useSearchParams } from 'next/navigation';
 
 type Profile = {
   key: string;
@@ -68,6 +69,7 @@ const PROFILE_FIELDS: Record<string, { label: string; placeholder: string; key: 
 };
 
 export default function AiStudioPage() {
+  const searchParams = useSearchParams();
   const publicModel = process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini';
   const publicMaxTokens = process.env.NEXT_PUBLIC_OPENAI_MAX_OUTPUT_TOKENS || '800';
   const { isAuthenticated } = useAuth();
@@ -92,6 +94,7 @@ export default function AiStudioPage() {
   const [autoOutput, setAutoOutput] = useState<unknown | null>(null);
   const [autoApplied, setAutoApplied] = useState<Record<string, unknown> | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const queryInitializedRef = useRef(false);
 
   useDialogFocus(modalRef, Boolean(selectedRun));
 
@@ -183,6 +186,44 @@ export default function AiStudioPage() {
     fetchIdeaOptions(selectedChannel);
     fetchScriptOptions(selectedChannel);
   }, [selectedChannel, fetchRuns, fetchIdeaOptions, fetchScriptOptions]);
+
+  useEffect(() => {
+    if (queryInitializedRef.current) return;
+    if (!searchParams) return;
+
+    const profileKey = searchParams.get('profile');
+    const channelId = searchParams.get('channelId');
+    const ideaId = searchParams.get('ideaId');
+    const scriptId = searchParams.get('scriptId');
+
+    if (!profileKey && !channelId && !ideaId && !scriptId) return;
+
+    if (profileKey && profiles.length === 0) {
+      return;
+    }
+
+    if (channelId) {
+      setSelectedChannel(channelId);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('cronostudio.channelId', channelId);
+      }
+    }
+
+    if (profileKey) {
+      const match = profiles.find((profile) => profile.key === profileKey);
+      if (match) setActiveProfile(match);
+    }
+
+    if (ideaId || scriptId) {
+      setFormInputs((prev) => ({
+        ...prev,
+        ideaId: ideaId ?? prev.ideaId,
+        scriptId: scriptId ?? prev.scriptId,
+      }));
+    }
+
+    queryInitializedRef.current = true;
+  }, [searchParams, profiles]);
 
   const activeFields = useMemo(() => {
     if (!activeProfile) return [];

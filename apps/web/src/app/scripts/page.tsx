@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
@@ -11,6 +11,7 @@ import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { SCRIPTS_COPY } from '../content/pages/scripts';
 import useDialogFocus from '../hooks/useDialogFocus';
+import Link from 'next/link';
 
 interface Script {
     id: string;
@@ -22,6 +23,7 @@ interface Script {
     status: string;
     word_count: number;
     estimated_duration_seconds: number;
+    idea_id?: string | null;
     idea_title: string | null;
     created_at: string;
 }
@@ -294,7 +296,21 @@ export default function ScriptsPage() {
                                                 <p className="text-sm text-gray-500 mt-1">{SCRIPTS_COPY.ideaPrefix} {script.idea_title}</p>
                                             )}
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-wrap gap-2">
+                                            <Link
+                                                href={`/ai?profile=retention_editor&scriptId=${script.id}${selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
+                                                className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 text-xs px-2"
+                                            >
+                                                <Sparkles className="w-3 h-3" />
+                                                Retención
+                                            </Link>
+                                            <Link
+                                                href={`/ai?profile=titles_thumbs&scriptId=${script.id}${script.idea_id ? `&ideaId=${script.idea_id}` : ''}${selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
+                                                className="inline-flex items-center gap-1 text-sky-300 hover:text-sky-200 text-xs px-2"
+                                            >
+                                                <Sparkles className="w-3 h-3" />
+                                                SEO + Títulos
+                                            </Link>
                                             <button onClick={() => openEdit(script)} className="px-3 py-1 text-sm text-yellow-400 hover:text-yellow-300">
                                                 {SCRIPTS_COPY.edit}
                                             </button>
