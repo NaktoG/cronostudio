@@ -1477,7 +1477,25 @@ function DashboardContent() {
                       </div>
                         <div className="divide-y divide-gray-800/50">
                           {filteredIdeas.length === 0 ? (
-                          <div className="px-4 sm:px-5 py-6 text-slate-300">{DASHBOARD_COPY.pipeline.noIdeas}</div>
+                          <div className="px-4 sm:px-5 py-6 text-slate-300">
+                            <p className="mb-3">{DASHBOARD_COPY.pipeline.noIdeas}</p>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/ai?profile=evergreen_ideas${selectedChannelId ? `&channelId=${selectedChannelId}` : ''}`)}
+                                className="rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                              >
+                                Generar ideas
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowModal(true)}
+                                className="rounded-lg border border-gray-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300"
+                              >
+                                Crear manual
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           filteredIdeas.slice(0, 6).map((idea) => (
                             <div key={idea.id} className="px-4 sm:px-5 py-4">
@@ -1504,6 +1522,10 @@ function DashboardContent() {
                       onClearFilter={() => setActiveStage(null)}
                       title={activeStage ? DASHBOARD_COPY.pipeline.inStage : DASHBOARD_COPY.pipeline.active}
                       showCreateButton={false}
+                      emptyActions={[
+                        { label: 'Crear producción', onClick: () => setShowModal(true) },
+                        { label: 'AI Studio', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
+                      ]}
                     />
                   )}
                   </div>

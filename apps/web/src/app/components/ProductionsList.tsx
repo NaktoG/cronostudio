@@ -35,6 +35,7 @@ interface ProductionsListProps {
     onClearFilter?: () => void;
     showCreateButton?: boolean;
     selectedProductionId?: string | null;
+    emptyActions?: Array<{ label: string; onClick: () => void; tone?: 'primary' | 'ghost' }>;
 }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
@@ -104,6 +105,7 @@ export default function ProductionsList({
     onClearFilter,
     showCreateButton = true,
     selectedProductionId,
+    emptyActions = [],
 }: ProductionsListProps) {
     return (
         <motion.div
@@ -165,6 +167,25 @@ export default function ProductionsList({
                             <span className="text-sm text-yellow-400 hover:underline font-semibold">
                                 {filterLabel ? COMPONENT_COPY.productionsList.changeFilter : COMPONENT_COPY.productionsList.createFirst}
                             </span>
+                        )}
+                        {emptyActions.length > 0 && (
+                            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-center">
+                                {emptyActions.map((action) => (
+                                    <button
+                                        key={action.label}
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            action.onClick();
+                                        }}
+                                        className={action.tone === 'ghost'
+                                            ? 'rounded-lg border border-gray-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300'
+                                            : 'rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black'}
+                                    >
+                                        {action.label}
+                                    </button>
+                                ))}
+                            </div>
                         )}
                     </motion.button>
                 ) : (
