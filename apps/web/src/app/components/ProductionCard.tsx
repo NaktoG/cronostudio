@@ -3,6 +3,7 @@
 import { Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { formatDayMonth } from '@/lib/dates';
 
 export interface Production {
     id: string;
@@ -122,7 +123,7 @@ export default function ProductionCard({ production, onClick }: ProductionCardPr
                 {production.target_date && (
                     <span className="text-xs text-gray-500 flex items-center gap-2">
                         <Calendar className="w-3.5 h-3.5" />
-                        {new Date(production.target_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                        {formatDayMonth(production.target_date)}
                     </span>
                 )}
                 <Link

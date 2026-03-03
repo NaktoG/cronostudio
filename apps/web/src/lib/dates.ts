@@ -120,6 +120,50 @@ export function setTimeOnDateUtc(date: Date, timeHHmm: string): Date {
   return updated;
 }
 
+const DATE_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
+const DATE_TIME_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const MONTH_YEAR_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  month: 'long',
+  year: 'numeric',
+});
+
+const DAY_MONTH_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: '2-digit',
+});
+
+export function formatDate(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  return DATE_FORMAT.format(date);
+}
+
+export function formatDateTime(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  return DATE_TIME_FORMAT.format(date);
+}
+
+export function formatMonthYear(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  return MONTH_YEAR_FORMAT.format(date);
+}
+
+export function formatDayMonth(value: Date | string) {
+  const date = value instanceof Date ? value : new Date(value);
+  return DAY_MONTH_FORMAT.format(date);
+}
+
 export function getWeekdayDate(startOfWeek: Date, weekday: string): Date | null {
   const map: Record<string, number> = {
     monday: 0,

@@ -11,6 +11,7 @@ import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { useSearchParams } from 'next/navigation';
+import { formatDateTime } from '@/lib/dates';
 
 type Profile = {
   key: string;
@@ -664,7 +665,7 @@ export default function AiStudioPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-semibold text-slate-100">{run.profile_key}</p>
-                          <p className="text-xs text-slate-500">{new Date(run.created_at).toLocaleString()}</p>
+                          <p className="text-xs text-slate-500">{formatDateTime(run.created_at)}</p>
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full ${statusBadge(run.status)}`}>{run.status}</span>
                       </div>

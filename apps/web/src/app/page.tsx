@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getIsoWeekInfo } from '@/lib/dates';
+import { formatDate, formatDateTime, formatMonthYear, getIsoWeekInfo } from '@/lib/dates';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -121,7 +121,6 @@ const TOUR_STEPS = [
   { id: 'integrations', title: 'Integraciones', description: 'Conecta canales y valida datos externos.' },
 ];
 
-const DATE_FORMATTER = new Intl.DateTimeFormat('es-AR');
 
 function getChecklistStatus(production: Production) {
   const scriptReady = production.script_status && production.script_status !== 'draft';
@@ -598,7 +597,7 @@ function DashboardContent() {
   const weeklyStyle = weeklyStatus ? statusStyles[weeklyStatus.status] : statusStyles.OK;
   const nextConditionText = weeklyStatus?.nextCondition?.label ?? DASHBOARD_COPY.weeklyStatus.noNext;
   const nextConditionDue = weeklyStatus?.nextCondition?.dueAt
-    ? new Date(weeklyStatus.nextCondition.dueAt).toLocaleString('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    ? formatDateTime(weeklyStatus.nextCondition.dueAt)
     : null;
   const goalData = weeklyGoal?.goal ?? weeklyStatus?.goal ?? null;
   const weekLabel = loading
@@ -1399,12 +1398,12 @@ function DashboardContent() {
                               <span>Fecha objetivo:</span>
                               <span className="text-slate-200">
                                 {focusProduction.target_date
-                                  ? DATE_FORMATTER.format(new Date(focusProduction.target_date))
+                                  ? formatDate(focusProduction.target_date)
                                   : 'Sin fecha'}
                               </span>
                               <span className="text-slate-600">•</span>
                               <span>
-                                Actualizado {DATE_FORMATTER.format(new Date(focusProduction.updated_at))}
+                                Actualizado {formatDate(focusProduction.updated_at)}
                               </span>
                             </div>
                             <div className="mt-2 space-y-2">
@@ -1621,7 +1620,7 @@ function DashboardContent() {
                       </div>
 
                       <div className="text-sm sm:text-base font-semibold text-white mb-3 capitalize">
-                        {calendarMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                        {formatMonthYear(calendarMonth)}
                       </div>
 
                       <div className="grid grid-cols-7 gap-1 sm:gap-2 text-[9px] sm:text-[10px] text-slate-400 mb-2">
@@ -1713,7 +1712,7 @@ function DashboardContent() {
                               <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
                                 <span className="truncate">{production.title}</span>
                                 <div className="flex items-center gap-2 text-xs text-slate-400">
-                                  <span>{production.target_date?.slice(0, 10)}</span>
+                                  <span>{production.target_date ? formatDate(production.target_date) : ''}</span>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1744,7 +1743,7 @@ function DashboardContent() {
                                 <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
                                   <span className="truncate">{production.title}</span>
                                   <div className="flex items-center gap-2 text-xs text-slate-400">
-                                    <span>{production.target_date?.slice(0, 10)}</span>
+                                    <span>{production.target_date ? formatDate(production.target_date) : ''}</span>
                                     <button
                                       type="button"
                                       onClick={() => {

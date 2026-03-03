@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { AlertTriangle, Bot, CheckCircle2, Loader2 } from 'lucide-react';
 import { COMPONENT_COPY } from '../content/components';
 import { AUTOMATION_STATUS_LABELS, AutomationRunStatus } from '../content/labels';
+import { formatDayMonth } from '@/lib/dates';
 
 export interface AutomationRun {
     id: string;
@@ -35,7 +36,7 @@ function formatTimeAgo(dateString: string): string {
     if (diffMins < 60) return COMPONENT_COPY.automationRuns.minutesAgo.replace('{n}', String(diffMins));
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return COMPONENT_COPY.automationRuns.hoursAgo.replace('{n}', String(diffHours));
-    return date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+    return formatDayMonth(date);
 }
 
 const containerVariants = {
