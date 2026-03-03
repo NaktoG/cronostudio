@@ -1281,6 +1281,9 @@ function DashboardContent() {
                           <div className="mt-3 space-y-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
                             <div>
                               <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Próximo paso</div>
+                              {focusProduction && (
+                                <p className="mt-1 text-xs text-slate-400 truncate">{focusProduction.title}</p>
+                              )}
                               <p className="mt-1 text-sm text-slate-200">{nextAction.label}</p>
                               <button
                                 type="button"
@@ -1540,6 +1543,9 @@ function DashboardContent() {
 
                       <div className="surface-card glow-hover p-4 sm:p-5">
                         <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Próximo paso</div>
+                        {focusProduction && (
+                          <p className="mt-2 text-xs text-slate-400 truncate">{focusProduction.title}</p>
+                        )}
                         <p className="mt-3 text-sm text-slate-200">{nextAction.label}</p>
                         <button
                           type="button"
