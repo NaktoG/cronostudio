@@ -2,7 +2,8 @@
 
 import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Instagram, Linkedin, Music2, Plus, Sparkles, Twitter } from 'lucide-react';
+import { ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getIsoWeekInfo } from '@/lib/dates';
 import Header from './components/Header';
@@ -272,6 +273,7 @@ function DashboardContent() {
   const [focusOpen, setFocusOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const [showStartCard, setShowStartCard] = useState(false);
 
   useDialogFocus(modalRef, showModal);
   useDialogFocus(publishRef, Boolean(publishTarget));
@@ -427,6 +429,14 @@ function DashboardContent() {
     fetchData(controller.signal);
     return () => controller.abort();
   }, [isAuthenticated, fetchChannels, fetchData]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const hasChannel = channels.length > 0;
+    const hasIdeas = ideas.length > 0;
+    const shouldShow = !hasChannel || !hasIdeas;
+    setShowStartCard(shouldShow);
+  }, [isAuthenticated, channels.length, ideas.length]);
 
   useEffect(() => {
     if (searchParams?.get('new') === '1') {
@@ -856,7 +866,7 @@ function DashboardContent() {
     <div className="min-h-screen flex flex-col overflow-x-hidden">
       <Header />
       <PageTransition className="flex-1">
-        <main className="w-full max-w-full px-4 sm:px-6 lg:px-12 py-6 sm:py-8 pb-24 lg:pb-8">
+          <main className="w-full max-w-full px-4 sm:px-6 lg:px-12 py-6 sm:py-8 pb-24 lg:pb-8">
             {/* Context bar */}
             <motion.div
               className="surface-card glow-hover p-4 sm:p-5 mb-6"
@@ -943,6 +953,27 @@ function DashboardContent() {
                 >
                   {planSubmitting ? 'Generando...' : 'Generar plan semanal (2 videos: Mar/Vie)'}
                 </motion.button>
+              </motion.div>
+            )}
+
+            {showStartCard && (
+              <motion.div
+                className="surface-card glow-hover p-5 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                <div>
+                  <p className="text-sm text-slate-300">Primeros pasos recomendados</p>
+                  <p className="text-xs text-slate-400">Conecta canal, genera ideas y arranca el pipeline.</p>
+                </div>
+                <Link
+                  href="/start"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-400 px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                >
+                  Ver guia
+                  <ChevronRight className="w-4 h-4" />
+                </Link>
               </motion.div>
             )}
 

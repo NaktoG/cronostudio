@@ -52,6 +52,10 @@ const PAGE_TIPS: Record<string, { title: string; description: string }> = {
     title: 'Dashboard',
     description: 'Desde aca mueves el contenido por el pipeline y publicas.',
   },
+  '/start': {
+    title: 'Guia',
+    description: 'Tenes el flujo recomendado con atajos directos.',
+  },
 };
 
 const PAGE_STEPS: Record<string, { title: string; items: string[] }> = {
@@ -109,6 +113,14 @@ const PAGE_STEPS: Record<string, { title: string; items: string[] }> = {
       'Elegí el canal activo.',
       'Revisá pipeline y backlog.',
       'Publicá cuando el video este listo.',
+    ],
+  },
+  '/start': {
+    title: 'Guia paso a paso',
+    items: [
+      'Conecta canal y valida datos.',
+      'Genera ideas y aprueba.',
+      'Crea guion, SEO y publica.',
     ],
   },
 };
