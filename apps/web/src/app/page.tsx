@@ -1418,13 +1418,25 @@ function DashboardContent() {
                           <div className="mt-3 space-y-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
                             <div>
                               <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Buscar producción</label>
-                              <input
-                                value={focusSearch}
-                                onChange={(event) => handleFocusSearch(event.target.value)}
-                                list="focus-productions"
-                                placeholder="Escribe un título"
-                                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
-                              />
+                              <div className="relative mt-2">
+                                <input
+                                  value={focusSearch}
+                                  onChange={(event) => handleFocusSearch(event.target.value)}
+                                  list="focus-productions"
+                                  placeholder="Escribe un título"
+                                  className="w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 pr-8 text-xs text-slate-200"
+                                />
+                                {focusSearch && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleFocusSearch('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    aria-label="Limpiar búsqueda"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
                             </div>
                             <div>
                               <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Próximo paso</div>
@@ -1746,13 +1758,25 @@ function DashboardContent() {
                       <div className="surface-card glow-hover p-4 sm:p-5">
                         <div>
                           <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Buscar producción</label>
-                          <input
-                            value={focusSearch}
-                            onChange={(event) => handleFocusSearch(event.target.value)}
-                            list="focus-productions"
-                            placeholder="Escribe un título"
-                            className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
-                          />
+                          <div className="relative mt-2">
+                            <input
+                              value={focusSearch}
+                              onChange={(event) => handleFocusSearch(event.target.value)}
+                              list="focus-productions"
+                              placeholder="Escribe un título"
+                              className="w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 pr-8 text-xs text-slate-200"
+                            />
+                            {focusSearch && (
+                              <button
+                                type="button"
+                                onClick={() => handleFocusSearch('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                aria-label="Limpiar búsqueda"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Próximo paso</div>
                         {focusProduction && (

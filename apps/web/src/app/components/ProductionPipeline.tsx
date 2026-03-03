@@ -117,7 +117,8 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage, s
                             </span>
 
                             {cta && hasItems && (
-                                <span
+                                <button
+                                    type="button"
                                     onClick={(event) => {
                                         event.stopPropagation();
                                         cta.onClick();
@@ -125,7 +126,7 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage, s
                                     className="mt-2 text-[10px] uppercase tracking-[0.2em] text-yellow-300 hover:text-yellow-200"
                                 >
                                     {cta.label}
-                                </span>
+                                </button>
                             )}
                         </motion.button>
                     );
