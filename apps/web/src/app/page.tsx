@@ -1220,10 +1220,10 @@ function DashboardContent() {
                 )}
 
                 {/* Main grid */}
-                <div className={`grid grid-cols-1 gap-4 sm:gap-6 items-start mx-auto w-full max-w-6xl ${
+                <div className={`grid grid-cols-1 gap-4 sm:gap-6 items-start mx-auto w-full max-w-7xl ${
                   activeTab === 'production'
-                    ? 'lg:grid-cols-[minmax(0,1fr)_360px]'
-                    : 'lg:grid-cols-2 2xl:grid-cols-3'
+                    ? 'lg:grid-cols-[minmax(0,1fr)_420px]'
+                    : 'lg:grid-cols-2 xl:grid-cols-3'
                 }`}>
                   <div className={`space-y-5 ${activeTab === 'production' || activeTab === 'backlog' ? '' : 'hidden'}`} data-tour="backlog">
                     <motion.div
