@@ -28,6 +28,10 @@ const UpdateScriptSchema = z.object({
     status: z.enum(['draft', 'review', 'approved', 'recorded']).optional(),
 });
 
+function isValidationError(error: unknown): boolean {
+    return error instanceof Error && error.message.startsWith('Validation error:');
+}
+
 function calculateMetrics(intro?: string, body?: string, cta?: string, outro?: string) {
     const fullContent = [intro, body, cta, outro].filter(Boolean).join('\n\n');
     const wordCount = fullContent.split(/\s+/).filter(Boolean).length;
@@ -86,7 +90,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
     } catch (error) {
         console.error('Error creating script:', error);
-        if (error instanceof z.ZodError) {
+        if (error instanceof z.ZodError || isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al crear guion' }, { status: 500 }));
@@ -140,6 +144,9 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
         console.error('Error updating script:', error);
+        if (isValidationError(error)) {
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+        }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar guion' }, { status: 500 }));
     }
 }));

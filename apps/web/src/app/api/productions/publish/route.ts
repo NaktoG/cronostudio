@@ -21,7 +21,11 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
   }
 
   const body = await request.json();
-  const data = PublishSchema.parse(body);
+  const parsed = PublishSchema.safeParse(body);
+  if (!parsed.success) {
+    return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+  }
+  const data = parsed.data;
 
   const client = await getClient();
   try {

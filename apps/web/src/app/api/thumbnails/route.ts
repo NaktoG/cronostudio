@@ -25,6 +25,10 @@ const UpdateThumbnailSchema = z.object({
     status: z.enum(['pending', 'designing', 'designed', 'approved']).optional(),
 });
 
+function isValidationError(error: unknown): boolean {
+    return error instanceof Error && error.message.startsWith('Validation error:');
+}
+
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
         const userId = getAuthUser(request)?.userId;
@@ -106,7 +110,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
     } catch (error) {
         console.error('Error creating thumbnail:', error);
-        if (error instanceof z.ZodError) {
+        if (error instanceof z.ZodError || isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al crear miniatura' }, { status: 500 }));
@@ -172,6 +176,9 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
         console.error('Error updating thumbnail:', error);
+        if (isValidationError(error)) {
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+        }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar miniatura' }, { status: 500 }));
     }
 }));
