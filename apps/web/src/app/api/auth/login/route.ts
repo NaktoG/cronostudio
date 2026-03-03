@@ -49,17 +49,14 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     } catch (error) {
         // Handle AuthError
         if (error instanceof AuthError) {
-            if (error.code === 'INVALID_CREDENTIALS') {
+            if (error.code === 'INVALID_CREDENTIALS' || error.code === 'EMAIL_NOT_VERIFIED') {
                 return withSecurityHeaders(NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 }));
-            }
-            if (error.code === 'EMAIL_NOT_VERIFIED') {
-                return withSecurityHeaders(NextResponse.json({ error: 'Email no verificado' }, { status: 403 }));
             }
         }
 
         // Handle validation errors
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return withSecurityHeaders(NextResponse.json({ error: error.message }, { status: 400 }));
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
 
         logger.error('Login error', { error: String(error) });
