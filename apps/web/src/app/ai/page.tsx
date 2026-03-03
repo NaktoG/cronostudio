@@ -342,7 +342,7 @@ export default function AiStudioPage() {
                 <p className="text-sm sm:text-base text-slate-300">Perfiles internos con flujo auto-first y modo manual para control fino.</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 justify-start sm:justify-end">
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <History className="w-4 h-4" />
                 <span>{runs.length} runs</span>
@@ -359,7 +359,7 @@ export default function AiStudioPage() {
           </motion.div>
 
           <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
-            <div className="space-y-6">
+            <div className="space-y-6 min-w-0">
               <section className="rounded-2xl border border-gray-800 bg-gray-950/60 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.25)]">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -538,7 +538,7 @@ export default function AiStudioPage() {
               </section>
             </div>
 
-            <section className="rounded-2xl border border-gray-800 bg-gray-950/60 p-5 space-y-4">
+            <section className="rounded-2xl border border-gray-800 bg-gray-950/60 p-5 space-y-4 min-w-0">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold text-white">Historial por canal</h3>
@@ -582,7 +582,7 @@ export default function AiStudioPage() {
             >
               <motion.div
                 ref={modalRef}
-                className="w-full max-w-2xl rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl"
+                className="w-full max-w-2xl rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl max-h-[85vh] overflow-y-auto"
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 10, opacity: 0 }}

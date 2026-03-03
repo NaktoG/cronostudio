@@ -320,7 +320,7 @@ export default function IdeasPage() {
                                 {ideas.slice(0, visibleCount).map((idea) => (
                                     <motion.div
                                         key={idea.id}
-                                        className="surface-panel glow-hover p-6 transition-all group"
+                                        className="surface-panel glow-hover p-6 transition-all group min-w-0"
                                         whileHover={{ y: -4 }}
                                     >
                                     <div className="flex items-start justify-between mb-3">
@@ -329,7 +329,7 @@ export default function IdeasPage() {
                                         </span>
                                         <span className="text-xs text-yellow-400">★ {idea.priority}</span>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors">
+                                    <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-yellow-400 transition-colors break-words">
                                         {idea.title}
                                     </h3>
                                     {idea.description && (

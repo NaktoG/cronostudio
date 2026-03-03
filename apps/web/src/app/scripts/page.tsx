@@ -213,7 +213,7 @@ export default function ScriptsPage() {
                             {scripts.slice(0, visibleCount).map((script) => (
                                 <motion.div
                                     key={script.id}
-                                    className="surface-panel glow-hover p-6 transition-all"
+                                    className="surface-panel glow-hover p-6 transition-all min-w-0"
                                     whileHover={{ x: 4 }}
                                 >
                                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -225,7 +225,7 @@ export default function ScriptsPage() {
                                                 <span className="text-xs text-gray-500">{script.word_count} {SCRIPTS_COPY.wordCountLabel}</span>
                                                 <span className="text-xs text-yellow-400">⏱ ~{formatDuration(script.estimated_duration_seconds)}</span>
                                             </div>
-                                            <h3 className="text-lg font-semibold text-white">{script.title}</h3>
+                                            <h3 className="text-lg font-semibold text-white break-words">{script.title}</h3>
                                             {script.idea_title && (
                                                 <p className="text-sm text-gray-500 mt-1">{SCRIPTS_COPY.ideaPrefix} {script.idea_title}</p>
                                             )}

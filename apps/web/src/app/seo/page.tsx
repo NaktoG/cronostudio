@@ -161,20 +161,20 @@ export default function SeoPage() {
                     ) : (
                         <motion.div className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                             {seoData.map((item, index) => (
-                                <motion.div
-                                    key={item.id}
-                                    className="surface-panel glow-hover p-6 transition-all"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                >
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <h3 className="text-lg font-semibold text-white">
-                                                    {item.optimized_title}
-                                                </h3>
-                                            </div>
+                            <motion.div
+                                key={item.id}
+                                className="surface-panel glow-hover p-6 transition-all min-w-0"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                            >
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <h3 className="text-lg font-semibold text-white break-words">
+                                                {item.optimized_title}
+                                            </h3>
+                                        </div>
                                             {item.video_title && (
                                                 <p className="text-sm text-gray-500">{SEO_COPY.videoPrefix} {item.video_title}</p>
                                             )}

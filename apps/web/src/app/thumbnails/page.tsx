@@ -205,7 +205,7 @@ export default function ThumbnailsPage() {
                                 {thumbnails.slice(0, visibleCount).map((thumb) => (
                                     <motion.div
                                         key={thumb.id}
-                                        className="surface-panel glow-hover overflow-hidden transition-all group"
+                                        className="surface-panel glow-hover overflow-hidden transition-all group min-w-0"
                                         whileHover={{ y: -4 }}
                                     >
                                     {/* Preview */}
@@ -229,7 +229,7 @@ export default function ThumbnailsPage() {
                                                 {STATUS_LABELS[thumb.status]?.label || thumb.status}
                                             </span>
                                         </div>
-                                        <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-yellow-400 transition-colors">
+                                        <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-yellow-400 transition-colors break-words">
                                             {thumb.title}
                                         </h3>
                                         {thumb.notes && (
