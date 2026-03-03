@@ -1225,7 +1225,7 @@ function DashboardContent() {
                     ? 'lg:grid-cols-[minmax(0,1fr)_420px]'
                     : 'lg:grid-cols-2 xl:grid-cols-3'
                 }`}>
-                  <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 ${activeTab === 'production' || activeTab === 'backlog' ? '' : 'hidden'}`} data-tour="backlog">
+                  <div className={`space-y-5 ${activeTab === 'production' || activeTab === 'backlog' ? '' : 'hidden'}`} data-tour="backlog">
                     <motion.div
                       className="surface-card glow-hover p-4 sm:p-5"
                       initial={{ opacity: 0, y: 10 }}
@@ -1449,89 +1449,85 @@ function DashboardContent() {
                       </div>
                     </motion.div>
 
-                    <div className="sm:col-span-2 xl:col-span-1">
-                      <PriorityActions
-                        actions={priorityActions}
-                        showCreateButton={false}
-                      />
-                    </div>
+                    <PriorityActions
+                      actions={priorityActions}
+                      showCreateButton={false}
+                    />
 
-                    <div className="sm:col-span-2 xl:col-span-2">
-                      {activeStage === 'idea' ? (
-                      <motion.div
-                         className="surface-card glow-hover overflow-hidden"
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: 0.1 }}
-                      >
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-800 bg-gray-900/60">
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                            <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.pipeline.ideasActive}</span>
-                            <button
-                              type="button"
-                              onClick={() => setActiveStage(null)}
-                              className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-300 hover:border-yellow-400/60"
-                            >
-                              {stageLabels.idea}
-                              <span aria-hidden="true">×</span>
-                            </button>
-                          </div>
-                            <span className="text-xs text-slate-400">{filteredIdeas.length} {DASHBOARD_COPY.pipeline.ideasCountLabel}</span>
+                    {activeStage === 'idea' ? (
+                    <motion.div
+                       className="surface-card glow-hover overflow-hidden"
+                       initial={{ opacity: 0, y: 10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       transition={{ duration: 0.3, delay: 0.1 }}
+                     >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-800 bg-gray-900/60">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                          <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.pipeline.ideasActive}</span>
+                          <button
+                            type="button"
+                            onClick={() => setActiveStage(null)}
+                            className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-300 hover:border-yellow-400/60"
+                          >
+                            {stageLabels.idea}
+                            <span aria-hidden="true">×</span>
+                          </button>
                         </div>
-                          <div className="divide-y divide-gray-800/50">
-                            {filteredIdeas.length === 0 ? (
-                            <div className="px-4 sm:px-5 py-6 text-slate-300">
-                              <p className="mb-3">{DASHBOARD_COPY.pipeline.noIdeas}</p>
-                              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                <button
-                                  type="button"
-                                  onClick={() => router.push(`/ai?profile=evergreen_ideas${selectedChannelId ? `&channelId=${selectedChannelId}` : ''}`)}
-                                  className="rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
-                                >
-                                  Generar ideas
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setShowModal(true)}
-                                  className="rounded-lg border border-gray-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300"
-                                >
-                                  Crear manual
-                                </button>
+                          <span className="text-xs text-slate-400">{filteredIdeas.length} {DASHBOARD_COPY.pipeline.ideasCountLabel}</span>
+                      </div>
+                        <div className="divide-y divide-gray-800/50">
+                          {filteredIdeas.length === 0 ? (
+                          <div className="px-4 sm:px-5 py-6 text-slate-300">
+                            <p className="mb-3">{DASHBOARD_COPY.pipeline.noIdeas}</p>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/ai?profile=evergreen_ideas${selectedChannelId ? `&channelId=${selectedChannelId}` : ''}`)}
+                                className="rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                              >
+                                Generar ideas
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowModal(true)}
+                                className="rounded-lg border border-gray-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300"
+                              >
+                                Crear manual
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          filteredIdeas.slice(0, 6).map((idea) => (
+                            <div key={idea.id} className="px-4 sm:px-5 py-4">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm text-white font-medium">{idea.title}</p>
+                                  <p className="text-xs text-slate-400">Prioridad {idea.priority}</p>
+                                </div>
+                                <span className="text-[10px] uppercase tracking-[0.2em] text-yellow-300">{idea.status}</span>
                               </div>
                             </div>
-                          ) : (
-                            filteredIdeas.slice(0, 6).map((idea) => (
-                              <div key={idea.id} className="px-4 sm:px-5 py-4">
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <p className="text-sm text-white font-medium">{idea.title}</p>
-                                    <p className="text-xs text-slate-400">Prioridad {idea.priority}</p>
-                                  </div>
-                                  <span className="text-[10px] uppercase tracking-[0.2em] text-yellow-300">{idea.status}</span>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <ProductionsList
-                        productions={filteredProductions}
-                        selectedProductionId={focusedProductionId}
-                        onProductionClick={(production) => setFocusedProductionId(production.id)}
-                        onMarkPublished={(production) => setPublishTarget(production)}
-                        onCreateNew={() => setShowModal(true)}
-                        filterLabel={activeStage ? stageLabels[activeStage] : null}
-                        onClearFilter={() => setActiveStage(null)}
-                        title={activeStage ? DASHBOARD_COPY.pipeline.inStage : DASHBOARD_COPY.pipeline.active}
-                        showCreateButton={false}
-                        emptyActions={[
-                          { label: 'Crear producción', onClick: () => setShowModal(true) },
-                          { label: 'AI Studio', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
-                        ]}
-                      />
-                    )}
-                    </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <ProductionsList
+                      productions={filteredProductions}
+                      selectedProductionId={focusedProductionId}
+                      onProductionClick={(production) => setFocusedProductionId(production.id)}
+                      onMarkPublished={(production) => setPublishTarget(production)}
+                      onCreateNew={() => setShowModal(true)}
+                      filterLabel={activeStage ? stageLabels[activeStage] : null}
+                      onClearFilter={() => setActiveStage(null)}
+                      title={activeStage ? DASHBOARD_COPY.pipeline.inStage : DASHBOARD_COPY.pipeline.active}
+                      showCreateButton={false}
+                      emptyActions={[
+                        { label: 'Crear producción', onClick: () => setShowModal(true) },
+                        { label: 'AI Studio', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
+                      ]}
+                    />
+                  )}
                   </div>
 
                   {activeTab === 'production' && (
@@ -1740,9 +1736,9 @@ function DashboardContent() {
                     </div>
                   )}
 
-                  <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 ${activeTab === 'calendar' ? '' : 'hidden'}`} data-tour="calendar" ref={calendarRef}>
+                  <div className={`space-y-4 ${activeTab === 'calendar' ? '' : 'hidden'}`} data-tour="calendar" ref={calendarRef}>
                     <motion.div
-                      className="surface-card glow-hover p-4 sm:p-6 sm:min-h-[520px] sm:col-span-2"
+                      className="surface-card glow-hover p-4 sm:p-6 sm:min-h-[520px]"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.15 }}
