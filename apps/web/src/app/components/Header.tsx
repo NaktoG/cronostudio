@@ -6,7 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { LogOut, Menu, Settings, X } from 'lucide-react';
+import { HelpCircle, LogOut, Menu, Settings, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { NAV_ITEMS, NAV_LABELS } from '../content/navigation';
 
@@ -95,6 +95,16 @@ export default function Header() {
               <div className="w-24 h-10 bg-gray-800 rounded-lg animate-pulse" />
             ) : isAuthenticated ? (
               <div className="flex items-center gap-4">
+                <motion.button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new CustomEvent('cronostudio:toggle-guide'))}
+                  className="hidden sm:inline-flex px-3 py-2 text-sm text-slate-300 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all items-center gap-2"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <HelpCircle className="w-4 h-4" />
+                  Guía
+                </motion.button>
                 <Link href="/configuracion" className="hidden sm:block">
                   <motion.div
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-yellow-500/50 transition-all"
@@ -201,6 +211,19 @@ export default function Header() {
                     </Link>
                   )}
                   <div className="mt-5 flex flex-col gap-2">
+                    {isAuthenticated && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.dispatchEvent(new CustomEvent('cronostudio:toggle-guide'));
+                          setMobileMenuOpen(false);
+                        }}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm text-slate-300 hover:text-yellow-400 hover:bg-gray-800/50"
+                      >
+                        <HelpCircle className="w-5 h-5" />
+                        <span className="font-medium">Guía</span>
+                      </button>
+                    )}
                     {NAV_ITEMS.map((item) => {
                       const isActive = pathname === item.href;
                       const Icon = item.icon;

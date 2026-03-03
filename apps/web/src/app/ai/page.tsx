@@ -324,7 +324,7 @@ export default function AiStudioPage() {
     <ProtectedRoute>
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 pb-32 sm:pb-40 lg:pb-12 lg:pr-[360px] w-full">
+        <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 pb-24 lg:pb-12 w-full">
           <motion.div
             className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between"
             initial={{ opacity: 0, y: -20 }}

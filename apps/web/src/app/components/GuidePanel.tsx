@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { CheckCircle2, ChevronRight, HelpCircle, RefreshCw, Sparkles } from 'lucide-react';
+import { CheckCircle2, ChevronRight, RefreshCw, Sparkles } from 'lucide-react';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 
 type GuideCounts = {
@@ -139,7 +139,9 @@ export default function GuidePanel() {
   const [loading, setLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
+  const [showFull, setShowFull] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState('');
+  const [panelRight, setPanelRight] = useState<number | null>(null);
 
   useEffect(() => {
     const stored = typeof window !== 'undefined'
@@ -151,9 +153,39 @@ export default function GuidePanel() {
   }, []);
 
   useEffect(() => {
+    const handleToggle = () => {
+      setIsOpen((current) => {
+        const next = !current;
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('cronostudio.guide.open', String(next));
+        }
+        return next;
+      });
+    };
+    window.addEventListener('cronostudio:toggle-guide', handleToggle as EventListener);
+    return () => window.removeEventListener('cronostudio:toggle-guide', handleToggle as EventListener);
+  }, []);
+
+  useEffect(() => {
     if (typeof window === 'undefined') return;
     const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
     setActiveChannelId(storedChannel);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const updatePanelRight = () => {
+      if (pathname !== '/ai' || window.innerWidth < 1024) {
+        setPanelRight(null);
+        return;
+      }
+      const maxWidth = 1280;
+      const extra = Math.max((window.innerWidth - maxWidth) / 2, 24);
+      setPanelRight(extra);
+    };
+    updatePanelRight();
+    window.addEventListener('resize', updatePanelRight);
+    return () => window.removeEventListener('resize', updatePanelRight);
   }, [pathname]);
 
   const fetchCounts = useCallback(async (signal?: AbortSignal) => {
@@ -249,28 +281,17 @@ export default function GuidePanel() {
   const sectionSteps = PAGE_STEPS[pathname] ?? null;
 
   if (!isAuthenticated || AUTH_ROUTES.has(pathname)) return null;
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-[65] flex flex-col items-end gap-3">
-      {!isOpen && (
-        <button
-          type="button"
-          onClick={() => {
-            setIsOpen(true);
-            window.localStorage.setItem('cronostudio.guide.open', 'true');
-          }}
-          className="inline-flex items-center gap-2 rounded-full border border-yellow-500/40 bg-gray-950/90 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300 shadow-lg"
-        >
-          <HelpCircle className="h-4 w-4" />
-          Guia
-        </button>
-      )}
-
-      {isOpen && (
-        <div className="w-[min(92vw,360px)] rounded-2xl border border-gray-800 bg-gray-950/95 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-yellow-400/90">Modo guia</div>
+    <div
+      className="fixed bottom-6 right-6 z-[65] flex flex-col items-end gap-3"
+      style={panelRight ? { right: `${panelRight}px` } : undefined}
+    >
+      <div className="w-[min(92vw,360px)] rounded-2xl border border-gray-800 bg-gray-950/95 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-yellow-400/90">Modo guia</div>
               <h3 className="mt-1 text-lg font-semibold text-white flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-yellow-300" />
                 Proximo paso recomendado
@@ -306,24 +327,26 @@ export default function GuidePanel() {
             </div>
           </div>
 
-          <div className="mt-4 space-y-2">
-            {steps.map((step) => (
-              <div
-                key={step.key}
-                className="flex items-start gap-2 rounded-lg border border-gray-800 bg-gray-900/30 px-3 py-2"
-              >
-                <CheckCircle2 className={`h-4 w-4 ${step.complete ? 'text-emerald-400' : 'text-slate-600'}`} />
-                <div className="flex-1">
-                  <p className={`text-xs font-semibold ${step.complete ? 'text-emerald-200' : 'text-slate-200'}`}>
-                    {step.title}
-                  </p>
-                  <p className="text-[11px] text-slate-500">{step.description}</p>
+          {showFull && (
+            <div className="mt-4 space-y-2">
+              {steps.map((step) => (
+                <div
+                  key={step.key}
+                  className="flex items-start gap-2 rounded-lg border border-gray-800 bg-gray-900/30 px-3 py-2"
+                >
+                  <CheckCircle2 className={`h-4 w-4 ${step.complete ? 'text-emerald-400' : 'text-slate-600'}`} />
+                  <div className="flex-1">
+                    <p className={`text-xs font-semibold ${step.complete ? 'text-emerald-200' : 'text-slate-200'}`}>
+                      {step.title}
+                    </p>
+                    <p className="text-[11px] text-slate-500">{step.description}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {tip && (
+          {showFull && tip && (
             <div className="mt-4 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
               <div className="text-[10px] uppercase tracking-[0.2em] text-yellow-400/90">En esta seccion</div>
               <p className="mt-1 text-sm font-semibold text-white">{tip.title}</p>
@@ -342,6 +365,13 @@ export default function GuidePanel() {
               {loading ? 'Actualizando...' : 'Actualizar guia'}
             </button>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowFull((current) => !current)}
+                className="text-[10px] uppercase tracking-[0.2em] text-slate-400 hover:text-yellow-300"
+              >
+                {showFull ? 'Ver menos' : 'Ver todo'}
+              </button>
               {sectionSteps && (
                 <button
                   type="button"
@@ -355,8 +385,7 @@ export default function GuidePanel() {
             </div>
           </div>
         </div>
-      )}
-
+      </div>
       {showSteps && sectionSteps && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
           <div className="w-[min(92vw,420px)] rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl">
