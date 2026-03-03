@@ -716,52 +716,6 @@ function DashboardContent() {
     return `/ai?${search.toString()}`;
   };
 
-  const nextAction = useMemo(() => {
-    if (focusProduction && focusChecklist) {
-      if (!focusChecklist.scriptReady) {
-        return {
-          label: 'Falta guion para avanzar la producción.',
-          action: 'Generar guion',
-          onClick: () => router.push(buildAiUrl('script_architect', {
-            ideaId: focusProduction.idea_id ?? null,
-            channelId: focusProduction.channel_id ?? null,
-          })),
-        };
-      }
-      if (!focusChecklist.seoReady) {
-        return {
-          label: 'Falta SEO para preparar la publicación.',
-          action: 'Generar SEO',
-          onClick: () => router.push(buildAiUrl('titles_thumbs', {
-            ideaId: focusProduction.idea_id ?? null,
-            scriptId: focusProduction.script_id ?? null,
-            channelId: focusProduction.channel_id ?? null,
-          })),
-        };
-      }
-      if (!focusChecklist.thumbnailReady) {
-        return {
-          label: 'Falta miniatura aprobada.',
-          action: 'Ir a miniaturas',
-          onClick: () => router.push(`/thumbnails${focusProduction.channel_id ? `?channelId=${focusProduction.channel_id}` : ''}`),
-        };
-      }
-      if (!focusChecklist.published) {
-        return {
-          label: 'Listo para publicar. Registrá el enlace.',
-          action: 'Marcar publicado',
-          onClick: () => setPublishTarget(focusProduction),
-        };
-      }
-    }
-
-    return {
-      label: nextStepCopy.label,
-      action: nextStepCopy.action,
-      onClick: nextStepCopy.action === 'Registrar' ? handleDockRegister : handleDockPlan,
-    };
-  }, [focusProduction, focusChecklist, nextStepCopy, router, handleDockRegister, handleDockPlan]);
-
   const handleQuickPublish = async (targetDay: 'tuesday' | 'friday') => {
     if (!selectedChannelId) {
       addToast('Selecciona un canal primero', 'error');
@@ -839,6 +793,52 @@ function DashboardContent() {
       calendarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
+
+  const nextAction = useMemo(() => {
+    if (focusProduction && focusChecklist) {
+      if (!focusChecklist.scriptReady) {
+        return {
+          label: 'Falta guion para avanzar la producción.',
+          action: 'Generar guion',
+          onClick: () => router.push(buildAiUrl('script_architect', {
+            ideaId: focusProduction.idea_id ?? null,
+            channelId: focusProduction.channel_id ?? null,
+          })),
+        };
+      }
+      if (!focusChecklist.seoReady) {
+        return {
+          label: 'Falta SEO para preparar la publicación.',
+          action: 'Generar SEO',
+          onClick: () => router.push(buildAiUrl('titles_thumbs', {
+            ideaId: focusProduction.idea_id ?? null,
+            scriptId: focusProduction.script_id ?? null,
+            channelId: focusProduction.channel_id ?? null,
+          })),
+        };
+      }
+      if (!focusChecklist.thumbnailReady) {
+        return {
+          label: 'Falta miniatura aprobada.',
+          action: 'Ir a miniaturas',
+          onClick: () => router.push(`/thumbnails${focusProduction.channel_id ? `?channelId=${focusProduction.channel_id}` : ''}`),
+        };
+      }
+      if (!focusChecklist.published) {
+        return {
+          label: 'Listo para publicar. Registrá el enlace.',
+          action: 'Marcar publicado',
+          onClick: () => setPublishTarget(focusProduction),
+        };
+      }
+    }
+
+    return {
+      label: nextStepCopy.label,
+      action: nextStepCopy.action,
+      onClick: nextStepCopy.action === 'Registrar' ? handleDockRegister : handleDockPlan,
+    };
+  }, [focusProduction, focusChecklist, nextStepCopy, router, handleDockRegister, handleDockPlan]);
 
   const handleDockVerify = () => {
     fetchData();
