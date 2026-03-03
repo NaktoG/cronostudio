@@ -694,6 +694,19 @@ function DashboardContent() {
     return { label: 'Semana completa. Planifica la próxima.', action: 'Planificar' };
   }, [disciplineMissing, reconcileWeekly]);
 
+  const activeProductions = productions.filter((production) => production.status !== 'published');
+  const focusProduction = useMemo(() => {
+    const base = activeStage
+      ? activeProductions.filter((production) => production.status === activeStage)
+      : activeProductions;
+    if (focusedProductionId) {
+      const match = base.find((production) => production.id === focusedProductionId);
+      if (match) return match;
+    }
+    return [...base].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
+  }, [activeProductions, activeStage, focusedProductionId]);
+  const focusChecklist = focusProduction ? getChecklistStatus(focusProduction) : null;
+
   const buildAiUrl = (profile: string, params: Record<string, string | null | undefined>) => {
     const search = new URLSearchParams();
     search.set('profile', profile);
@@ -857,18 +870,6 @@ function DashboardContent() {
   };
 
   const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions);
-  const activeProductions = productions.filter(p => p.status !== 'published');
-  const focusProduction = useMemo(() => {
-    const base = activeStage
-      ? activeProductions.filter((production) => production.status === activeStage)
-      : activeProductions;
-    if (focusedProductionId) {
-      const match = base.find((production) => production.id === focusedProductionId);
-      if (match) return match;
-    }
-    return [...base].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
-  }, [activeProductions, activeStage, focusedProductionId]);
-  const focusChecklist = focusProduction ? getChecklistStatus(focusProduction) : null;
   const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
   const publishMissing = publishChecklist
     ? [
