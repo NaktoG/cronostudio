@@ -40,6 +40,7 @@ interface ProductionsListProps {
     onToggleSelection?: (id: string) => void;
     onClearSelection?: () => void;
     onBulkStatus?: (status: string) => void;
+    onBulkTargetDate?: (date: string) => void;
 }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
@@ -114,6 +115,7 @@ export default function ProductionsList({
     onToggleSelection,
     onClearSelection,
     onBulkStatus,
+    onBulkTargetDate,
 }: ProductionsListProps) {
     return (
         <motion.div
@@ -138,26 +140,33 @@ export default function ProductionsList({
                     )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {selectedIds.length > 0 && onBulkStatus && (
+                    {selectedIds.length > 0 && (
                         <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{selectedIds.length} seleccionadas</span>
+                            {onBulkTargetDate && (
+                                <input
+                                    type="date"
+                                    onChange={(event) => onBulkTargetDate(event.target.value)}
+                                    className="rounded-lg border border-gray-700 bg-gray-900/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                />
+                            )}
                             <button
                                 type="button"
-                                onClick={() => onBulkStatus('recording')}
+                                onClick={() => onBulkStatus?.('recording')}
                                 className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
                             >
                                 Grabación
                             </button>
                             <button
                                 type="button"
-                                onClick={() => onBulkStatus('editing')}
+                                onClick={() => onBulkStatus?.('editing')}
                                 className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
                             >
                                 Edición
                             </button>
                             <button
                                 type="button"
-                                onClick={() => onBulkStatus('publishing')}
+                                onClick={() => onBulkStatus?.('publishing')}
                                 className="rounded-lg bg-emerald-400 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-black"
                             >
                                 Publicar

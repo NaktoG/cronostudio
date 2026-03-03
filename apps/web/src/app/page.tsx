@@ -900,6 +900,21 @@ function DashboardContent() {
     }
   };
 
+  const bulkUpdateTargetDate = async (date: string) => {
+    if (selectedProductionIds.length === 0) return;
+    try {
+      await Promise.all(selectedProductionIds.map((id) => authFetch(`/api/productions?id=${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ targetDate: date || null }),
+      })));
+      clearProductionSelection();
+      fetchData();
+      addToast('Fecha objetivo actualizada', 'success');
+    } catch (error) {
+      addToast('Error al actualizar fecha objetivo', 'error');
+    }
+  };
+
   const handleDockVerify = () => {
     fetchData();
     openDrawerForSlot(nextSlot);
@@ -1555,6 +1570,7 @@ function DashboardContent() {
                       onToggleSelection={toggleProductionSelection}
                       onClearSelection={clearProductionSelection}
                       onBulkStatus={bulkUpdateProductions}
+                      onBulkTargetDate={bulkUpdateTargetDate}
                     />
                   )}
                   </div>
