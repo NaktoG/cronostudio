@@ -63,6 +63,7 @@ export default function IdeasPage() {
     const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const tagSuggestions = useMemo(() => {
         const map = new Map<string, number>();
         ideas.forEach((idea) => {
@@ -246,6 +247,25 @@ export default function IdeasPage() {
         }
     };
 
+    const toggleSelection = (id: string) => {
+        setSelectedIds((current) => current.includes(id)
+            ? current.filter((item) => item !== id)
+            : [...current, id]
+        );
+    };
+
+    const clearSelection = () => setSelectedIds([]);
+
+    const updateSelectedStatus = async (status: IdeaStatus) => {
+        if (selectedIds.length === 0) return;
+        try {
+            await Promise.all(selectedIds.map((id) => updateStatus(id, status)));
+            clearSelection();
+        } catch (err) {
+            addToast(IDEAS_COPY.toasts.error, 'error');
+        }
+    };
+
     const deleteIdea = async (id: string) => {
         const target = ideas.find((idea) => idea.id === id) || null;
         setDeleteTarget(target);
@@ -317,6 +337,32 @@ export default function IdeasPage() {
                                     </select>
                                 </div>
                             )}
+                            {selectedIds.length > 0 && (
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <span className="text-xs text-slate-400">{selectedIds.length} seleccionadas</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('approved')}
+                                        className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                                    >
+                                        Aprobar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('archived')}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        Archivar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={clearSelection}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                            )}
                             <motion.button
                                 onClick={() => {
                                     setEditingIdea(null);
@@ -375,6 +421,15 @@ export default function IdeasPage() {
                                         whileHover={{ y: -4 }}
                                     >
                                     <div className="flex items-start justify-between mb-3">
+                                        <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(idea.id)}
+                                                onChange={() => toggleSelection(idea.id)}
+                                                className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
+                                            />
+                                            Seleccionar
+                                        </label>
                                         <span className={`text-xs px-2 py-1 rounded ${STATUS_LABELS[idea.status]?.color || 'bg-gray-600'} text-white`}>
                                             {STATUS_LABELS[idea.status]?.label || idea.status}
                                         </span>
