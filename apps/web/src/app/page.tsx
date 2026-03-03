@@ -2248,6 +2248,11 @@ function DashboardContent() {
                       setPublishPlatformId(event.target.value);
                       setPublishPlatformTouched(true);
                     }}
+                    onBlur={() => {
+                      if (!publishUrl && publishPlatformId.trim()) {
+                        setPublishUrl(`https://www.youtube.com/watch?v=${publishPlatformId.trim()}`);
+                      }
+                    }}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
                     placeholder="YouTube videoId"
                   />
