@@ -61,6 +61,7 @@ export default function ScriptsPage() {
     const [deleteTarget, setDeleteTarget] = useState<Script | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const modalRef = useRef<HTMLDivElement>(null);
     const deleteRef = useRef<HTMLDivElement>(null);
 
@@ -191,6 +192,30 @@ export default function ScriptsPage() {
         }
     };
 
+    const toggleSelection = (id: string) => {
+        setSelectedIds((current) => current.includes(id)
+            ? current.filter((item) => item !== id)
+            : [...current, id]
+        );
+    };
+
+    const clearSelection = () => setSelectedIds([]);
+
+    const updateSelectedStatus = async (status: string) => {
+        if (selectedIds.length === 0) return;
+        try {
+            await Promise.all(selectedIds.map((id) => authFetch(`/api/scripts?id=${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({ status }),
+            })));
+            clearSelection();
+            await fetchScripts();
+            addToast(SCRIPTS_COPY.toasts.updated, 'success');
+        } catch (err) {
+            addToast(SCRIPTS_COPY.toasts.error, 'error');
+        }
+    };
+
     const openEdit = (script: Script) => {
         const ideaTitle = script.idea_id
             ? ideaOptions.find((idea) => idea.id === script.idea_id)?.title ?? ''
@@ -278,8 +303,41 @@ export default function ScriptsPage() {
                                     </select>
                                 </div>
                             )}
+                            {selectedIds.length > 0 && (
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                    <span className="text-xs text-slate-400">{selectedIds.length} seleccionados</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('review')}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        A revisión
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('approved')}
+                                        className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                                    >
+                                        Aprobar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('recorded')}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        Grabado
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={clearSelection}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                            )}
                             <motion.button
-                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '' }); setShowModal(true); }}
+                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' }); setShowModal(true); }}
                                 className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
                                 style={{
                                     background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
@@ -306,7 +364,7 @@ export default function ScriptsPage() {
                             <h3 className="text-xl font-semibold text-white mb-2">{SCRIPTS_COPY.emptyTitle}</h3>
                             <p className="text-slate-300 mb-6">{SCRIPTS_COPY.emptySubtitle}</p>
                             <motion.button
-                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '' }); setShowModal(true); }}
+                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' }); setShowModal(true); }}
                                 className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 sm:w-auto"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -319,12 +377,21 @@ export default function ScriptsPage() {
                             {scripts.slice(0, visibleCount).map((script) => (
                                 <motion.div
                                     key={script.id}
-                                    className="surface-panel glow-hover p-6 transition-all min-w-0"
+                                    className={`surface-panel glow-hover p-6 transition-all min-w-0 ${selectedIds.includes(script.id) ? 'ring-2 ring-yellow-400/60' : ''}`}
                                     whileHover={{ x: 4 }}
                                 >
                                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-2">
+                                                <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.includes(script.id)}
+                                                        onChange={() => toggleSelection(script.id)}
+                                                        className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
+                                                    />
+                                                    Seleccionar
+                                                </label>
                                                 <span className={`text-xs px-2 py-1 rounded ${STATUS_LABELS[script.status]?.color || 'bg-gray-600'} text-white`}>
                                                     {STATUS_LABELS[script.status]?.label || script.status}
                                                 </span>
