@@ -30,6 +30,7 @@ interface ProductionsListProps {
     filterLabel?: string | null;
     onClearFilter?: () => void;
     showCreateButton?: boolean;
+    selectedProductionId?: string | null;
 }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
@@ -72,6 +73,7 @@ export default function ProductionsList({
     filterLabel,
     onClearFilter,
     showCreateButton = true,
+    selectedProductionId,
 }: ProductionsListProps) {
     return (
         <motion.div
@@ -141,11 +143,12 @@ export default function ProductionsList({
                         const Icon = badge.icon;
                         const nextAction = getNextAction(prod);
 
+                        const isSelected = selectedProductionId === prod.id;
                         return (
                             <motion.button
                                 key={prod.id}
                                 type="button"
-                            className="flex w-full flex-col gap-3 px-4 sm:px-5 py-4 text-left hover:bg-gray-800/40 cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
+                                className={`flex w-full flex-col gap-3 px-4 sm:px-5 py-4 text-left cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60 ${isSelected ? 'bg-yellow-500/10 border-l-2 border-yellow-400/60' : 'hover:bg-gray-800/40'}`}
                                 onClick={() => onProductionClick?.(prod)}
                                 aria-label={`Abrir contenido ${prod.title}`}
                                 variants={itemVariants}

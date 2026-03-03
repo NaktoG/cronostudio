@@ -265,6 +265,7 @@ function DashboardContent() {
   const [publishUrl, setPublishUrl] = useState('');
   const [publishPlatformId, setPublishPlatformId] = useState('');
   const [publishPlatformTouched, setPublishPlatformTouched] = useState(false);
+  const [focusedProductionId, setFocusedProductionId] = useState<string | null>(null);
   const [publishSubmitting, setPublishSubmitting] = useState(false);
   const [quickPublishSubmitting, setQuickPublishSubmitting] = useState(false);
   const [reconcileSubmitting, setReconcileSubmitting] = useState(false);
@@ -801,8 +802,12 @@ function DashboardContent() {
     const base = activeStage
       ? activeProductions.filter((production) => production.status === activeStage)
       : activeProductions;
-    return base[0] ?? null;
-  }, [activeProductions, activeStage]);
+    if (focusedProductionId) {
+      const match = base.find((production) => production.id === focusedProductionId);
+      if (match) return match;
+    }
+    return [...base].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
+  }, [activeProductions, activeStage, focusedProductionId]);
   const focusChecklist = focusProduction ? getChecklistStatus(focusProduction) : null;
   const filteredProductions = activeStage
     ? activeProductions.filter((production) => production.status === activeStage)
@@ -1361,6 +1366,8 @@ function DashboardContent() {
                   ) : (
                     <ProductionsList
                       productions={filteredProductions}
+                      selectedProductionId={focusedProductionId}
+                      onProductionClick={(production) => setFocusedProductionId(production.id)}
                       onMarkPublished={(production) => setPublishTarget(production)}
                       onCreateNew={() => setShowModal(true)}
                       filterLabel={activeStage ? stageLabels[activeStage] : null}
