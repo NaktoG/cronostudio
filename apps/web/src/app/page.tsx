@@ -1393,6 +1393,16 @@ function DashboardContent() {
                               <span className="text-slate-600">•</span>
                               <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
                             </div>
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+                              <span>Fecha objetivo:</span>
+                              <span className="text-slate-200">
+                                {focusProduction.target_date ? focusProduction.target_date.slice(0, 10) : 'Sin fecha'}
+                              </span>
+                              <span className="text-slate-600">•</span>
+                              <span>
+                                Actualizado {new Date(focusProduction.updated_at).toLocaleDateString('es-AR')}
+                              </span>
+                            </div>
                             <div className="mt-2 space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-2">
