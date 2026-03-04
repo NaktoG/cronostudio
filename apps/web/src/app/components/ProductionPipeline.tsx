@@ -84,9 +84,18 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage, s
                     const cta = stageCtas?.[stage.key];
 
                     return (
-                        <motion.button
+                        <motion.div
                             key={stage.key}
+                            role={hasItems ? 'button' : undefined}
+                            tabIndex={hasItems ? 0 : -1}
                             onClick={() => hasItems && onStageClick?.(stage.key)}
+                            onKeyDown={(event) => {
+                                if (!hasItems) return;
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    onStageClick?.(stage.key);
+                                }
+                            }}
                             className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl transition-all sm:py-4 ${hasItems
                                 ? 'bg-gray-800/70 hover:bg-gray-800 cursor-pointer shadow-lg'
                                 : 'bg-gray-900/40 cursor-default'
@@ -128,7 +137,7 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage, s
                                     {cta.label}
                                 </button>
                             )}
-                        </motion.button>
+                        </motion.div>
                     );
                 })}
             </motion.div>
