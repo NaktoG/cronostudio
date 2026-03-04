@@ -161,5 +161,22 @@ test.describe.serial('core flow', () => {
       throw new Error(`Production create failed: ${await productionResponse.text()}`);
     }
     await expect(page.getByText(productionTitle).first()).toBeVisible();
+
+    const productionPayload = await productionResponse.json().catch(() => null);
+    const productionId = productionPayload?.id || productionPayload?.productionId || productionPayload?.production?.id;
+    if (productionId) {
+      const publishResponse = await page.request.post('/api/productions/publish', {
+        data: {
+          productionId,
+          publishedUrl: `https://youtube.com/watch?v=${stamp}`,
+        },
+      });
+      if (!publishResponse.ok()) {
+        throw new Error(`Publish failed: ${await publishResponse.text()}`);
+      }
+    }
+
+    await page.goto('/seo');
+    await expect(page.locator('h2', { hasText: 'SEO' })).toBeVisible();
   });
 });

@@ -36,6 +36,8 @@ const envSchema = z
     CSP_SCRIPT_SRC: z.string().optional(),
     CSP_STYLE_SRC: z.string().optional(),
     CSP_FONT_SRC: z.string().optional(),
+    CSP_REPORT_ONLY: z.string().optional(),
+    CSP_REPORT_URI: z.string().optional(),
   })
   .passthrough();
 
@@ -136,6 +138,8 @@ function buildConfig() {
       scriptSrc: getArrayEnv(env.CSP_SCRIPT_SRC, ["'self'"]),
       styleSrc: getArrayEnv(env.CSP_STYLE_SRC, ["'self'", "'unsafe-inline'"]),
       fontSrc: getArrayEnv(env.CSP_FONT_SRC, ["'self'", 'data:', 'https://fonts.gstatic.com']),
+      reportOnly: (env.CSP_REPORT_ONLY || 'false') === 'true',
+      reportUri: env.CSP_REPORT_URI,
     },
 
     rateLimit: {

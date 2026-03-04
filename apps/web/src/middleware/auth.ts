@@ -90,22 +90,27 @@ export function withSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('Referrer-Policy', 'no-referrer');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   response.headers.set('Cache-Control', 'no-store');
-  response.headers.set(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      `img-src ${config.csp.imgSrc.join(' ')}`,
-      `script-src ${config.csp.scriptSrc.join(' ')}`,
-      `style-src ${config.csp.styleSrc.join(' ')}`,
-      `font-src ${config.csp.fontSrc.join(' ')}`,
-      `connect-src ${config.csp.connectSrc.join(' ')}`,
-      "object-src 'none'",
-      "frame-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-    ].join('; ')
-  );
+  const cspPolicy = [
+    "default-src 'self'",
+    `img-src ${config.csp.imgSrc.join(' ')}`,
+    `script-src ${config.csp.scriptSrc.join(' ')}`,
+    `style-src ${config.csp.styleSrc.join(' ')}`,
+    `font-src ${config.csp.fontSrc.join(' ')}`,
+    `connect-src ${config.csp.connectSrc.join(' ')}`,
+    "object-src 'none'",
+    "frame-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ];
+  response.headers.set('Content-Security-Policy', cspPolicy.join('; '));
+  if (config.csp.reportOnly) {
+    const reportOnlyPolicy = [...cspPolicy];
+    if (config.csp.reportUri) {
+      reportOnlyPolicy.push(`report-uri ${config.csp.reportUri}`);
+    }
+    response.headers.set('Content-Security-Policy-Report-Only', reportOnlyPolicy.join('; '));
+  }
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
   response.headers.set('Cross-Origin-Embedder-Policy', 'credentialless');
 
