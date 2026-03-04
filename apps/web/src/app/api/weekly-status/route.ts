@@ -578,7 +578,7 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
       last4Weeks: streak.last4Weeks,
       tasks,
     }));
-  } catch (error) {
+  } catch {
     return withSecurityHeaders(NextResponse.json({ error: 'Error al evaluar la semana' }, { status: 500 }));
   }
 });

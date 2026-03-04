@@ -29,6 +29,8 @@ const envSchema = z
     REDIS_URL: z.string().optional(),
     REDIS_SKIP_TLS_VERIFY: z.string().optional(),
 
+    RATE_LIMIT_TRUST_PROXY: z.string().optional(),
+
     CRONOSTUDIO_WEBHOOK_SECRET: z.string().optional(),
 
     CSP_CONNECT_SRC: z.string().optional(),
@@ -155,6 +157,7 @@ function buildConfig() {
     })(),
 
     rateLimit: {
+      trustProxy: env.RATE_LIMIT_TRUST_PROXY === 'true',
       api: {
         windowMs: 15 * 60 * 1000,
         max: 100,

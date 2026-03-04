@@ -4,7 +4,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { config } from '@/lib/config';
-import { logger } from '@/lib/logger';
 import { isValidUserRole } from '@/domain/value-objects/UserRole';
 import { getAccessCookie } from '@/lib/authCookies';
 import type { User } from '@/domain/entities/User';
@@ -32,16 +31,6 @@ export interface AuthenticatedRequest extends NextRequest {
 function getValidatedRole(role: unknown): User['role'] | null {
   if (typeof role !== 'string') return null;
   return isValidUserRole(role) ? (role as User['role']) : null;
-}
-
-function unauthorizedRoleResponse(): NextResponse {
-  return NextResponse.json(
-    {
-      error: 'No autorizado',
-      message: 'Rol inválido en el token de acceso',
-    },
-    { status: 401 }
-  );
 }
 
 /**
@@ -159,35 +148,4 @@ function extractTokenFromRequest(request: NextRequest): string | null {
   }
   const cookieToken = getAccessCookie(request);
   return cookieToken || null;
-}
-
-function handleJwtError(error: unknown): NextResponse {
-  if (error instanceof jwt.TokenExpiredError) {
-    return NextResponse.json(
-      {
-        error: 'Token expirado',
-        message: 'Por favor inicia sesión nuevamente',
-      },
-      { status: 401 }
-    );
-  }
-
-  if (error instanceof jwt.JsonWebTokenError) {
-    return NextResponse.json(
-      {
-        error: 'Token inválido',
-        message: 'Token de autorización inválido',
-      },
-      { status: 401 }
-    );
-  }
-
-  logger.error('[Auth Middleware] Token verification failed', { error: String(error) });
-  return NextResponse.json(
-    {
-      error: 'Error de autenticación',
-      message: 'Error al verificar token',
-    },
-    { status: 500 }
-  );
 }

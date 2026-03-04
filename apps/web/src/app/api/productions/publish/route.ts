@@ -73,7 +73,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
       publishedUrl: production.published_url,
       platformId: production.platform_id,
     }));
-  } catch (error) {
+  } catch {
     await client.query('ROLLBACK');
     return withSecurityHeaders(NextResponse.json({ error: 'Error al marcar como publicado' }, { status: 500 }));
   } finally {

@@ -5,8 +5,6 @@ export type IdeaReadyCheck = {
 
 const PROMISE_REGEX = /en este video vas a entender\s+[^.\n]+/i;
 const BULLET_REGEX = /^\s*(?:[-*•]|\d+\.)\s+\S+/;
-const HOOK_LABEL_REGEX = /hook\s*[:\-]/i;
-
 function countSentences(text: string): number {
   const parts = text
     .split(/[.!?]+/)

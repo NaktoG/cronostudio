@@ -120,7 +120,7 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
       isoWeek,
       source: 'stored',
     }));
-  } catch (error) {
+  } catch {
     return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener metas semanales' }, { status: 500 }));
   }
 });

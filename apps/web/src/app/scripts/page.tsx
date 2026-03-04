@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { FileText, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
@@ -151,13 +151,6 @@ export default function ScriptsPage() {
         }
     }, [searchParams]);
 
-    const matchedIdea = useMemo(() => {
-        if (!ideaTitleInput) return null;
-        const normalized = ideaTitleInput.trim().toLowerCase();
-        if (!normalized) return null;
-        return ideaOptions.find((idea) => idea.title.toLowerCase() === normalized) ?? null;
-    }, [ideaOptions, ideaTitleInput]);
-
     const fetchIdeaOptions = useCallback(async (signal?: AbortSignal) => {
         if (!selectedChannel) {
             setIdeaOptions([]);
@@ -255,7 +248,7 @@ export default function ScriptsPage() {
             clearSelection();
             await fetchScripts();
             addToast(SCRIPTS_COPY.toasts.updated, 'success');
-        } catch (err) {
+        } catch {
             addToast(SCRIPTS_COPY.toasts.error, 'error');
         }
     };

@@ -274,7 +274,7 @@ export default function ThumbnailsPage() {
         try {
             await Promise.all(selectedIds.map((id) => updateStatus(id, status)));
             clearSelection();
-        } catch (err) {
+        } catch {
             addToast(THUMBNAILS_COPY.toasts.error, 'error');
         }
     };

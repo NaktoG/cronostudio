@@ -157,9 +157,10 @@ function OnboardingTour({
 
   const anchorRect = useMemo(() => {
     if (!open || !step) return null;
+    void anchorTick;
     const anchor = document.querySelector(`[data-tour="${step.id}"]`);
     return anchor ? anchor.getBoundingClientRect() : null;
-  }, [open, step, stepIndex, anchorTick]);
+  }, [open, step, anchorTick]);
 
   useEffect(() => {
     if (!open) return;
@@ -380,7 +381,7 @@ function DashboardContent() {
           router.replace(query ? `/?${query}` : '/');
         }
       }
-    } catch (error) {
+    } catch {
       if (signal?.aborted) return;
       setChannels([]);
     }
@@ -828,18 +829,18 @@ function DashboardContent() {
     return disciplineMissing > 0 ? 'tue' : 'fri';
   }, [reconcileWeekly, disciplineMissing]);
 
-  const handleDockRegister = () => {
+  const handleDockRegister = useCallback(() => {
     openDrawerForSlot(nextSlot);
-  };
+  }, [nextSlot]);
 
-  const handleDockPlan = () => {
+  const handleDockPlan = useCallback(() => {
     setActiveTab('calendar');
     if (reduceMotion) {
       calendarRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
     } else {
       calendarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  };
+  }, [reduceMotion]);
 
   const nextAction = useMemo(() => {
     if (!focusProduction) {
@@ -941,7 +942,7 @@ function DashboardContent() {
       clearProductionSelection();
       fetchData();
       addToast('Producciones actualizadas', 'success');
-    } catch (error) {
+    } catch {
       addToast('Error al actualizar producciones', 'error');
     }
   };
@@ -956,7 +957,7 @@ function DashboardContent() {
       clearProductionSelection();
       fetchData();
       addToast('Fecha objetivo actualizada', 'success');
-    } catch (error) {
+    } catch {
       addToast('Error al actualizar fecha objetivo', 'error');
     }
   };

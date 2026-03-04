@@ -224,20 +224,6 @@ export default function IdeasPage() {
     };
 
     const readinessPreview = evaluateIdeaReady(formData.title, formData.description);
-    const ideaTemplate = 'Promesa: En este video vas a entender ...\nBullets:\n- Punto 1\n- Punto 2\n- Punto 3\nHook: Escribe 2 frases o 200 caracteres...';
-    const applyTemplate = () => {
-        setFormData((prev) => {
-            const base = prev.description?.trim();
-            if (!base) {
-                return { ...prev, description: ideaTemplate };
-            }
-            if (base.includes('Promesa:') || base.includes('Bullets:') || base.includes('Hook:')) {
-                return prev;
-            }
-            return { ...prev, description: `${base}\n\n${ideaTemplate}` };
-        });
-    };
-
     const startEdit = (idea: Idea) => {
         setEditingIdea(idea);
         setFormData({
@@ -273,8 +259,9 @@ export default function IdeasPage() {
             }
             setStatusErrors((prev) => {
                 if (!prev[id]) return prev;
-                const { [id]: _, ...rest } = prev;
-                return rest;
+                const next = { ...prev };
+                delete next[id];
+                return next;
             });
             await fetchIdeas();
             addToast(IDEAS_COPY.toasts.statusUpdated, 'success');
@@ -324,7 +311,7 @@ export default function IdeasPage() {
 
             await Promise.all(selectedIds.map((id) => updateStatus(id, status)));
             clearSelection();
-        } catch (err) {
+        } catch {
             addToast(IDEAS_COPY.toasts.error, 'error');
         }
     };
