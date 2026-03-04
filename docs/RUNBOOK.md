@@ -235,6 +235,10 @@ curl http://localhost:3000
 - Revisar logs para errores recurrentes
 - Hacer backup de datos: `docker exec cronostudio-postgres pg_dump ... > backup_semanal.sql`
 
+### Antes de deploy
+
+- Ejecutar checklist de AI Studio (si aplica): `docs/AI_STUDIO_QA.md`
+
 ### Mensual
 
 - Limpiar Docker (imágenes no usadas): `docker image prune -a`

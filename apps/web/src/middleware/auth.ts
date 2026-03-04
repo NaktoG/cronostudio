@@ -103,13 +103,14 @@ export function withSecurityHeaders(response: NextResponse): NextResponse {
     "form-action 'self'",
     "frame-ancestors 'none'",
   ];
-  response.headers.set('Content-Security-Policy', cspPolicy.join('; '));
   if (config.csp.reportOnly) {
     const reportOnlyPolicy = [...cspPolicy];
     if (config.csp.reportUri) {
       reportOnlyPolicy.push(`report-uri ${config.csp.reportUri}`);
     }
     response.headers.set('Content-Security-Policy-Report-Only', reportOnlyPolicy.join('; '));
+  } else {
+    response.headers.set('Content-Security-Policy', cspPolicy.join('; '));
   }
   response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
   response.headers.set('Cross-Origin-Embedder-Policy', 'credentialless');

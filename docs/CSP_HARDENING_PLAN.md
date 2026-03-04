@@ -10,6 +10,7 @@ Eliminar gradualmente `unsafe-inline` en `style-src` sin romper UI ni builds.
 ## Fase 0 (observacion)
 - [ ] Auditar inline styles y librerias que lo requieren.
 - [ ] Listar rutas criticas y validar render (dashboard, ai, publish, auth).
+- [ ] En local: activar `CSP_REPORT_ONLY=true`, reiniciar dev server, navegar rutas criticas y revisar logs de `/api/csp-report`.
 
 ## Fase 1 (preparacion)
 - [ ] Activar CSP report-only en staging (`CSP_REPORT_ONLY=true`).
