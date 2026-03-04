@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { CheckCircle2, FileText, Film, Lightbulb, Smartphone, Scissors, Upload, Video } from 'lucide-react';
 import { COMPONENT_COPY } from '../content/components';
-import { NEXT_ACTION_LABELS, PRODUCTION_STATUS_BADGES } from '../content/labels';
+import { NEXT_ACTION_LABELS, PRODUCTION_STATUS_BADGES, SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 
 export interface Production {
     id: string;
@@ -83,7 +83,7 @@ function getNextActionCta(prod: Production): { label: string; href: string; tone
         return { label: 'Generar guion', href: `/ai?${params.toString()}`, tone: 'text-emerald-300' };
     }
 
-    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < 60)) {
+    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < SEO_SCORE_MIN_READY)) {
         const params = new URLSearchParams();
         params.set('profile', 'titles_thumbs');
         if (prod.idea_id) params.set('ideaId', prod.idea_id);

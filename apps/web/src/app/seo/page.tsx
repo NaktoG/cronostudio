@@ -10,6 +10,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { SEO_COPY } from '../content/pages/seo';
+import { SEO_SCORE_THRESHOLDS, SEO_SCORE_LABELS, getSeoScoreLabel } from '@/app/content/status/seo';
 import { useRouter } from 'next/navigation';
 
 interface SeoData {
@@ -207,17 +208,15 @@ export default function SeoPage() {
     }, [isAuthenticated, fetchIdeaOptions, fetchScriptOptions]);
 
     const getScoreColor = (score: number) => {
-        if (score >= 80) return 'text-green-400';
-        if (score >= 60) return 'text-yellow-400';
-        if (score >= 40) return 'text-orange-400';
+        if (score >= SEO_SCORE_THRESHOLDS.excellent) return 'text-green-400';
+        if (score >= SEO_SCORE_THRESHOLDS.good) return 'text-yellow-400';
+        if (score >= SEO_SCORE_THRESHOLDS.ok) return 'text-orange-400';
         return 'text-red-400';
     };
 
     const getScoreLabel = (score: number) => {
-        if (score >= 80) return SEO_COPY.score.excellent;
-        if (score >= 60) return SEO_COPY.score.good;
-        if (score >= 40) return SEO_COPY.score.ok;
-        return SEO_COPY.score.bad;
+        const labelKey = getSeoScoreLabel(score);
+        return SEO_SCORE_LABELS[labelKey];
     };
 
     return (
@@ -535,7 +534,13 @@ export default function SeoPage() {
                                             <span className="text-xs text-gray-500">{SEO_COPY.scoreLabel}</span>
                                             <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
                                                 <motion.div
-                                                    className={`h-full ${item.score >= 80 ? 'bg-green-500' : item.score >= 60 ? 'bg-yellow-500' : item.score >= 40 ? 'bg-orange-500' : 'bg-red-500'}`}
+                                                    className={`h-full ${item.score >= SEO_SCORE_THRESHOLDS.excellent
+                                                        ? 'bg-green-500'
+                                                        : item.score >= SEO_SCORE_THRESHOLDS.good
+                                                            ? 'bg-yellow-500'
+                                                            : item.score >= SEO_SCORE_THRESHOLDS.ok
+                                                                ? 'bg-orange-500'
+                                                                : 'bg-red-500'}`}
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${item.score}%` }}
                                                     transition={{ delay: index * 0.05 + 0.3, duration: 0.5 }}

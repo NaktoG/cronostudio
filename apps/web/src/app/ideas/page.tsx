@@ -11,7 +11,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { IDEAS_COPY } from '../content/pages/ideas';
-import { IDEA_STATUS_LABELS, IdeaStatus } from '../content/labels';
+import { IdeaStatus, IDEA_STATUS_LABELS, IDEA_STATUS_BADGES } from '@/app/content/status/ideas';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { evaluateIdeaReady } from '@/lib/ideaReady';
 import Link from 'next/link';
@@ -34,11 +34,11 @@ interface Channel {
 }
 
 const STATUS_LABELS: Record<IdeaStatus, { label: string; color: string }> = {
-    draft: { label: IDEA_STATUS_LABELS.draft, color: 'bg-gray-600' },
-    approved: { label: IDEA_STATUS_LABELS.approved, color: 'bg-green-600' },
-    in_production: { label: IDEA_STATUS_LABELS.in_production, color: 'bg-yellow-600' },
-    completed: { label: IDEA_STATUS_LABELS.completed, color: 'bg-blue-600' },
-    archived: { label: IDEA_STATUS_LABELS.archived, color: 'bg-gray-800' },
+    draft: { label: IDEA_STATUS_LABELS.draft, color: IDEA_STATUS_BADGES.draft },
+    approved: { label: IDEA_STATUS_LABELS.approved, color: IDEA_STATUS_BADGES.approved },
+    in_production: { label: IDEA_STATUS_LABELS.in_production, color: IDEA_STATUS_BADGES.in_production },
+    completed: { label: IDEA_STATUS_LABELS.completed, color: IDEA_STATUS_BADGES.completed },
+    archived: { label: IDEA_STATUS_LABELS.archived, color: IDEA_STATUS_BADGES.archived },
 };
 
 export default function IdeasPage() {

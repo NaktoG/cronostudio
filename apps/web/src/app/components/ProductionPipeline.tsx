@@ -10,7 +10,7 @@ import {
     Upload,
     Video,
 } from 'lucide-react';
-import { PIPELINE_STAGE_LABELS } from '../content/labels';
+import { PIPELINE_STAGE_LABELS } from '@/app/content/status/productions';
 import { COMPONENT_COPY } from '../content/components';
 
 interface PipelineStats {

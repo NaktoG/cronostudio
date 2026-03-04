@@ -18,6 +18,8 @@ import { useAuth, useAuthFetch } from './contexts/AuthContext';
 import { IMPACT_METRICS } from '@/app/content/metrics';
 import { useToast } from './contexts/ToastContext';
 import { DASHBOARD_COPY, STAGE_LABELS } from './content/dashboard';
+import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/status/weekly';
+import { SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 import useDialogFocus from './hooks/useDialogFocus';
 
 interface PipelineStats {
@@ -103,7 +105,7 @@ function generatePriorityActions(productions: Production[]): PriorityAction[] {
     if ((prod.status === 'editing' || prod.status === 'shorts') && (!prod.thumbnail_status || prod.thumbnail_status === 'pending')) {
       actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: DASHBOARD_COPY.priorityActions.thumbnail, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
     }
-    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < 60)) {
+    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < SEO_SCORE_MIN_READY)) {
       actions.push({ id: `${prod.id}-seo`, type: 'seo', title: DASHBOARD_COPY.priorityActions.seo, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
     }
     if (prod.status === 'shorts' && prod.shorts_count === 0) {
@@ -125,7 +127,7 @@ const TOUR_STEPS = [
 
 function getChecklistStatus(production: Production) {
   const scriptReady = production.script_status && production.script_status !== 'draft';
-  const seoReady = typeof production.seo_score === 'number' && production.seo_score >= 60;
+  const seoReady = typeof production.seo_score === 'number' && production.seo_score >= SEO_SCORE_MIN_READY;
   const thumbnailReady = production.thumbnail_status === 'approved';
   const published = production.status === 'published';
 
@@ -635,13 +637,7 @@ function DashboardContent() {
   };
 
   const stageLabels: Record<keyof PipelineStats, string> = STAGE_LABELS;
-  const statusStyles: Record<string, { badge: string; dot: string; text: string }> = {
-    OK: { badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', dot: 'bg-emerald-400', text: 'text-emerald-200' },
-    EN_RIESGO: { badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30', dot: 'bg-amber-400', text: 'text-amber-200' },
-    FALLIDA: { badge: 'bg-red-500/15 text-red-300 border-red-500/30', dot: 'bg-red-400', text: 'text-red-200' },
-    CUMPLIDA: { badge: 'bg-sky-500/15 text-sky-300 border-sky-500/30', dot: 'bg-sky-400', text: 'text-sky-200' },
-  };
-  const weeklyStyle = weeklyStatus ? statusStyles[weeklyStatus.status] : statusStyles.OK;
+  const weeklyStyle = weeklyStatus ? WEEKLY_STATUS_STYLES[weeklyStatus.status] : WEEKLY_STATUS_STYLES.OK;
   const nextConditionText = weeklyStatus?.nextCondition?.label ?? DASHBOARD_COPY.weeklyStatus.noNext;
   const nextConditionDue = weeklyStatus?.nextCondition?.dueAt
     ? formatDateTime(weeklyStatus.nextCondition.dueAt)
@@ -674,15 +670,8 @@ function DashboardContent() {
   const streakCurrent = weeklyStatus?.currentStreak ?? 0;
   const streakBest = weeklyStatus?.bestStreak ?? 0;
   const last4Weeks = weeklyStatus?.last4Weeks ?? [];
-  const streakColors: Record<string, string> = {
-    OK: 'bg-emerald-400',
-    EN_RIESGO: 'bg-amber-400',
-    FALLIDA: 'bg-red-400',
-    CUMPLIDA: 'bg-sky-400',
-  };
-
   const disciplineStatus = disciplineWeekly?.status ?? 'OK';
-  const disciplineStyle = statusStyles[disciplineStatus] ?? statusStyles.OK;
+  const disciplineStyle = WEEKLY_STATUS_STYLES[disciplineStatus] ?? WEEKLY_STATUS_STYLES.OK;
   const disciplineCount = disciplineWeekly?.scoreboard.count ?? 0;
   const disciplineTarget = disciplineWeekly?.scoreboard.target ?? 2;
   const disciplineMissing = Math.max(disciplineTarget - disciplineCount, 0);
@@ -704,16 +693,10 @@ function DashboardContent() {
 
   const slotStatus = (slot: 'tue' | 'fri') => {
     const reconcile = reconcileWeekly?.reconciliation[slot];
-    if (reconcile === 'ok') {
-      return { tone: 'bg-emerald-400/15 text-emerald-200 border-emerald-400/40', dot: 'bg-emerald-400', label: 'OK' };
-    }
-    if (reconcile === 'missing_publish_event') {
-      return { tone: 'bg-amber-400/15 text-amber-200 border-amber-400/40', dot: 'bg-amber-400', label: 'Registrar' };
-    }
-    if (reconcile === 'missing_youtube_video') {
-      return { tone: 'bg-slate-400/10 text-slate-300 border-slate-400/30', dot: 'bg-slate-400', label: 'Sin video' };
-    }
-    return { tone: 'bg-slate-400/10 text-slate-300 border-slate-400/30', dot: 'bg-slate-400', label: 'Pendiente' };
+    if (reconcile === 'ok') return RECONCILE_SLOT_STYLES.ok;
+    if (reconcile === 'missing_publish_event') return RECONCILE_SLOT_STYLES.missing_publish_event;
+    if (reconcile === 'missing_youtube_video') return RECONCILE_SLOT_STYLES.missing_youtube_video;
+    return RECONCILE_SLOT_STYLES.pending;
   };
 
   const registerNeedsAttention = disciplineMissing > 0 ||
@@ -1403,7 +1386,7 @@ function DashboardContent() {
                           .map((week, index) => (
                             <span
                               key={`${week.status}-${index}`}
-                              className={`h-3 w-3 rounded-full ${streakColors[week.status] || 'bg-gray-700'}`}
+                              className={`h-3 w-3 rounded-full ${WEEKLY_STATUS_STYLES[week.status]?.dot || 'bg-gray-700'}`}
                               title={week.status}
                             />
                           ))}

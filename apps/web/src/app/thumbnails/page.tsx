@@ -12,6 +12,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { THUMBNAILS_COPY } from '../content/pages/thumbnails';
+import { THUMBNAIL_STATUS_LABELS, THUMBNAIL_STATUS_BADGES } from '@/app/content/status/thumbnails';
 import useDialogFocus from '../hooks/useDialogFocus';
 
 const useOptimizedImages = Boolean(process.env.NEXT_PUBLIC_IMAGE_HOSTS);
@@ -46,10 +47,10 @@ interface Channel {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    pending: { label: THUMBNAILS_COPY.statuses.pending, color: 'bg-gray-600' },
-    designing: { label: THUMBNAILS_COPY.statuses.designing, color: 'bg-yellow-600' },
-    designed: { label: THUMBNAILS_COPY.statuses.designed, color: 'bg-blue-600' },
-    approved: { label: THUMBNAILS_COPY.statuses.approved, color: 'bg-green-600' },
+    pending: { label: THUMBNAIL_STATUS_LABELS.pending, color: THUMBNAIL_STATUS_BADGES.pending },
+    designing: { label: THUMBNAIL_STATUS_LABELS.designing, color: THUMBNAIL_STATUS_BADGES.designing },
+    designed: { label: THUMBNAIL_STATUS_LABELS.designed, color: THUMBNAIL_STATUS_BADGES.designed },
+    approved: { label: THUMBNAIL_STATUS_LABELS.approved, color: THUMBNAIL_STATUS_BADGES.approved },
 };
 
 export default function ThumbnailsPage() {

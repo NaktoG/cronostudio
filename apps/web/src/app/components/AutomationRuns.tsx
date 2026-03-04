@@ -3,7 +3,8 @@
 import { motion } from 'framer-motion';
 import { AlertTriangle, Bot, CheckCircle2, Loader2 } from 'lucide-react';
 import { COMPONENT_COPY } from '../content/components';
-import { AUTOMATION_STATUS_LABELS, AutomationRunStatus } from '../content/labels';
+import { AutomationRunStatus } from '../content/labels';
+import { AUTOMATION_STATUS_STYLES } from '@/app/content/status/automation';
 import { formatDayMonth } from '@/lib/dates';
 
 export interface AutomationRun {
@@ -21,9 +22,9 @@ interface AutomationRunsProps {
 }
 
 const STATUS_CONFIG: Record<AutomationRunStatus, { dot: string; icon: typeof Loader2; label: string }> = {
-    running: { dot: 'bg-yellow-500 animate-pulse', icon: Loader2, label: AUTOMATION_STATUS_LABELS.running },
-    completed: { dot: 'bg-emerald-500', icon: CheckCircle2, label: AUTOMATION_STATUS_LABELS.completed },
-    error: { dot: 'bg-red-500', icon: AlertTriangle, label: AUTOMATION_STATUS_LABELS.error },
+    running: { dot: `${AUTOMATION_STATUS_STYLES.running.dot} animate-pulse`, icon: Loader2, label: AUTOMATION_STATUS_STYLES.running.label },
+    completed: { dot: AUTOMATION_STATUS_STYLES.completed.dot, icon: CheckCircle2, label: AUTOMATION_STATUS_STYLES.completed.label },
+    error: { dot: AUTOMATION_STATUS_STYLES.error.dot, icon: AlertTriangle, label: AUTOMATION_STATUS_STYLES.error.label },
 };
 
 function formatTimeAgo(dateString: string): string {

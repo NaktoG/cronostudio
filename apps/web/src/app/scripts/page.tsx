@@ -14,6 +14,8 @@ import { SCRIPTS_COPY } from '../content/pages/scripts';
 import useDialogFocus from '../hooks/useDialogFocus';
 import Link from 'next/link';
 import { copyScriptToClipboard, downloadScriptMarkdown, exportScriptToPdf } from '@/lib/scripts/export';
+import { calculateScriptMetrics } from '@/lib/scripts/metrics';
+import { SCRIPT_STATUS_BADGES, SCRIPT_STATUS_LABELS } from '@/app/content/status/scripts';
 
 interface Script {
     id: string;
@@ -41,10 +43,10 @@ interface IdeaOption {
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    draft: { label: SCRIPTS_COPY.statuses.draft, color: 'bg-gray-600' },
-    review: { label: SCRIPTS_COPY.statuses.review, color: 'bg-yellow-600' },
-    approved: { label: SCRIPTS_COPY.statuses.approved, color: 'bg-green-600' },
-    recorded: { label: SCRIPTS_COPY.statuses.recorded, color: 'bg-blue-600' },
+    draft: { label: SCRIPT_STATUS_LABELS.draft, color: SCRIPT_STATUS_BADGES.draft },
+    review: { label: SCRIPT_STATUS_LABELS.review, color: SCRIPT_STATUS_BADGES.review },
+    approved: { label: SCRIPT_STATUS_LABELS.approved, color: SCRIPT_STATUS_BADGES.approved },
+    recorded: { label: SCRIPT_STATUS_LABELS.recorded, color: SCRIPT_STATUS_BADGES.recorded },
 };
 
 export default function ScriptsPage() {
@@ -255,28 +257,12 @@ export default function ScriptsPage() {
         }
     };
 
-    const scriptChecklist = useMemo(() => {
-        const introReady = Boolean(formData.intro?.trim());
-        const bodyReady = Boolean(formData.body?.trim());
-        const ctaReady = Boolean(formData.cta?.trim());
-        const outroReady = Boolean(formData.outro?.trim());
-        const raw = [formData.intro, formData.body, formData.cta, formData.outro].filter(Boolean).join(' ');
-        const wordCount = raw ? raw.trim().split(/\s+/).filter(Boolean).length : 0;
-        const estimatedSeconds = wordCount > 0 ? Math.ceil((wordCount / 150) * 60) : 0;
-        const total = 4;
-        const readyCount = [introReady, bodyReady, ctaReady, outroReady].filter(Boolean).length;
-        return {
-            introReady,
-            bodyReady,
-            ctaReady,
-            outroReady,
-            wordCount,
-            estimatedSeconds,
-            readyCount,
-            total,
-            score: Math.round((readyCount / total) * 100),
-        };
-    }, [formData]);
+    const scriptChecklist = useMemo(() => calculateScriptMetrics({
+        intro: formData.intro,
+        body: formData.body,
+        cta: formData.cta,
+        outro: formData.outro,
+    }), [formData]);
 
     const handleCopyScript = async () => {
         try {
