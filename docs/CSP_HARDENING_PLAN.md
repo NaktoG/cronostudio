@@ -12,6 +12,8 @@ Eliminar gradualmente `unsafe-inline` en `style-src` sin romper UI ni builds.
 - [ ] Listar rutas criticas y validar render (dashboard, ai, publish, auth).
 
 ## Fase 1 (preparacion)
+- [ ] Activar CSP report-only en staging (`CSP_REPORT_ONLY=true`).
+- [ ] Verificar reportes en `/api/csp-report`.
 - [ ] Agregar soporte para nonces en `style-src` (si se usan estilos inline controlados).
 - [ ] Documentar flag de rollback rapido via env.
 
