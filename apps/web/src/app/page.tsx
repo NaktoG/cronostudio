@@ -15,6 +15,7 @@ import ProductionPipeline from './components/ProductionPipeline';
 import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
+import { IMPACT_METRICS } from '@/app/content/metrics';
 import { useToast } from './contexts/ToastContext';
 import { DASHBOARD_COPY, STAGE_LABELS } from './content/dashboard';
 import useDialogFocus from './hooks/useDialogFocus';
@@ -687,6 +688,14 @@ function DashboardContent() {
   const disciplineMissing = Math.max(disciplineTarget - disciplineCount, 0);
   const disciplineStreakCurrent = disciplineWeekly?.streak.current ?? 0;
   const disciplineStreakBest = disciplineWeekly?.streak.best ?? 0;
+  const publishedTotal = pipelineStats.published || 0;
+  const estimatedHoursSaved = publishedTotal * IMPACT_METRICS.hoursSavedPerVideo;
+  const ideaToScriptRate = pipelineStats.idea > 0
+    ? Math.round((pipelineStats.scripting / pipelineStats.idea) * 100)
+    : 0;
+  const weeklyCompletion = weeklyTarget > 0
+    ? Math.round((publishedCount / weeklyTarget) * 100)
+    : 0;
 
   const slotConfig = [
     { key: 'tue' as const, label: 'Mar' },
@@ -1215,6 +1224,62 @@ function DashboardContent() {
                 </Link>
               </motion.div>
             )}
+
+            <motion.div
+              className="surface-card glow-hover p-5 mb-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-yellow-400/90">Impacto</p>
+                  <p className="text-sm text-slate-300">Resumen de avance y valor generado.</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Publicados</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{publishedTotal}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Ahorro estimado</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{estimatedHoursSaved}h</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Racha</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{streakCurrent} / {streakBest} semanas</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              className="surface-card glow-hover p-5 mb-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-yellow-400/90">KPIs</p>
+                  <p className="text-sm text-slate-300">Conversion y cumplimiento semanal.</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Idea → Guion</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{ideaToScriptRate}%</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Cumplimiento semanal</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{weeklyCompletion}%</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Activas</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{activeProductions.length}</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
 
             {/* Header */}
             <motion.div

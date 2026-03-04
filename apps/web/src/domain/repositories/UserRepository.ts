@@ -36,6 +36,16 @@ export interface UserRepository {
     update(id: string, input: Partial<Pick<User, 'name' | 'email'>>): Promise<User | null>;
 
     /**
+     * Update user role
+     */
+    updateRole(id: string, role: User['role']): Promise<void>;
+
+    /**
+     * List users by roles
+     */
+    listByRoles(roles: User['role'][]): Promise<User[]>;
+
+    /**
      * Update user password
      */
     updatePassword(id: string, passwordHash: string): Promise<void>;

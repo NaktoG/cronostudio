@@ -89,6 +89,21 @@ export class PostgresUserRepository implements UserRepository {
         await query('UPDATE app_users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [passwordHash, id]);
     }
 
+    async updateRole(id: string, role: User['role']): Promise<void> {
+        await query('UPDATE app_users SET role = $1, updated_at = NOW() WHERE id = $2', [role, id]);
+    }
+
+    async listByRoles(roles: User['role'][]): Promise<User[]> {
+        const result = await query(
+            `SELECT id, email, name, role, email_verified_at, created_at, updated_at
+             FROM app_users
+             WHERE role = ANY($1)
+             ORDER BY created_at ASC`,
+            [roles]
+        );
+        return result.rows.map((row) => this.toDomain(row));
+    }
+
     async deleteById(id: string): Promise<void> {
         await query('DELETE FROM app_users WHERE id = $1', [id]);
     }

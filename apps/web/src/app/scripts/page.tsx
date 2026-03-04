@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
-import { FileText, Plus, Sparkles } from 'lucide-react';
+import { useState, useEffect, useCallback, FormEvent, useRef, useMemo } from 'react';
+import { Clipboard, FileText, Link as LinkIcon, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
@@ -13,6 +13,7 @@ import { useToast } from '../contexts/ToastContext';
 import { SCRIPTS_COPY } from '../content/pages/scripts';
 import useDialogFocus from '../hooks/useDialogFocus';
 import Link from 'next/link';
+import { copyScriptToClipboard, downloadScriptMarkdown, exportScriptToPdf } from '@/lib/scripts/export';
 
 interface Script {
     id: string;
@@ -69,6 +70,7 @@ export default function ScriptsPage() {
     const openNewRef = useRef(false);
     const modalRef = useRef<HTMLDivElement>(null);
     const deleteRef = useRef<HTMLDivElement>(null);
+    const shareHandledRef = useRef(false);
     const searchParams = useSearchParams();
 
     useDialogFocus(modalRef, showModal);
@@ -253,7 +255,80 @@ export default function ScriptsPage() {
         }
     };
 
-    const openEdit = (script: Script) => {
+    const scriptChecklist = useMemo(() => {
+        const introReady = Boolean(formData.intro?.trim());
+        const bodyReady = Boolean(formData.body?.trim());
+        const ctaReady = Boolean(formData.cta?.trim());
+        const outroReady = Boolean(formData.outro?.trim());
+        const raw = [formData.intro, formData.body, formData.cta, formData.outro].filter(Boolean).join(' ');
+        const wordCount = raw ? raw.trim().split(/\s+/).filter(Boolean).length : 0;
+        const estimatedSeconds = wordCount > 0 ? Math.ceil((wordCount / 150) * 60) : 0;
+        const total = 4;
+        const readyCount = [introReady, bodyReady, ctaReady, outroReady].filter(Boolean).length;
+        return {
+            introReady,
+            bodyReady,
+            ctaReady,
+            outroReady,
+            wordCount,
+            estimatedSeconds,
+            readyCount,
+            total,
+            score: Math.round((readyCount / total) * 100),
+        };
+    }, [formData]);
+
+    const handleCopyScript = async () => {
+        try {
+            await copyScriptToClipboard({
+                title: formData.title,
+                intro: formData.intro,
+                body: formData.body,
+                cta: formData.cta,
+                outro: formData.outro,
+            });
+            addToast('Guion copiado', 'success');
+        } catch {
+            addToast('No se pudo copiar el guion', 'error');
+        }
+    };
+
+    const handleCopyShareLink = async () => {
+        if (!editingId || typeof window === 'undefined') return;
+        const url = `${window.location.origin}/scripts?scriptId=${editingId}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            addToast('Link copiado', 'success');
+        } catch {
+            addToast('No se pudo copiar el link', 'error');
+        }
+    };
+
+    const handleDownloadScript = () => {
+        downloadScriptMarkdown({
+            title: formData.title,
+            intro: formData.intro,
+            body: formData.body,
+            cta: formData.cta,
+            outro: formData.outro,
+        });
+    };
+
+    const handleExportPdf = () => {
+        if (typeof window === 'undefined') return;
+        const ok = exportScriptToPdf({
+            title: formData.title,
+            intro: formData.intro,
+            body: formData.body,
+            cta: formData.cta,
+            outro: formData.outro,
+        });
+        if (!ok) {
+            addToast('No se pudo abrir la ventana de exportacion', 'error');
+        }
+    };
+
+    const openEdit = useCallback((script: Script) => {
         const ideaTitle = script.idea_id
             ? ideaOptions.find((idea) => idea.id === script.idea_id)?.title ?? ''
             : '';
@@ -269,7 +344,17 @@ export default function ScriptsPage() {
         });
         setEditingId(script.id);
         setShowModal(true);
-    };
+    }, [ideaOptions]);
+
+    useEffect(() => {
+        if (shareHandledRef.current) return;
+        const targetId = searchParams?.get('scriptId');
+        if (!targetId) return;
+        const target = scripts.find((script) => script.id === targetId);
+        if (!target) return;
+        shareHandledRef.current = true;
+        openEdit(target);
+    }, [searchParams, scripts, openEdit]);
 
     const deleteScript = async () => {
         if (!deleteTarget) return;
@@ -680,6 +765,61 @@ export default function ScriptsPage() {
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 h-20"
                                             placeholder={SCRIPTS_COPY.placeholders.outro}
                                         />
+                                    </div>
+                                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Checklist rapido</p>
+                                                <p className="text-sm text-slate-300">Score: {scriptChecklist.score}%</p>
+                                                <p className="text-xs text-slate-500">{scriptChecklist.wordCount} palabras · ~{scriptChecklist.estimatedSeconds}s</p>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCopyScript}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
+                                                >
+                                                    <Clipboard className="h-4 w-4" />
+                                                    Copiar guion
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCopyShareLink}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
+                                                >
+                                                    <LinkIcon className="h-4 w-4" />
+                                                    Copiar link
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleDownloadScript}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
+                                                >
+                                                    Descargar .md
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleExportPdf}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
+                                                >
+                                                    Exportar PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-300">
+                                            <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.introReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
+                                                Intro {scriptChecklist.introReady ? 'ok' : 'pendiente'}
+                                            </div>
+                                            <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.bodyReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
+                                                Cuerpo {scriptChecklist.bodyReady ? 'ok' : 'pendiente'}
+                                            </div>
+                                            <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.ctaReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
+                                                CTA {scriptChecklist.ctaReady ? 'ok' : 'pendiente'}
+                                            </div>
+                                            <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.outroReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
+                                                Outro {scriptChecklist.outroReady ? 'ok' : 'pendiente'}
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                         <button

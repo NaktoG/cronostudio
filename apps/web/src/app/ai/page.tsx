@@ -12,6 +12,8 @@ import { useToast } from '../contexts/ToastContext';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { useSearchParams } from 'next/navigation';
 import { formatDateTime } from '@/lib/dates';
+import { IDEA_PRESETS, SCRIPT_STYLE_PRESETS } from '@/app/content/aiPresets';
+import { AI_PROFILE_FIELDS } from '@/app/content/aiProfileFields';
 
 type Profile = {
   key: string;
@@ -53,21 +55,7 @@ type PromptPayload = {
   user: string;
 };
 
-const PROFILE_FIELDS: Record<string, { label: string; placeholder: string; key: 'topicSeed' | 'ideaId' | 'scriptId'; required?: boolean }[]> = {
-  evergreen_ideas: [
-    { key: 'topicSeed', label: 'Tema base (opcional)', placeholder: 'Ej: productividad, marketing, IA' },
-  ],
-  script_architect: [
-    { key: 'ideaId', label: 'Idea ID', placeholder: 'UUID de la idea', required: true },
-  ],
-  retention_editor: [
-    { key: 'scriptId', label: 'Script ID', placeholder: 'UUID del guion', required: true },
-  ],
-  titles_thumbs: [
-    { key: 'ideaId', label: 'Idea ID', placeholder: 'UUID de la idea', required: true },
-    { key: 'scriptId', label: 'Script ID (opcional)', placeholder: 'UUID del guion' },
-  ],
-};
+
 
 export default function AiStudioPage() {
   const searchParams = useSearchParams();
@@ -103,7 +91,11 @@ export default function AiStudioPage() {
     topicSeed: '',
     ideaId: '',
     scriptId: '',
+    styleGuide: '',
   });
+
+  const showIdeaPresets = activeProfile?.key === 'evergreen_ideas';
+  const showScriptPresets = activeProfile?.key === 'script_architect';
 
   const fetchProfiles = useCallback(async () => {
     try {
@@ -228,7 +220,7 @@ export default function AiStudioPage() {
 
   const activeFields = useMemo(() => {
     if (!activeProfile) return [];
-    return PROFILE_FIELDS[activeProfile.key] ?? [];
+    return AI_PROFILE_FIELDS[activeProfile.key] ?? [];
   }, [activeProfile]);
 
   const handleGeneratePrompt = useCallback(async () => {
@@ -253,6 +245,7 @@ export default function AiStudioPage() {
       if (formInputs.topicSeed.trim()) inputPayload.topicSeed = formInputs.topicSeed.trim();
       if (formInputs.ideaId.trim()) inputPayload.ideaId = formInputs.ideaId.trim();
       if (formInputs.scriptId.trim()) inputPayload.scriptId = formInputs.scriptId.trim();
+      if (formInputs.styleGuide.trim()) inputPayload.styleGuide = formInputs.styleGuide.trim();
 
       const response = await authFetch('/api/ai/runs', {
         method: 'POST',
@@ -306,6 +299,7 @@ export default function AiStudioPage() {
       if (formInputs.topicSeed.trim()) inputPayload.topicSeed = formInputs.topicSeed.trim();
       if (formInputs.ideaId.trim()) inputPayload.ideaId = formInputs.ideaId.trim();
       if (formInputs.scriptId.trim()) inputPayload.scriptId = formInputs.scriptId.trim();
+      if (formInputs.styleGuide.trim()) inputPayload.styleGuide = formInputs.styleGuide.trim();
 
       const response = await authFetch('/api/ai/runs/execute', {
         method: 'POST',
@@ -552,6 +546,42 @@ export default function AiStudioPage() {
                         />
                       </label>
                     ))}
+                    {showIdeaPresets && (
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Presets por nicho</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {IDEA_PRESETS.map((preset) => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              className="rounded-full border border-gray-800 px-3 py-1 text-xs text-slate-200 hover:border-yellow-500/40"
+                              onClick={() => setFormInputs((prev) => ({ ...prev, topicSeed: preset.seed }))}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500">Selecciona un preset para completar el tema base con tono y estructura.</p>
+                      </div>
+                    )}
+                    {showScriptPresets && (
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Plantillas de guion</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {SCRIPT_STYLE_PRESETS.map((preset) => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              className="rounded-full border border-gray-800 px-3 py-1 text-xs text-slate-200 hover:border-yellow-500/40"
+                              onClick={() => setFormInputs((prev) => ({ ...prev, styleGuide: preset.guide }))}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500">Selecciona un estilo para orientar el guion.</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
