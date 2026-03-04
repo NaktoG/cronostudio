@@ -38,6 +38,7 @@ const envSchema = z
     CSP_FONT_SRC: z.string().optional(),
     CSP_REPORT_ONLY: z.string().optional(),
     CSP_REPORT_URI: z.string().optional(),
+    CSP_STYLE_UNSAFE_INLINE: z.string().optional(),
   })
   .passthrough();
 
@@ -132,15 +133,22 @@ function buildConfig() {
       secret: env.CRONOSTUDIO_WEBHOOK_SECRET,
     },
 
-    csp: {
-      connectSrc: getArrayEnv(env.CSP_CONNECT_SRC, ["'self'"]),
-      imgSrc: getArrayEnv(env.CSP_IMG_SRC, ["'self'", 'data:', 'https:']),
-      scriptSrc: getArrayEnv(env.CSP_SCRIPT_SRC, ["'self'"]),
-      styleSrc: getArrayEnv(env.CSP_STYLE_SRC, ["'self'", "'unsafe-inline'"]),
-      fontSrc: getArrayEnv(env.CSP_FONT_SRC, ["'self'", 'data:', 'https://fonts.gstatic.com']),
-      reportOnly: (env.CSP_REPORT_ONLY || 'false') === 'true',
-      reportUri: env.CSP_REPORT_URI,
-    },
+    csp: (() => {
+      const styleUnsafeInline = (env.CSP_STYLE_UNSAFE_INLINE || 'true') === 'true';
+      const styleSrc = getArrayEnv(env.CSP_STYLE_SRC, ["'self'", "'unsafe-inline'"]);
+      const normalizedStyleSrc = styleUnsafeInline ? styleSrc : styleSrc.filter((item) => item !== "'unsafe-inline'");
+
+      return {
+        connectSrc: getArrayEnv(env.CSP_CONNECT_SRC, ["'self'"]),
+        imgSrc: getArrayEnv(env.CSP_IMG_SRC, ["'self'", 'data:', 'https:']),
+        scriptSrc: getArrayEnv(env.CSP_SCRIPT_SRC, ["'self'"]),
+        styleSrc: normalizedStyleSrc,
+        fontSrc: getArrayEnv(env.CSP_FONT_SRC, ["'self'", 'data:', 'https://fonts.gstatic.com']),
+        reportOnly: (env.CSP_REPORT_ONLY || 'false') === 'true',
+        reportUri: env.CSP_REPORT_URI,
+        styleUnsafeInline,
+      };
+    })(),
 
     rateLimit: {
       api: {
