@@ -238,6 +238,7 @@ curl http://localhost:3000
 ### Antes de deploy
 
 - Ejecutar checklist de AI Studio (si aplica): `docs/AI_STUDIO_QA.md`
+- Si usas proxy (Nginx/Cloudflare), activar `RATE_LIMIT_TRUST_PROXY=true` en el entorno.
 
 ### Mensual
 
