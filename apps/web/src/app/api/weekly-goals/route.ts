@@ -54,7 +54,7 @@ async function resolveChannel(userId: string, channelId?: string | null): Promis
   return { id: result.rows[0].id, name: result.rows[0].name, source: 'default' };
 }
 
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
     const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener metas semanales' }, { status: 500 }));
   }
-}
+});
 
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {

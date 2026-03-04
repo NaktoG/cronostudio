@@ -23,7 +23,7 @@ const UpdateRunSchema = z.object({
   errorMessage: z.string().max(500).optional().nullable(),
 });
 
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
     const userId = (await getAuthUser(request))?.userId;
     if (!userId) {
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     logger.error('automation_runs.list.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener ejecuciones' }, { status: 500 }));
   }
-}
+});
 
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {

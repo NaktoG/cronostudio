@@ -51,13 +51,13 @@ export function withAuth<Context = RouteContext>(handler: RouteHandler<Context>)
   return async (request: NextRequest, context: Context) => {
     const payload = await getAuthUser(request);
     if (!payload) {
-      return NextResponse.json(
+      return withSecurityHeaders(NextResponse.json(
         {
           error: 'No autorizado',
           message: 'Token de autorización requerido',
         },
         { status: 401 }
-      );
+      ));
     }
     (request as AuthenticatedRequest).user = payload;
     return handler(request, context);
