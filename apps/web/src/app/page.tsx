@@ -151,35 +151,26 @@ function OnboardingTour({
   onBack: () => void;
   reduceMotion: boolean;
 }) {
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [anchorTick, setAnchorTick] = useState(0);
   const step = TOUR_STEPS[stepIndex];
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!open || !step) return;
+  const anchorRect = useMemo(() => {
+    if (!open || !step) return null;
     const anchor = document.querySelector(`[data-tour="${step.id}"]`);
-    if (anchor) {
-      setAnchorRect(anchor.getBoundingClientRect());
-    } else {
-      setAnchorRect(null);
-    }
-  }, [open, stepIndex, step]);
+    return anchor ? anchor.getBoundingClientRect() : null;
+  }, [open, step, stepIndex, anchorTick]);
 
   useEffect(() => {
     if (!open) return;
-    const handleResize = () => {
-      const anchor = step ? document.querySelector(`[data-tour="${step.id}"]`) : null;
-      if (anchor) {
-        setAnchorRect(anchor.getBoundingClientRect());
-      }
-    };
+    const handleResize = () => setAnchorTick((prev) => prev + 1);
     window.addEventListener('resize', handleResize);
     window.addEventListener('scroll', handleResize, true);
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleResize, true);
     };
-  }, [open, step]);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;

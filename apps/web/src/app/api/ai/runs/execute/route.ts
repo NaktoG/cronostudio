@@ -109,12 +109,13 @@ export const POST = requireRoles(['owner'])(
       let tokenUsage: unknown = null;
 
       try {
+        const outputSchema = profile.outputSchema as z.ZodTypeAny;
         const completion = await openai.chat.completions.parse({
           model,
           messages,
           temperature: 0.4,
           max_tokens: maxTokens,
-          response_format: zodResponseFormat(profile.outputSchema as any, `${profile.key}_v${profile.version}`),
+          response_format: zodResponseFormat(outputSchema, `${profile.key}_v${profile.version}`),
         });
 
         // @ts-expect-error openai SDK attaches .parsed when using .parse()
