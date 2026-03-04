@@ -16,6 +16,7 @@ export interface AuthTokenPayload {
     userId: string;
     email: string;
     role: User['role'];
+    sid?: string;
 }
 
 export interface AuthResult {
@@ -48,8 +49,8 @@ export class AuthService {
         const user = await this.userRepository.create({ ...input, role: input.role ?? 'owner' }, passwordHash);
 
         // Generate token
-        const token = this.generateAccessToken(user);
-        const refreshToken = await this.createRefreshSession(user.id);
+        const { refreshToken, sessionId } = await this.createRefreshSession(user.id);
+        const token = this.generateAccessToken(user, sessionId);
 
         this.trackMetric('auth.register.success');
         return { user, token, refreshToken };
@@ -102,8 +103,8 @@ export class AuthService {
             createdAt: userWithPassword.createdAt,
             updatedAt: userWithPassword.updatedAt,
         };
-        const token = this.generateAccessToken(user);
-        const refreshToken = await this.createRefreshSession(user.id);
+        const { refreshToken, sessionId } = await this.createRefreshSession(user.id);
+        const token = this.generateAccessToken(user, sessionId);
 
         this.trackMetric('auth.login.success');
         return { user, token, refreshToken };
@@ -125,8 +126,8 @@ export class AuthService {
         }
 
         await sessionRepository.revokeById(session.id);
-        const newRefreshToken = await this.createRefreshSession(user.id);
-        const token = this.generateAccessToken(user);
+        const { refreshToken: newRefreshToken, sessionId } = await this.createRefreshSession(user.id);
+        const token = this.generateAccessToken(user, sessionId);
 
         this.trackMetric('auth.refresh.success');
         return { user, token, refreshToken: newRefreshToken };
@@ -207,22 +208,22 @@ export class AuthService {
         }
     }
 
-    private generateAccessToken(user: User): string {
+    private generateAccessToken(user: User, sessionId?: string): string {
         const expiresIn = config.jwt.expiresIn as SignOptions['expiresIn'];
         return jwt.sign(
-            { userId: user.id, email: user.email, role: user.role },
+            { userId: user.id, email: user.email, role: user.role, sid: sessionId },
             config.jwt.secret,
             { expiresIn }
         );
     }
 
-    private async createRefreshSession(userId: string): Promise<string> {
+    private async createRefreshSession(userId: string): Promise<{ refreshToken: string; sessionId: string }> {
         const refreshToken = crypto.randomBytes(32).toString('hex');
         const refreshTokenHash = this.hashToken(refreshToken);
         const expiresAt = new Date(Date.now() + this.getRefreshTtlMs());
         const sessionRepository = this.requireSessionRepository();
-        await sessionRepository.create(userId, refreshTokenHash, expiresAt);
-        return refreshToken;
+        const session = await sessionRepository.create(userId, refreshTokenHash, expiresAt);
+        return { refreshToken, sessionId: session.id };
     }
 
     private requireSessionRepository(): SessionRepository {

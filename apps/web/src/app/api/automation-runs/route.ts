@@ -25,7 +25,7 @@ const UpdateRunSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = getAuthUser(request)?.userId;
+    const userId = (await getAuthUser(request))?.userId;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }

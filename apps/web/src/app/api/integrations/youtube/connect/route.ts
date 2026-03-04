@@ -11,7 +11,7 @@ const USER_COOKIE = 'yt_oauth_user';
 const COOKIE_MAX_AGE = 10 * 60; // 10 minutes
 
 export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-  const userId = getAuthUser(request)?.userId ?? null;
+  const userId = (await getAuthUser(request))?.userId ?? null;
   if (!userId) {
     return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
   }

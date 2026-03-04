@@ -35,7 +35,7 @@ export const POST = requireRoles(['owner'])(
     let runId: string | null = null;
 
     try {
-      const userId = getAuthUser(request)?.userId;
+      const userId = (await getAuthUser(request))?.userId;
       if (!userId) {
         return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
       }

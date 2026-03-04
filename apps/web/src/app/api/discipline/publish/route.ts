@@ -36,7 +36,7 @@ function buildTitle(day: 'tuesday' | 'friday', date: Date) {
 const TIME_ZONE = 'Europe/Madrid';
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-  const userId = getAuthUser(request)?.userId ?? null;
+  const userId = (await getAuthUser(request))?.userId ?? null;
   if (!userId) {
     return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
   }

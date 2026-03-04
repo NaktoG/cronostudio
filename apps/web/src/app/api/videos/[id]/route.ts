@@ -18,7 +18,7 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
@@ -65,7 +65,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
     }
     const { params } = context;
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -134,7 +134,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
             values
         );
 
-        const user = getAuthUser(request);
+        const user = await getAuthUser(request);
         logger.info('[PUT /api/videos/:id] Video actualizado', {
             id,
             userId: user?.userId,
@@ -171,7 +171,7 @@ export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (r
     }
     const { params } = context;
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -194,7 +194,7 @@ export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (r
             );
         }
 
-        const user = getAuthUser(request);
+        const user = await getAuthUser(request);
         logger.info('[DELETE /api/videos/:id] Video eliminado', {
             id,
             title: result.rows[0].title,

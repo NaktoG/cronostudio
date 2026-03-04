@@ -513,7 +513,7 @@ function buildTasks(
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = getAuthUser(request)?.userId ?? null;
+    const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }

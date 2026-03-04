@@ -41,8 +41,8 @@ const UpdateProductionSchema = z.object({
 });
 
 // Helper to extract userId
-function getUserId(request: NextRequest): string | null {
-    return getAuthUser(request)?.userId ?? null;
+async function getUserId(request: NextRequest): Promise<string | null> {
+    return (await getAuthUser(request))?.userId ?? null;
 }
 
 function isValidationError(error: unknown): boolean {
@@ -55,7 +55,7 @@ function isValidationError(error: unknown): boolean {
  */
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getUserId(request);
+        const userId = await getUserId(request);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }
@@ -102,7 +102,7 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
  */
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getUserId(request);
+        const userId = await getUserId(request);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }
@@ -138,7 +138,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
  */
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getUserId(request);
+        const userId = await getUserId(request);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }
@@ -193,7 +193,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
  */
 export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getUserId(request);
+        const userId = await getUserId(request);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }

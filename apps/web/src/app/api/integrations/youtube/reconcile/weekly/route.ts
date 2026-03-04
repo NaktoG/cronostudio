@@ -32,7 +32,7 @@ function normalizeSlotDate(date: Date, time: string, endOfDay = false) {
 
 export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getAuthUser(request)?.userId ?? null;
+    const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }

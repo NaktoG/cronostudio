@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger';
 import { isValidUserRole } from '@/domain/value-objects/UserRole';
 import { getAccessCookie } from '@/lib/authCookies';
 import type { User } from '@/domain/entities/User';
+import { PostgresSessionRepository } from '@/infrastructure/repositories/PostgresSessionRepository';
 
 const JWT_SECRET = config.jwt.secret;
 
@@ -19,6 +20,7 @@ export interface JWTPayload {
   userId: string;
   email: string;
   role: User['role'];
+  sid?: string;
   iat?: number;
   exp?: number;
 }
@@ -47,9 +49,8 @@ function unauthorizedRoleResponse(): NextResponse {
  */
 export function withAuth<Context = RouteContext>(handler: RouteHandler<Context>): RouteHandler<Context> {
   return async (request: NextRequest, context: Context) => {
-    const token = extractTokenFromRequest(request);
-
-    if (!token) {
+    const payload = await getAuthUser(request);
+    if (!payload) {
       return NextResponse.json(
         {
           error: 'No autorizado',
@@ -58,22 +59,8 @@ export function withAuth<Context = RouteContext>(handler: RouteHandler<Context>)
         { status: 401 }
       );
     }
-
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-      const role = getValidatedRole(decoded.role);
-      if (!role) {
-        return unauthorizedRoleResponse();
-      }
-      (request as AuthenticatedRequest).user = {
-          userId: decoded.userId,
-          email: decoded.email,
-          role,
-      };
-      return handler(request, context);
-    } catch (error) {
-      return handleJwtError(error);
-    }
+    (request as AuthenticatedRequest).user = payload;
+    return handler(request, context);
   };
 }
 
@@ -83,23 +70,9 @@ export function withAuth<Context = RouteContext>(handler: RouteHandler<Context>)
  */
 export function withOptionalAuth<Context = RouteContext>(handler: RouteHandler<Context>): RouteHandler<Context> {
   return async (request: NextRequest, context: Context) => {
-    const token = extractTokenFromRequest(request);
-
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
-        const role = getValidatedRole(decoded.role);
-        if (!role) {
-          return unauthorizedRoleResponse();
-        }
-        (request as AuthenticatedRequest).user = {
-          userId: decoded.userId,
-          email: decoded.email,
-          role,
-        };
-      } catch {
-        // Opcional, ignorar errores
-      }
+    const payload = await getAuthUser(request);
+    if (payload) {
+      (request as AuthenticatedRequest).user = payload;
     }
 
     return handler(request, context);
@@ -142,7 +115,7 @@ export function withSecurityHeaders(response: NextResponse): NextResponse {
 /**
  * Helper para obtener usuario del request autenticado
  */
-export function getAuthUser(request: NextRequest): JWTPayload | null {
+export async function getAuthUser(request: NextRequest): Promise<JWTPayload | null> {
   const cached = (request as AuthenticatedRequest).user;
   if (cached) {
     return cached;
@@ -153,10 +126,20 @@ export function getAuthUser(request: NextRequest): JWTPayload | null {
     const payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
     const role = getValidatedRole(payload.role);
     if (!role) return null;
+
+    if (payload.sid) {
+      const sessionRepository = new PostgresSessionRepository();
+      const session = await sessionRepository.findValidById(payload.sid);
+      if (!session || session.userId !== payload.userId) {
+        return null;
+      }
+    }
+
     return {
       userId: payload.userId,
       email: payload.email,
       role,
+      sid: payload.sid,
     };
   } catch {
     return null;

@@ -31,7 +31,7 @@ function isValidationError(error: unknown): boolean {
 
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -72,7 +72,7 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -119,7 +119,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
 
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -185,7 +185,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
 
 export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));

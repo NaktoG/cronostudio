@@ -15,7 +15,7 @@ vi.mock('@/middleware/auth', () => {
       return response;
     }),
     withAuth: (handler: MockRouteHandler) => async (request: NextRequest, ...args: unknown[]) => {
-      const user = getAuthUser(request);
+      const user = await getAuthUser(request);
       if (!user) {
         return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
       }

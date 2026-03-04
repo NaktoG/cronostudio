@@ -31,7 +31,7 @@ function handleError(error: unknown, defaultMessage: string) {
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = getAuthUser(request)?.userId;
+    const userId = (await getAuthUser(request))?.userId;
     if (!userId) return unauthorizedResponse();
 
     const user = await authService.getProfile(userId);
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const userId = getAuthUser(request)?.userId;
+    const userId = (await getAuthUser(request))?.userId;
     if (!userId) return unauthorizedResponse();
 
     const body = await request.json();
@@ -60,7 +60,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const userId = getAuthUser(request)?.userId;
+    const userId = (await getAuthUser(request))?.userId;
     if (!userId) return unauthorizedResponse();
 
     await authService.deleteAccount(userId);

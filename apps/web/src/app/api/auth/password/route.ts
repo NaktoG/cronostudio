@@ -29,7 +29,7 @@ function handleError(error: unknown) {
 
 export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getAuthUser(request)?.userId;
+    const userId = (await getAuthUser(request))?.userId;
     if (!userId) return unauthorizedResponse();
 
     const body = await request.json();

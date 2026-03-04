@@ -56,7 +56,7 @@ async function resolveChannel(userId: string, channelId?: string | null): Promis
 
 export async function GET(request: NextRequest) {
   try {
-    const userId = getAuthUser(request)?.userId ?? null;
+    const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
 
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getAuthUser(request)?.userId ?? null;
+    const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }

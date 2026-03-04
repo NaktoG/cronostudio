@@ -45,7 +45,7 @@ export function rateLimit(config: RateLimitConfig) {
         request.headers.get('cf-connecting-ip') ||
         'unknown';
 
-      const userId = getAuthUser(request)?.userId;
+      const userId = (await getAuthUser(request))?.userId;
       const identifier = `${request.nextUrl.pathname}:${userId ? `user:${userId}` : `ip:${ip}`}`;
       const retryAfter = await checkRateLimit(identifier, config);
 
