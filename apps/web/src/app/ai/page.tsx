@@ -717,10 +717,10 @@ export default function AiStudioPage() {
                       onClick={() => setSelectedRun(run)}
                       className="w-full text-left rounded-xl border border-gray-800 bg-gray-900/50 px-4 py-3 hover:border-yellow-500/40"
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-100">{run.profile_key}</p>
-                          <p className="text-xs text-slate-500">{formatDateTime(run.created_at)}</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-100 truncate">{run.profile_key}</p>
+                          <p className="text-xs text-slate-500 truncate">{formatDateTime(run.created_at)}</p>
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full ${statusBadge(run.status)}`}>{run.status}</span>
                       </div>

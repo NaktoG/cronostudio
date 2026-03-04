@@ -238,7 +238,7 @@ function OnboardingTour({
           anchorRect
             ? {
                 top: anchorRect.bottom + window.scrollY + 12,
-                left: Math.min(anchorRect.left + window.scrollX, window.innerWidth - 380),
+                left: Math.max(12, Math.min(anchorRect.left + window.scrollX, window.innerWidth - 372)),
               }
             : { top: '20%', left: '50%', transform: 'translateX(-50%)' }
         }
@@ -2262,7 +2262,7 @@ function DashboardContent() {
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/60" onClick={() => setDrawerOpen(false)} />
           <div
-            className={`absolute inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t border-gray-800 bg-gray-950 p-6 lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:max-h-none lg:w-[min(92vw,420px)] lg:rounded-none lg:border-l ${
+            className={`absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-gray-800 bg-gray-950 p-6 lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:max-h-none lg:w-[min(92vw,420px)] lg:rounded-none lg:border-l ${
               reduceMotion ? '' : 'transition-transform duration-300'
             }`}
           >

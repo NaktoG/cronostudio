@@ -331,22 +331,22 @@ export default function ConfiguracionPage() {
           {inviteLink && (
             <div className="mt-4 rounded-lg border border-gray-800 bg-gray-950/70 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Link de invitacion</p>
-              <div className="mt-2 flex items-center gap-2">
-                <input
-                  type="text"
-                  readOnly
-                  value={inviteLink}
-                  className="flex-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-xs text-slate-200"
-                />
-                <button
-                  type="button"
-                  onClick={copiarInvite}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
-                >
-                  <Clipboard className="h-4 w-4" />
-                  Copiar
-                </button>
-              </div>
+            <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+              <input
+                type="text"
+                readOnly
+                value={inviteLink}
+                className="flex-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-xs text-slate-200"
+              />
+              <button
+                type="button"
+                onClick={copiarInvite}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40 sm:w-auto"
+              >
+                <Clipboard className="h-4 w-4" />
+                Copiar
+              </button>
+            </div>
             </div>
           )}
 
@@ -356,8 +356,8 @@ export default function ConfiguracionPage() {
               <div className="mt-3 space-y-2 text-sm text-slate-200">
                 {collaborators.length === 0 && <p className="text-slate-500">Sin colaboradores.</p>}
                 {collaborators.map((collab) => (
-                  <div key={collab.id} className="flex items-center justify-between">
-                    <span>{collab.name || collab.email}</span>
+                  <div key={collab.id} className="flex min-w-0 items-center justify-between gap-3">
+                    <span className="min-w-0 flex-1 truncate">{collab.name || collab.email}</span>
                     <span className="text-xs text-slate-500">{collab.role}</span>
                   </div>
                 ))}
@@ -368,8 +368,8 @@ export default function ConfiguracionPage() {
               <div className="mt-3 space-y-2 text-sm text-slate-200">
                 {invites.length === 0 && <p className="text-slate-500">Sin invitaciones.</p>}
                 {invites.map((invite) => (
-                  <div key={invite.id} className="flex items-center justify-between">
-                    <span>{invite.email}</span>
+                  <div key={invite.id} className="flex min-w-0 items-center justify-between gap-3">
+                    <span className="min-w-0 flex-1 truncate">{invite.email}</span>
                     <span className="text-xs text-slate-500">{invite.status}</span>
                   </div>
                 ))}

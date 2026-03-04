@@ -28,6 +28,19 @@ export default function Header() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [mobileMenuOpen]);
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (mobileMenuOpen) {
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previous;
+      };
+    }
+    document.body.style.overflow = '';
+    return undefined;
+  }, [mobileMenuOpen]);
+
   return (
     <motion.header
       className="sticky top-0 z-50 bg-black/85 backdrop-blur-xl border-b border-yellow-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
@@ -175,7 +188,7 @@ export default function Header() {
               >
                 <div className="absolute inset-0 bg-black/70" onClick={() => setMobileMenuOpen(false)} />
                 <motion.div
-                  className="absolute right-0 top-0 h-full w-[min(90vw,320px)] border-l border-gray-800 bg-gray-950 px-5 py-6 pb-[env(safe-area-inset-bottom)]"
+                  className="absolute right-0 top-0 h-full max-h-[100dvh] w-[min(90vw,320px)] overflow-y-auto overscroll-contain border-l border-gray-800 bg-gray-950 px-5 py-6 pb-[env(safe-area-inset-bottom)]"
                   initial={{ x: reduceMotion ? 0 : 80, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: reduceMotion ? 0 : 80, opacity: 0 }}

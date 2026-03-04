@@ -472,7 +472,7 @@ export default function ScriptsPage() {
                                 </div>
                             )}
                             {selectedIds.length > 0 && (
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                                     <span className="text-xs text-slate-400">{selectedIds.length} seleccionados</span>
                                     <button
                                         type="button"
