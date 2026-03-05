@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Lightbulb, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
@@ -12,200 +12,28 @@ import { useToast } from '../contexts/ToastContext';
 import { SEO_COPY } from '../content/pages/seo';
 import { SEO_SCORE_THRESHOLDS, SEO_SCORE_LABELS, getSeoScoreLabel } from '@/app/content/status/seo';
 import { useRouter } from 'next/navigation';
-
-interface SeoData {
-    id: string;
-    optimized_title: string;
-    description: string | null;
-    tags: string[];
-    keywords: string[];
-    suggestions?: {
-        titles?: string[];
-        thumbnailTexts?: string[];
-    } | null;
-    score: number;
-    video_title: string | null;
-    youtube_video_id: string | null;
-    created_at: string;
-}
-
-interface Channel {
-    id: string;
-    name: string;
-}
-
-interface IdeaOption {
-    id: string;
-    title: string;
-}
-
-interface ScriptOption {
-    id: string;
-    title: string;
-}
+import { useChannels } from '@/app/hooks/useChannels';
+import { useSeoData } from '@/app/seo/hooks/useSeoData';
+import { copyToClipboard } from '@/lib/clipboard';
 
 export default function SeoPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const router = useRouter();
-    const [seoData, setSeoData] = useState<SeoData[]>([]);
-    const [channels, setChannels] = useState<Channel[]>([]);
-    const [selectedChannel, setSelectedChannel] = useState('');
-    const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
-    const [scriptOptions, setScriptOptions] = useState<ScriptOption[]>([]);
+    const { channels } = useChannels({ isAuthenticated, authFetch });
+    const { state, actions } = useSeoData({ isAuthenticated, authFetch, addToast });
+    const { seoData, loading, error, selectedChannel, selectedIds, ideaOptions, scriptOptions } = state;
+    const { setSelectedChannel, refreshSeo, toggleSelection, clearSelection, copySelected, copyItem } = actions;
     const [showPresets, setShowPresets] = useState(false);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const copyToClipboard = async (value: string, label: string) => {
-        if (!value) return;
+    const handlePresetCopy = async (value: string) => {
         try {
-            await navigator.clipboard.writeText(value);
-            addToast(`${label} copiado`, 'success');
+            await copyToClipboard(value);
+            addToast(SEO_COPY.toasts.copied, 'success');
         } catch {
-            addToast('No se pudo copiar', 'error');
+            addToast(SEO_COPY.toasts.error, 'error');
         }
     };
-
-    const toggleSelection = (id: string) => {
-        setSelectedIds((current) => current.includes(id)
-            ? current.filter((item) => item !== id)
-            : [...current, id]
-        );
-    };
-
-    const clearSelection = () => setSelectedIds([]);
-
-    const copySelected = async (type: 'title' | 'description' | 'tags') => {
-        if (selectedIds.length === 0) return;
-        const items = seoData.filter((item) => selectedIds.includes(item.id));
-        if (items.length === 0) return;
-        if (type === 'title') {
-            await copyToClipboard(items.map((item) => item.optimized_title).join('\n'), 'Títulos');
-        }
-        if (type === 'description') {
-            await copyToClipboard(items.map((item) => item.description || '').filter(Boolean).join('\n\n'), 'Descripciones');
-        }
-        if (type === 'tags') {
-            const tags = items.flatMap((item) => item.tags || []);
-            const unique = Array.from(new Set(tags));
-            await copyToClipboard(unique.join(', '), 'Tags');
-        }
-        clearSelection();
-    };
-
-    const fetchSeoData = useCallback(async (signal?: AbortSignal) => {
-        try {
-            setLoading(true);
-            if (!isAuthenticated) {
-                setSeoData([]);
-                setError(null);
-                return;
-            }
-            const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
-            const response = await authFetch(`/api/seo${query}`, { signal });
-            if (!response.ok) {
-                throw new Error(SEO_COPY.errors.load);
-            }
-            setSeoData(await response.json());
-            setError(null);
-        } catch (err) {
-            if (signal?.aborted) return;
-            const message = err instanceof Error ? err.message : SEO_COPY.errors.unknown;
-            setError(message);
-            addToast(message, 'error');
-        } finally {
-            if (signal?.aborted) return;
-            setLoading(false);
-        }
-    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
-
-    useEffect(() => {
-        const controller = new AbortController();
-        fetchSeoData(controller.signal);
-        return () => controller.abort();
-    }, [fetchSeoData]);
-
-    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
-        try {
-            if (!isAuthenticated) {
-                setChannels([]);
-                return;
-            }
-            const response = await authFetch('/api/channels', { signal });
-            if (response.ok) {
-                setChannels(await response.json());
-            }
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error fetching channels:', err);
-        }
-    }, [isAuthenticated, authFetch]);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        const controller = new AbortController();
-        fetchChannels(controller.signal);
-        return () => controller.abort();
-    }, [isAuthenticated, fetchChannels]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
-        if (storedChannel && storedChannel !== selectedChannel) {
-            setSelectedChannel(storedChannel);
-        }
-    }, [selectedChannel]);
-
-    const fetchIdeaOptions = useCallback(async (signal?: AbortSignal) => {
-        if (!selectedChannel) {
-            setIdeaOptions([]);
-            return;
-        }
-        try {
-            const response = await authFetch(`/api/ideas?channelId=${selectedChannel}`, { signal });
-            if (response.ok) {
-                const data = await response.json();
-                const options = Array.isArray(data)
-                    ? data.map((idea) => ({ id: idea.id, title: idea.title }))
-                    : [];
-                setIdeaOptions(options);
-            }
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error fetching ideas:', err);
-        }
-    }, [authFetch, selectedChannel]);
-
-    const fetchScriptOptions = useCallback(async (signal?: AbortSignal) => {
-        if (!selectedChannel) {
-            setScriptOptions([]);
-            return;
-        }
-        try {
-            const response = await authFetch(`/api/scripts?channelId=${selectedChannel}`, { signal });
-            if (response.ok) {
-                const data = await response.json();
-                const options = Array.isArray(data)
-                    ? data.map((script) => ({ id: script.id, title: script.title }))
-                    : [];
-                setScriptOptions(options);
-            }
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error fetching scripts:', err);
-        }
-    }, [authFetch, selectedChannel]);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        const controller = new AbortController();
-        fetchIdeaOptions(controller.signal);
-        fetchScriptOptions(controller.signal);
-        return () => controller.abort();
-    }, [isAuthenticated, fetchIdeaOptions, fetchScriptOptions]);
 
     const getScoreColor = (score: number) => {
         if (score >= SEO_SCORE_THRESHOLDS.excellent) return 'text-green-400';
@@ -333,7 +161,7 @@ export default function SeoPage() {
                                 <span>{error}</span>
                                 <button
                                     type="button"
-                                    onClick={() => fetchSeoData()}
+                                    onClick={() => refreshSeo()}
                                     className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
                                 >
                                     Reintentar
@@ -407,7 +235,7 @@ export default function SeoPage() {
                                         <div className="flex flex-wrap gap-2 mb-2">
                                             <button
                                                 type="button"
-                                                onClick={() => copyToClipboard(item.optimized_title, 'Título')}
+                                                onClick={() => copyItem(item, 'title')}
                                                 className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
                                             >
                                                 Copiar título
@@ -415,7 +243,7 @@ export default function SeoPage() {
                                             {item.description && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => copyToClipboard(item.description ?? '', 'Descripción')}
+                                                    onClick={() => copyItem(item, 'description')}
                                                     className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
                                                 >
                                                     Copiar descripción
@@ -424,7 +252,7 @@ export default function SeoPage() {
                                             {item.tags?.length > 0 && (
                                                 <button
                                                     type="button"
-                                                    onClick={() => copyToClipboard(item.tags.join(', '), 'Tags')}
+                                                    onClick={() => copyItem(item, 'tags')}
                                                     className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
                                                 >
                                                     Copiar tags
@@ -497,7 +325,7 @@ export default function SeoPage() {
                                                                     <button
                                                                         key={title}
                                                                         type="button"
-                                                                        onClick={() => copyToClipboard(title, 'Título sugerido')}
+                                                                        onClick={() => handlePresetCopy(title)}
                                                                         className="text-left text-xs text-slate-200 rounded-lg border border-gray-800 px-3 py-2 hover:border-yellow-400/50"
                                                                     >
                                                                         {title}
@@ -514,7 +342,7 @@ export default function SeoPage() {
                                                                     <button
                                                                         key={text}
                                                                         type="button"
-                                                                        onClick={() => copyToClipboard(text, 'Texto de miniatura')}
+                                                                        onClick={() => handlePresetCopy(text)}
                                                                         className="text-xs text-slate-200 rounded-full border border-gray-800 px-3 py-1 hover:border-yellow-400/50"
                                                                     >
                                                                         {text}

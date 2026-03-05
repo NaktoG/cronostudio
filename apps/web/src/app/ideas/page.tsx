@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef, useMemo } from 'react';
+import { useState, useEffect, FormEvent, useRef } from 'react';
 import { Lightbulb, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
@@ -13,23 +13,11 @@ import { useToast } from '../contexts/ToastContext';
 import { IDEAS_COPY } from '../content/pages/ideas';
 import { IdeaStatus, IDEA_STATUS_LABELS, IDEA_STATUS_BADGES } from '@/app/content/status/ideas';
 import useDialogFocus from '../hooks/useDialogFocus';
-import { evaluateIdeaReady } from '@/lib/ideaReady';
 import Link from 'next/link';
-import { ideasService } from '@/app/ideas/services/ideasService';
-import { ideaPipelineService } from '@/app/ideas/services/ideaPipelineService';
 import { useChannels } from '@/app/hooks/useChannels';
-
-interface Idea {
-    id: string;
-    title: string;
-    description: string | null;
-    channelId: string | null;
-    status: 'draft' | 'approved' | 'in_production' | 'completed' | 'archived';
-    priority: number;
-    tags: string[];
-    channel_name: string | null;
-    created_at: string;
-}
+import { useIdeas } from '@/app/ideas/hooks/useIdeas';
+import type { Idea } from '@/app/ideas/hooks/useIdeas';
+import { evaluateIdeaReady } from '@/lib/ideaReady';
 
 const STATUS_LABELS: Record<IdeaStatus, { label: string; color: string }> = {
     draft: { label: IDEA_STATUS_LABELS.draft, color: IDEA_STATUS_BADGES.draft },
@@ -43,11 +31,10 @@ export default function IdeasPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
-    const [ideas, setIdeas] = useState<Idea[]>([]);
     const { channels } = useChannels({ isAuthenticated, authFetch });
-    const [selectedChannel, setSelectedChannel] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [listError, setListError] = useState<string | null>(null);
+    const { state, actions } = useIdeas({ isAuthenticated, authFetch, addToast });
+    const { ideas, loading, listError, selectedChannel, selectedIds, statusErrors, pipelineLoading, tagSuggestions, openNewRef } = state;
+    const { setSelectedChannel, refreshIdeas, toggleSelection, clearSelection, createOrUpdateIdea, deleteIdea: deleteIdeaAction, updateStatus, updateSelectedStatus, runPipeline } = actions;
     const [showModal, setShowModal] = useState(false);
     const [editingIdea, setEditingIdea] = useState<Idea | null>(null);
     const [formData, setFormData] = useState({
@@ -59,76 +46,15 @@ export default function IdeasPage() {
     });
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [statusErrors, setStatusErrors] = useState<Record<string, string[]>>({});
     const [deleteTarget, setDeleteTarget] = useState<Idea | null>(null);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [pipelineLoading, setPipelineLoading] = useState<string[]>([]);
-    const tagSuggestions = useMemo(() => {
-        const map = new Map<string, number>();
-        ideas.forEach((idea) => {
-            if (selectedChannel && idea.channelId !== selectedChannel) return;
-            idea.tags?.forEach((tag) => {
-                const key = tag.trim().toLowerCase();
-                if (!key) return;
-                map.set(key, (map.get(key) ?? 0) + 1);
-            });
-        });
-        return Array.from(map.entries())
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 12)
-            .map(([tag]) => tag);
-    }, [ideas, selectedChannel]);
-    const openNewRef = useRef(false);
     const modalRef = useRef<HTMLDivElement>(null);
     const deleteRef = useRef<HTMLDivElement>(null);
     const searchParams = useSearchParams();
 
     useDialogFocus(modalRef, showModal);
     useDialogFocus(deleteRef, Boolean(deleteTarget));
-
-    const fetchIdeas = useCallback(async (signal?: AbortSignal) => {
-        try {
-            setLoading(true);
-            setListError(null);
-            if (!isAuthenticated) {
-                setIdeas([]);
-                return;
-            }
-            const result = await ideasService.fetchIdeas(authFetch, selectedChannel || undefined, signal);
-            if (result.error) {
-                setListError(result.error);
-            }
-            setIdeas(result.ideas as Idea[]);
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error:', err);
-            addToast(IDEAS_COPY.toasts.error, 'error');
-            setListError(err instanceof Error ? err.message : IDEAS_COPY.toasts.error);
-        } finally {
-            if (signal?.aborted) return;
-            setLoading(false);
-        }
-    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
-
-    useEffect(() => {
-        if (!isAuthenticated) {
-            setLoading(false);
-            return;
-        }
-        const controller = new AbortController();
-        fetchIdeas(controller.signal);
-        return () => controller.abort();
-    }, [isAuthenticated, fetchIdeas]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
-        if (storedChannel && storedChannel !== selectedChannel) {
-            setSelectedChannel(storedChannel);
-        }
-    }, [selectedChannel]);
 
     useEffect(() => {
         if (openNewRef.current) return;
@@ -139,7 +65,7 @@ export default function IdeasPage() {
             setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
             setShowModal(true);
         }
-    }, [searchParams]);
+    }, [searchParams, openNewRef]);
 
     useEffect(() => {
         if (!showModal && !deleteTarget) return;
@@ -153,30 +79,22 @@ export default function IdeasPage() {
         return () => window.removeEventListener('keydown', handleKey);
     }, [showModal, deleteTarget]);
 
-    const normalizeTags = (input: string) =>
-        input
-            .split(',')
-            .map((tag) => tag.trim())
-            .filter((tag) => tag.length > 0);
-
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         setError(null);
         try {
-            const payload = {
+            await createOrUpdateIdea({
                 title: formData.title,
                 description: formData.description,
                 priority: formData.priority,
-                tags: normalizeTags(formData.tagsInput),
-                ...(formData.channelId ? { channelId: formData.channelId } : {}),
-            };
-            await ideasService.saveIdea(authFetch, payload, editingIdea?.id);
+                channelId: formData.channelId || undefined,
+                tagsInput: formData.tagsInput,
+            }, editingIdea?.id);
             setShowModal(false);
             setEditingIdea(null);
             setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
-            await fetchIdeas();
-            addToast(editingIdea ? IDEAS_COPY.toasts.updated : IDEAS_COPY.toasts.created, 'success');
+        addToast(editingIdea ? IDEAS_COPY.toasts.updated : IDEAS_COPY.toasts.created, 'success');
         } catch (err) {
             addToast(err instanceof Error ? err.message : IDEAS_COPY.toasts.error, 'error');
             setError(err instanceof Error ? err.message : 'Error');
@@ -198,117 +116,22 @@ export default function IdeasPage() {
         setShowModal(true);
     };
 
-    const updateStatus = async (id: string, status: string) => {
-        try {
-            if (status === 'approved') {
-                const targetIdea = ideas.find((idea) => idea.id === id);
-                if (targetIdea) {
-                    const readiness = evaluateIdeaReady(targetIdea.title, targetIdea.description);
-                    if (!readiness.isReady) {
-                        addToast(IDEAS_COPY.toasts.ideaNotReady, 'error');
-                        setStatusErrors((prev) => ({ ...prev, [id]: readiness.errors }));
-                        return;
-                    }
-                }
-            }
-            await ideasService.updateIdeaStatus(authFetch, id, status);
-            setStatusErrors((prev) => {
-                if (!prev[id]) return prev;
-                const next = { ...prev };
-                delete next[id];
-                return next;
-            });
-            await fetchIdeas();
-            addToast(IDEAS_COPY.toasts.statusUpdated, 'success');
-        } catch (err) {
-            addToast(err instanceof Error ? err.message : IDEAS_COPY.toasts.error, 'error');
-            setError(err instanceof Error ? err.message : 'Error');
-        }
-    };
-
-    const toggleSelection = (id: string) => {
-        setSelectedIds((current) => current.includes(id)
-            ? current.filter((item) => item !== id)
-            : [...current, id]
-        );
-    };
-
-    const clearSelection = () => setSelectedIds([]);
-
-    const updateSelectedStatus = async (status: IdeaStatus) => {
-        if (selectedIds.length === 0) return;
-        try {
-            if (status === 'approved') {
-                const nextErrors: Record<string, string[]> = {};
-                const readyIds: string[] = [];
-
-                selectedIds.forEach((id) => {
-                    const targetIdea = ideas.find((idea) => idea.id === id);
-                    if (!targetIdea) return;
-                    const readiness = evaluateIdeaReady(targetIdea.title, targetIdea.description);
-                    if (!readiness.isReady) {
-                        nextErrors[id] = readiness.errors;
-                    } else {
-                        readyIds.push(id);
-                    }
-                });
-
-                if (Object.keys(nextErrors).length > 0) {
-                    setStatusErrors((prev) => ({ ...prev, ...nextErrors }));
-                    addToast(IDEAS_COPY.toasts.ideaNotReady, 'error');
-                }
-
-                if (readyIds.length === 0) return;
-                await Promise.all(readyIds.map((id) => updateStatus(id, status)));
-                clearSelection();
-                return;
-            }
-
-            await Promise.all(selectedIds.map((id) => updateStatus(id, status)));
-            clearSelection();
-        } catch {
-            addToast(IDEAS_COPY.toasts.error, 'error');
-        }
-    };
-
-    const deleteIdea = async (id: string) => {
-        const target = ideas.find((idea) => idea.id === id) || null;
-        setDeleteTarget(target);
+    const openDelete = (idea: Idea) => {
+        setDeleteTarget(idea);
     };
 
     const confirmDelete = async () => {
         if (!deleteTarget) return;
         setDeleteSubmitting(true);
         try {
-            await ideasService.deleteIdea(authFetch, deleteTarget.id);
+            await deleteIdeaAction(deleteTarget.id);
             setDeleteTarget(null);
-            await fetchIdeas();
             addToast(IDEAS_COPY.toasts.deleted, 'success');
         } catch (err) {
             addToast(err instanceof Error ? err.message : IDEAS_COPY.toasts.error, 'error');
             setError(err instanceof Error ? err.message : 'Error');
         } finally {
             setDeleteSubmitting(false);
-        }
-    };
-
-    const runPipeline = async (idea: Idea) => {
-        const channelId = idea.channelId ?? selectedChannel;
-        if (!channelId) {
-            addToast('Selecciona un canal para ejecutar el pipeline', 'error');
-            return;
-        }
-        if (pipelineLoading.includes(idea.id)) return;
-        setPipelineLoading((current) => [...current, idea.id]);
-        try {
-            await ideaPipelineService.runPipeline(authFetch, { channelId, ideaId: idea.id });
-
-            await fetchIdeas();
-            addToast('Pipeline completado (guion + SEO)', 'success');
-        } catch (err) {
-            addToast(err instanceof Error ? err.message : 'Error al ejecutar pipeline', 'error');
-        } finally {
-            setPipelineLoading((current) => current.filter((id) => id !== idea.id));
         }
     };
 
@@ -414,7 +237,7 @@ export default function IdeasPage() {
                                 <span>{listError}</span>
                                 <button
                                     type="button"
-                                    onClick={() => fetchIdeas()}
+                                    onClick={() => refreshIdeas()}
                                     className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
                                 >
                                     Reintentar
@@ -498,7 +321,7 @@ export default function IdeasPage() {
                                     <div className="mt-4 pt-4 border-t border-gray-800 flex flex-col gap-2 sm:flex-row sm:items-center">
                                         <select
                                             value={idea.status}
-                                            onChange={(e) => updateStatus(idea.id, e.target.value)}
+                                            onChange={(e) => updateStatus(idea.id, e.target.value as IdeaStatus)}
                                             className="w-full text-xs bg-gray-800 border border-gray-700 rounded px-2 py-2 text-white sm:flex-1"
                                         >
                                         <option value="draft">{IDEA_STATUS_LABELS.draft}</option>
@@ -530,7 +353,7 @@ export default function IdeasPage() {
                                                 Editar
                                             </button>
                                             <button
-                                                onClick={() => deleteIdea(idea.id)}
+                                                onClick={() => openDelete(idea)}
                                                 className="text-red-400 hover:text-red-300 text-xs px-2"
                                             >
                                                 {IDEAS_COPY.delete}

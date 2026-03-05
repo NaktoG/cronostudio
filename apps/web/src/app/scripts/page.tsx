@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef, useMemo } from 'react';
+import { useState, useEffect, FormEvent, useRef, useMemo, useCallback } from 'react';
 import { Clipboard, FileText, Link as LinkIcon, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
@@ -16,29 +16,9 @@ import Link from 'next/link';
 import { copyScriptToClipboard, downloadScriptMarkdown, exportScriptToPdf } from '@/lib/scripts/export';
 import { calculateScriptMetrics } from '@/lib/scripts/metrics';
 import { SCRIPT_STATUS_BADGES, SCRIPT_STATUS_LABELS } from '@/app/content/status/scripts';
-import { scriptsService } from '@/app/scripts/services/scriptsService';
-import { scriptPipelineService } from '@/app/scripts/services/scriptPipelineService';
 import { useChannels } from '@/app/hooks/useChannels';
-
-interface Script {
-    id: string;
-    title: string;
-    intro: string | null;
-    body: string | null;
-    cta: string | null;
-    outro: string | null;
-    status: string;
-    word_count: number;
-    estimated_duration_seconds: number;
-    idea_id?: string | null;
-    idea_title: string | null;
-    created_at: string;
-}
-
-interface IdeaOption {
-    id: string;
-    title: string;
-}
+import { useScripts } from '@/app/scripts/hooks/useScripts';
+import type { Script } from '@/app/scripts/hooks/useScripts';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     draft: { label: SCRIPT_STATUS_LABELS.draft, color: SCRIPT_STATUS_BADGES.draft },
@@ -51,13 +31,11 @@ export default function ScriptsPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
-    const [scripts, setScripts] = useState<Script[]>([]);
     const { channels } = useChannels({ isAuthenticated, authFetch });
-    const [selectedChannel, setSelectedChannel] = useState('');
-    const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
+    const { state, actions } = useScripts({ isAuthenticated, authFetch, addToast });
+    const { scripts, ideaOptions, loading, listError, selectedChannel, selectedIds, pipelineLoading } = state;
+    const { setSelectedChannel, refreshScripts, toggleSelection, clearSelection, createOrUpdateScript, deleteScript: deleteScriptAction, updateSelectedStatus, runPipeline } = actions;
     const [ideaTitleInput, setIdeaTitleInput] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [listError, setListError] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
@@ -65,8 +43,6 @@ export default function ScriptsPage() {
     const [deleteTarget, setDeleteTarget] = useState<Script | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [pipelineLoading, setPipelineLoading] = useState<string[]>([]);
     const openNewRef = useRef(false);
     const modalRef = useRef<HTMLDivElement>(null);
     const deleteRef = useRef<HTMLDivElement>(null);
@@ -75,44 +51,6 @@ export default function ScriptsPage() {
 
     useDialogFocus(modalRef, showModal);
     useDialogFocus(deleteRef, Boolean(deleteTarget));
-
-    const fetchScripts = useCallback(async (signal?: AbortSignal) => {
-        try {
-            setLoading(true);
-            setListError(null);
-            if (!isAuthenticated) {
-                setScripts([]);
-                return;
-            }
-            const result = await scriptsService.fetchScripts(authFetch, selectedChannel || undefined, signal);
-            if (result.error) {
-                setListError(result.error);
-            }
-            setScripts(result.scripts as Script[]);
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error:', err);
-            addToast(SCRIPTS_COPY.toasts.error, 'error');
-            setListError(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error);
-        } finally {
-            if (signal?.aborted) return;
-            setLoading(false);
-        }
-    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
-
-    useEffect(() => {
-        const controller = new AbortController();
-        fetchScripts(controller.signal);
-        return () => controller.abort();
-    }, [fetchScripts]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
-        if (storedChannel && storedChannel !== selectedChannel) {
-            setSelectedChannel(storedChannel);
-        }
-    }, [selectedChannel]);
 
     useEffect(() => {
         if (openNewRef.current) return;
@@ -125,30 +63,6 @@ export default function ScriptsPage() {
             setShowModal(true);
         }
     }, [searchParams]);
-
-    const fetchIdeaOptions = useCallback(async (signal?: AbortSignal) => {
-        if (!selectedChannel) {
-            setIdeaOptions([]);
-            return;
-        }
-        try {
-            const data = await scriptsService.fetchIdeas(authFetch, selectedChannel, signal);
-            const options = Array.isArray(data)
-                ? data.map((idea) => ({ id: (idea as { id: string }).id, title: (idea as { title: string }).title }))
-                : [];
-            setIdeaOptions(options);
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error fetching ideas:', err);
-        }
-    }, [authFetch, selectedChannel]);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        const controller = new AbortController();
-        fetchIdeaOptions(controller.signal);
-        return () => controller.abort();
-    }, [isAuthenticated, fetchIdeaOptions]);
 
     useEffect(() => {
         if (!showModal && !deleteTarget) return;
@@ -174,12 +88,11 @@ export default function ScriptsPage() {
                 outro: formData.outro,
                 ...(formData.ideaId ? { ideaId: formData.ideaId } : {}),
             };
-            await scriptsService.saveScript(authFetch, payload, editingId ?? undefined);
+            await createOrUpdateScript(payload, editingId ?? undefined);
             setShowModal(false);
             setEditingId(null);
             setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
             setIdeaTitleInput('');
-            await fetchScripts();
             setError(null);
             addToast(editingId ? SCRIPTS_COPY.toasts.updated : SCRIPTS_COPY.toasts.created, 'success');
         } catch (err) {
@@ -187,27 +100,6 @@ export default function ScriptsPage() {
             setError(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error);
         } finally {
             setSubmitting(false);
-        }
-    };
-
-    const toggleSelection = (id: string) => {
-        setSelectedIds((current) => current.includes(id)
-            ? current.filter((item) => item !== id)
-            : [...current, id]
-        );
-    };
-
-    const clearSelection = () => setSelectedIds([]);
-
-    const updateSelectedStatus = async (status: string) => {
-        if (selectedIds.length === 0) return;
-        try {
-            await Promise.all(selectedIds.map((id) => scriptsService.updateScriptStatus(authFetch, id, status)));
-            clearSelection();
-            await fetchScripts();
-            addToast(SCRIPTS_COPY.toasts.updated, 'success');
-        } catch {
-            addToast(SCRIPTS_COPY.toasts.error, 'error');
         }
     };
 
@@ -299,37 +191,11 @@ export default function ScriptsPage() {
     const deleteScript = async () => {
         if (!deleteTarget) return;
         try {
-            await scriptsService.deleteScript(authFetch, deleteTarget.id);
+            await deleteScriptAction(deleteTarget.id);
             setDeleteTarget(null);
-            await fetchScripts();
             addToast(SCRIPTS_COPY.toasts.deleted, 'success');
         } catch (err) {
             addToast(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error, 'error');
-        }
-    };
-
-    const runPublishPipeline = async (script: Script) => {
-        const channelId = selectedChannel;
-        if (!channelId) {
-            addToast('Selecciona un canal para ejecutar el pipeline', 'error');
-            return;
-        }
-        if (pipelineLoading.includes(script.id)) return;
-        setPipelineLoading((current) => [...current, script.id]);
-        try {
-            await scriptPipelineService.runPipeline(authFetch, {
-                channelId,
-                scriptId: script.id,
-                ideaId: script.idea_id,
-                title: script.title,
-            });
-
-            await fetchScripts();
-            addToast('Pipeline completado (SEO + miniatura)', 'success');
-        } catch (err) {
-            addToast(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error, 'error');
-        } finally {
-            setPipelineLoading((current) => current.filter((id) => id !== script.id));
         }
     };
 
@@ -451,7 +317,7 @@ export default function ScriptsPage() {
                                 <span>{listError}</span>
                                 <button
                                     type="button"
-                                    onClick={() => fetchScripts()}
+                                    onClick={() => refreshScripts()}
                                     className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
                                 >
                                     Reintentar
@@ -521,7 +387,7 @@ export default function ScriptsPage() {
                                         <div className="flex flex-wrap gap-2">
                                             <button
                                                 type="button"
-                                                onClick={() => runPublishPipeline(script)}
+                                                onClick={() => runPipeline(script)}
                                                 disabled={pipelineLoading.includes(script.id)}
                                                 className="text-sky-300 hover:text-sky-200 text-xs px-2 disabled:opacity-60"
                                             >
