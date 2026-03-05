@@ -16,6 +16,9 @@ import Link from 'next/link';
 import { copyScriptToClipboard, downloadScriptMarkdown, exportScriptToPdf } from '@/lib/scripts/export';
 import { calculateScriptMetrics } from '@/lib/scripts/metrics';
 import { SCRIPT_STATUS_BADGES, SCRIPT_STATUS_LABELS } from '@/app/content/status/scripts';
+import { scriptsService } from '@/app/scripts/services/scriptsService';
+import { scriptPipelineService } from '@/app/scripts/services/scriptPipelineService';
+import { useChannels } from '@/app/hooks/useChannels';
 
 interface Script {
     id: string;
@@ -30,11 +33,6 @@ interface Script {
     idea_id?: string | null;
     idea_title: string | null;
     created_at: string;
-}
-
-interface Channel {
-    id: string;
-    name: string;
 }
 
 interface IdeaOption {
@@ -54,7 +52,7 @@ export default function ScriptsPage() {
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const [scripts, setScripts] = useState<Script[]>([]);
-    const [channels, setChannels] = useState<Channel[]>([]);
+    const { channels } = useChannels({ isAuthenticated, authFetch });
     const [selectedChannel, setSelectedChannel] = useState('');
     const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
     const [ideaTitleInput, setIdeaTitleInput] = useState('');
@@ -86,15 +84,11 @@ export default function ScriptsPage() {
                 setScripts([]);
                 return;
             }
-            const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
-            const response = await authFetch(`/api/scripts${query}`, { signal });
-            if (response.ok) {
-                setScripts(await response.json());
-                setListError(null);
-            } else {
-                const data = await response.json().catch(() => null);
-                setListError(data?.error || SCRIPTS_COPY.toasts.error);
+            const result = await scriptsService.fetchScripts(authFetch, selectedChannel || undefined, signal);
+            if (result.error) {
+                setListError(result.error);
             }
+            setScripts(result.scripts as Script[]);
         } catch (err) {
             if (signal?.aborted) return;
             console.error('Error:', err);
@@ -111,29 +105,6 @@ export default function ScriptsPage() {
         fetchScripts(controller.signal);
         return () => controller.abort();
     }, [fetchScripts]);
-
-    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
-        try {
-            if (!isAuthenticated) {
-                setChannels([]);
-                return;
-            }
-            const response = await authFetch('/api/channels', { signal });
-            if (response.ok) {
-                setChannels(await response.json());
-            }
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error fetching channels:', err);
-        }
-    }, [isAuthenticated, authFetch]);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        const controller = new AbortController();
-        fetchChannels(controller.signal);
-        return () => controller.abort();
-    }, [isAuthenticated, fetchChannels]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -161,14 +132,11 @@ export default function ScriptsPage() {
             return;
         }
         try {
-            const response = await authFetch(`/api/ideas?channelId=${selectedChannel}`, { signal });
-            if (response.ok) {
-                const data = await response.json();
-                const options = Array.isArray(data)
-                    ? data.map((idea) => ({ id: idea.id, title: idea.title }))
-                    : [];
-                setIdeaOptions(options);
-            }
+            const data = await scriptsService.fetchIdeas(authFetch, selectedChannel, signal);
+            const options = Array.isArray(data)
+                ? data.map((idea) => ({ id: (idea as { id: string }).id, title: (idea as { title: string }).title }))
+                : [];
+            setIdeaOptions(options);
         } catch (err) {
             if (signal?.aborted) return;
             console.error('Error fetching ideas:', err);
@@ -198,9 +166,6 @@ export default function ScriptsPage() {
         e.preventDefault();
         setSubmitting(true);
         try {
-            const url = editingId ? `/api/scripts?id=${editingId}` : '/api/scripts';
-            const method = editingId ? 'PUT' : 'POST';
-
             const payload = {
                 title: formData.title,
                 intro: formData.intro,
@@ -209,15 +174,7 @@ export default function ScriptsPage() {
                 outro: formData.outro,
                 ...(formData.ideaId ? { ideaId: formData.ideaId } : {}),
             };
-
-            const response = await authFetch(url, {
-                method,
-                body: JSON.stringify(payload),
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || SCRIPTS_COPY.errors.save);
-            }
+            await scriptsService.saveScript(authFetch, payload, editingId ?? undefined);
             setShowModal(false);
             setEditingId(null);
             setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
@@ -245,10 +202,7 @@ export default function ScriptsPage() {
     const updateSelectedStatus = async (status: string) => {
         if (selectedIds.length === 0) return;
         try {
-            await Promise.all(selectedIds.map((id) => authFetch(`/api/scripts?id=${id}`, {
-                method: 'PUT',
-                body: JSON.stringify({ status }),
-            })));
+            await Promise.all(selectedIds.map((id) => scriptsService.updateScriptStatus(authFetch, id, status)));
             clearSelection();
             await fetchScripts();
             addToast(SCRIPTS_COPY.toasts.updated, 'success');
@@ -345,13 +299,7 @@ export default function ScriptsPage() {
     const deleteScript = async () => {
         if (!deleteTarget) return;
         try {
-            const response = await authFetch(`/api/scripts?id=${deleteTarget.id}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || SCRIPTS_COPY.errors.delete);
-            }
+            await scriptsService.deleteScript(authFetch, deleteTarget.id);
             setDeleteTarget(null);
             await fetchScripts();
             addToast(SCRIPTS_COPY.toasts.deleted, 'success');
@@ -369,31 +317,12 @@ export default function ScriptsPage() {
         if (pipelineLoading.includes(script.id)) return;
         setPipelineLoading((current) => [...current, script.id]);
         try {
-            const seoResponse = await authFetch('/api/ai/runs/execute', {
-                method: 'POST',
-                body: JSON.stringify({
-                    profileKey: 'titles_thumbs',
-                    channelId,
-                    input: { ideaId: script.idea_id, scriptId: script.id },
-                }),
+            await scriptPipelineService.runPipeline(authFetch, {
+                channelId,
+                scriptId: script.id,
+                ideaId: script.idea_id,
+                title: script.title,
             });
-            if (!seoResponse.ok) {
-                const data = await seoResponse.json();
-                throw new Error(data.error || 'Error al generar SEO');
-            }
-
-            const thumbResponse = await authFetch('/api/thumbnails', {
-                method: 'POST',
-                body: JSON.stringify({
-                    title: script.title,
-                    scriptId: script.id,
-                    notes: 'Generado desde pipeline',
-                }),
-            });
-            if (!thumbResponse.ok) {
-                const data = await thumbResponse.json();
-                throw new Error(data.error || 'Error al crear miniatura');
-            }
 
             await fetchScripts();
             addToast('Pipeline completado (SEO + miniatura)', 'success');

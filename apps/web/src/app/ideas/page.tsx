@@ -15,6 +15,9 @@ import { IdeaStatus, IDEA_STATUS_LABELS, IDEA_STATUS_BADGES } from '@/app/conten
 import useDialogFocus from '../hooks/useDialogFocus';
 import { evaluateIdeaReady } from '@/lib/ideaReady';
 import Link from 'next/link';
+import { ideasService } from '@/app/ideas/services/ideasService';
+import { ideaPipelineService } from '@/app/ideas/services/ideaPipelineService';
+import { useChannels } from '@/app/hooks/useChannels';
 
 interface Idea {
     id: string;
@@ -26,11 +29,6 @@ interface Idea {
     tags: string[];
     channel_name: string | null;
     created_at: string;
-}
-
-interface Channel {
-    id: string;
-    name: string;
 }
 
 const STATUS_LABELS: Record<IdeaStatus, { label: string; color: string }> = {
@@ -46,7 +44,7 @@ export default function IdeasPage() {
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const [ideas, setIdeas] = useState<Idea[]>([]);
-    const [channels, setChannels] = useState<Channel[]>([]);
+    const { channels } = useChannels({ isAuthenticated, authFetch });
     const [selectedChannel, setSelectedChannel] = useState('');
     const [loading, setLoading] = useState(true);
     const [listError, setListError] = useState<string | null>(null);
@@ -98,15 +96,11 @@ export default function IdeasPage() {
                 setIdeas([]);
                 return;
             }
-            const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
-            const response = await authFetch(`/api/ideas${query}`, { signal });
-            if (response.ok) {
-                setIdeas(await response.json());
-                setListError(null);
-            } else {
-                const data = await response.json().catch(() => null);
-                setListError(data?.error || IDEAS_COPY.toasts.error);
+            const result = await ideasService.fetchIdeas(authFetch, selectedChannel || undefined, signal);
+            if (result.error) {
+                setListError(result.error);
             }
+            setIdeas(result.ideas as Idea[]);
         } catch (err) {
             if (signal?.aborted) return;
             console.error('Error:', err);
@@ -127,29 +121,6 @@ export default function IdeasPage() {
         fetchIdeas(controller.signal);
         return () => controller.abort();
     }, [isAuthenticated, fetchIdeas]);
-
-    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
-        try {
-            if (!isAuthenticated) {
-                setChannels([]);
-                return;
-            }
-            const response = await authFetch('/api/channels', { signal });
-            if (response.ok) {
-                setChannels(await response.json());
-            }
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error fetching channels:', err);
-        }
-    }, [isAuthenticated, authFetch]);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        const controller = new AbortController();
-        fetchChannels(controller.signal);
-        return () => controller.abort();
-    }, [isAuthenticated, fetchChannels]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -193,8 +164,6 @@ export default function IdeasPage() {
         setSubmitting(true);
         setError(null);
         try {
-            const targetUrl = editingIdea ? `/api/ideas?id=${editingIdea.id}` : '/api/ideas';
-            const method = editingIdea ? 'PUT' : 'POST';
             const payload = {
                 title: formData.title,
                 description: formData.description,
@@ -202,14 +171,7 @@ export default function IdeasPage() {
                 tags: normalizeTags(formData.tagsInput),
                 ...(formData.channelId ? { channelId: formData.channelId } : {}),
             };
-            const response = await authFetch(targetUrl, {
-                method,
-                body: JSON.stringify(payload),
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || (editingIdea ? 'Error al actualizar idea' : 'Error al crear idea'));
-            }
+            await ideasService.saveIdea(authFetch, payload, editingIdea?.id);
             setShowModal(false);
             setEditingIdea(null);
             setFormData({ title: '', description: '', priority: 0, channelId: '', tagsInput: '' });
@@ -249,14 +211,7 @@ export default function IdeasPage() {
                     }
                 }
             }
-            const response = await authFetch(`/api/ideas?id=${id}`, {
-                method: 'PUT',
-                body: JSON.stringify({ status }),
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Error al actualizar estado');
-            }
+            await ideasService.updateIdeaStatus(authFetch, id, status);
             setStatusErrors((prev) => {
                 if (!prev[id]) return prev;
                 const next = { ...prev };
@@ -325,13 +280,7 @@ export default function IdeasPage() {
         if (!deleteTarget) return;
         setDeleteSubmitting(true);
         try {
-            const response = await authFetch(`/api/ideas?id=${deleteTarget.id}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Error al eliminar idea');
-            }
+            await ideasService.deleteIdea(authFetch, deleteTarget.id);
             setDeleteTarget(null);
             await fetchIdeas();
             addToast(IDEAS_COPY.toasts.deleted, 'success');
@@ -352,36 +301,7 @@ export default function IdeasPage() {
         if (pipelineLoading.includes(idea.id)) return;
         setPipelineLoading((current) => [...current, idea.id]);
         try {
-            const scriptResponse = await authFetch('/api/ai/runs/execute', {
-                method: 'POST',
-                body: JSON.stringify({
-                    profileKey: 'script_architect',
-                    channelId,
-                    input: { ideaId: idea.id },
-                }),
-            });
-            if (!scriptResponse.ok) {
-                const data = await scriptResponse.json();
-                throw new Error(data.error || 'Error al generar guion');
-            }
-            const scriptData = await scriptResponse.json();
-            const scriptId = scriptData?.applied?.scriptId as string | undefined;
-            if (!scriptId) {
-                throw new Error('Guion no generado');
-            }
-
-            const seoResponse = await authFetch('/api/ai/runs/execute', {
-                method: 'POST',
-                body: JSON.stringify({
-                    profileKey: 'titles_thumbs',
-                    channelId,
-                    input: { ideaId: idea.id, scriptId },
-                }),
-            });
-            if (!seoResponse.ok) {
-                const data = await seoResponse.json();
-                throw new Error(data.error || 'Error al generar SEO');
-            }
+            await ideaPipelineService.runPipeline(authFetch, { channelId, ideaId: idea.id });
 
             await fetchIdeas();
             addToast('Pipeline completado (guion + SEO)', 'success');
