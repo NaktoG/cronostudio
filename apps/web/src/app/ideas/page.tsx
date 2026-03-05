@@ -333,7 +333,7 @@ export default function IdeasPage() {
                             </div>
                             <p className="text-sm sm:text-base text-slate-300">{IDEAS_COPY.subtitle}</p>
                         </div>
-                        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:items-end">
+                        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:flex-wrap sm:items-end">
                             {channels.length > 0 && (
                                 <div className="min-w-[220px]">
                                     <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>

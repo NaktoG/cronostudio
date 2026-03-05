@@ -2339,7 +2339,7 @@ function DashboardContent() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="dashboard-modal-title"
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg max-h-[85vh] overflow-y-auto"
+            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg max-h-[85dvh] overflow-y-auto"
             ref={modalRef}
             tabIndex={-1}
             initial={{ scale: 0.9, opacity: 0 }}

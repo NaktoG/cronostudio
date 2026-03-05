@@ -135,7 +135,7 @@ export default function AiStudioPage() {
                       <p className="text-sm text-slate-400">Selecciona un perfil y completa el input.</p>
                     </div>
                     <select
-                      className="bg-gray-900/60 border border-gray-800 text-sm text-slate-200 rounded-lg px-3 py-2"
+                      className="w-full sm:w-auto bg-gray-900/60 border border-gray-800 text-sm text-slate-200 rounded-lg px-3 py-2"
                       value={selectedChannel}
                       onChange={(event) => setSelectedChannel(event.target.value)}
                       disabled={!channels.length}

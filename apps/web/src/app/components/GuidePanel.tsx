@@ -382,7 +382,7 @@ export default function GuidePanel() {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-[65] flex flex-col items-end gap-3"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-[65] flex flex-col items-end gap-3 lg:bottom-6"
       style={panelRight ? { right: `${panelRight}px` } : undefined}
     >
       <div className="w-[min(92vw,360px)] rounded-2xl border border-gray-800 bg-gray-950/95 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
