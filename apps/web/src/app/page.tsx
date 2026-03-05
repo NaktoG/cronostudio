@@ -15,8 +15,11 @@ import ProductionPipeline from './components/ProductionPipeline';
 import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
+import { IMPACT_METRICS } from '@/app/content/metrics';
 import { useToast } from './contexts/ToastContext';
 import { DASHBOARD_COPY, STAGE_LABELS } from './content/dashboard';
+import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/status/weekly';
+import { SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 import useDialogFocus from './hooks/useDialogFocus';
 
 interface PipelineStats {
@@ -102,7 +105,7 @@ function generatePriorityActions(productions: Production[]): PriorityAction[] {
     if ((prod.status === 'editing' || prod.status === 'shorts') && (!prod.thumbnail_status || prod.thumbnail_status === 'pending')) {
       actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: DASHBOARD_COPY.priorityActions.thumbnail, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
     }
-    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < 60)) {
+    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < SEO_SCORE_MIN_READY)) {
       actions.push({ id: `${prod.id}-seo`, type: 'seo', title: DASHBOARD_COPY.priorityActions.seo, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
     }
     if (prod.status === 'shorts' && prod.shorts_count === 0) {
@@ -124,7 +127,7 @@ const TOUR_STEPS = [
 
 function getChecklistStatus(production: Production) {
   const scriptReady = production.script_status && production.script_status !== 'draft';
-  const seoReady = typeof production.seo_score === 'number' && production.seo_score >= 60;
+  const seoReady = typeof production.seo_score === 'number' && production.seo_score >= SEO_SCORE_MIN_READY;
   const thumbnailReady = production.thumbnail_status === 'approved';
   const published = production.status === 'published';
 
@@ -151,34 +154,60 @@ function OnboardingTour({
   onBack: () => void;
   reduceMotion: boolean;
 }) {
-  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [anchorTick, setAnchorTick] = useState(0);
   const step = TOUR_STEPS[stepIndex];
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (!open || !step) return;
+  const anchorRect = useMemo(() => {
+    if (!open || !step) return null;
+    void anchorTick;
     const anchor = document.querySelector(`[data-tour="${step.id}"]`);
-    if (anchor) {
-      setAnchorRect(anchor.getBoundingClientRect());
-    } else {
-      setAnchorRect(null);
-    }
-  }, [open, stepIndex, step]);
+    return anchor ? anchor.getBoundingClientRect() : null;
+  }, [open, step, anchorTick]);
 
   useEffect(() => {
     if (!open) return;
-    const handleResize = () => {
-      const anchor = step ? document.querySelector(`[data-tour="${step.id}"]`) : null;
-      if (anchor) {
-        setAnchorRect(anchor.getBoundingClientRect());
-      }
-    };
+    const handleResize = () => setAnchorTick((prev) => prev + 1);
     window.addEventListener('resize', handleResize);
     window.addEventListener('scroll', handleResize, true);
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleResize, true);
     };
-  }, [open, step]);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const focusable = dialogRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.focus();
+  }, [open, stepIndex]);
+
+  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onClose();
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (event.shiftKey) {
+      if (active === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   if (!open || !step) return null;
 
@@ -201,18 +230,23 @@ function OnboardingTour({
         />
       )}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tour-step-title"
         className={`absolute w-[min(90vw,360px)] rounded-xl border border-gray-800 bg-gray-950/95 p-4 text-white shadow-xl ${reduceMotion ? '' : 'transition-all duration-300'}`}
+        ref={dialogRef}
+        onKeyDown={handleDialogKeyDown}
         style={
           anchorRect
             ? {
                 top: anchorRect.bottom + window.scrollY + 12,
-                left: Math.min(anchorRect.left + window.scrollX, window.innerWidth - 380),
+                left: Math.max(12, Math.min(anchorRect.left + window.scrollX, window.innerWidth - 372)),
               }
             : { top: '20%', left: '50%', transform: 'translateX(-50%)' }
         }
       >
         <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">Guía rápida</div>
-        <h4 className="mt-2 text-lg font-semibold">{step.title}</h4>
+        <h4 id="tour-step-title" className="mt-2 text-lg font-semibold">{step.title}</h4>
         <p className="mt-2 text-sm text-slate-300">{step.description}</p>
         <div className="mt-4 flex items-center justify-between">
           <button
@@ -267,6 +301,8 @@ function DashboardContent() {
   const [publishPlatformId, setPublishPlatformId] = useState('');
   const [publishPlatformTouched, setPublishPlatformTouched] = useState(false);
   const [focusedProductionId, setFocusedProductionId] = useState<string | null>(null);
+  const [focusSearch, setFocusSearch] = useState('');
+  const [selectedProductionIds, setSelectedProductionIds] = useState<string[]>([]);
   const [publishSubmitting, setPublishSubmitting] = useState(false);
   const [quickPublishSubmitting, setQuickPublishSubmitting] = useState(false);
   const [reconcileSubmitting, setReconcileSubmitting] = useState(false);
@@ -306,6 +342,15 @@ function DashboardContent() {
   }, [isAuthenticated, searchParams]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+    const productionId = searchParams?.get('productionId');
+    if (productionId) {
+      setFocusedProductionId(productionId);
+      setFocusOpen(true);
+    }
+  }, [isAuthenticated, searchParams]);
+
+  useEffect(() => {
     if (!drawerOpen) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -339,7 +384,7 @@ function DashboardContent() {
           router.replace(query ? `/?${query}` : '/');
         }
       }
-    } catch (error) {
+    } catch {
       if (signal?.aborted) return;
       setChannels([]);
     }
@@ -592,13 +637,7 @@ function DashboardContent() {
   };
 
   const stageLabels: Record<keyof PipelineStats, string> = STAGE_LABELS;
-  const statusStyles: Record<string, { badge: string; dot: string; text: string }> = {
-    OK: { badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', dot: 'bg-emerald-400', text: 'text-emerald-200' },
-    EN_RIESGO: { badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30', dot: 'bg-amber-400', text: 'text-amber-200' },
-    FALLIDA: { badge: 'bg-red-500/15 text-red-300 border-red-500/30', dot: 'bg-red-400', text: 'text-red-200' },
-    CUMPLIDA: { badge: 'bg-sky-500/15 text-sky-300 border-sky-500/30', dot: 'bg-sky-400', text: 'text-sky-200' },
-  };
-  const weeklyStyle = weeklyStatus ? statusStyles[weeklyStatus.status] : statusStyles.OK;
+  const weeklyStyle = weeklyStatus ? WEEKLY_STATUS_STYLES[weeklyStatus.status] : WEEKLY_STATUS_STYLES.OK;
   const nextConditionText = weeklyStatus?.nextCondition?.label ?? DASHBOARD_COPY.weeklyStatus.noNext;
   const nextConditionDue = weeklyStatus?.nextCondition?.dueAt
     ? formatDateTime(weeklyStatus.nextCondition.dueAt)
@@ -631,20 +670,21 @@ function DashboardContent() {
   const streakCurrent = weeklyStatus?.currentStreak ?? 0;
   const streakBest = weeklyStatus?.bestStreak ?? 0;
   const last4Weeks = weeklyStatus?.last4Weeks ?? [];
-  const streakColors: Record<string, string> = {
-    OK: 'bg-emerald-400',
-    EN_RIESGO: 'bg-amber-400',
-    FALLIDA: 'bg-red-400',
-    CUMPLIDA: 'bg-sky-400',
-  };
-
   const disciplineStatus = disciplineWeekly?.status ?? 'OK';
-  const disciplineStyle = statusStyles[disciplineStatus] ?? statusStyles.OK;
+  const disciplineStyle = WEEKLY_STATUS_STYLES[disciplineStatus] ?? WEEKLY_STATUS_STYLES.OK;
   const disciplineCount = disciplineWeekly?.scoreboard.count ?? 0;
   const disciplineTarget = disciplineWeekly?.scoreboard.target ?? 2;
   const disciplineMissing = Math.max(disciplineTarget - disciplineCount, 0);
   const disciplineStreakCurrent = disciplineWeekly?.streak.current ?? 0;
   const disciplineStreakBest = disciplineWeekly?.streak.best ?? 0;
+  const publishedTotal = pipelineStats.published || 0;
+  const estimatedHoursSaved = publishedTotal * IMPACT_METRICS.hoursSavedPerVideo;
+  const ideaToScriptRate = pipelineStats.idea > 0
+    ? Math.round((pipelineStats.scripting / pipelineStats.idea) * 100)
+    : 0;
+  const weeklyCompletion = weeklyTarget > 0
+    ? Math.round((publishedCount / weeklyTarget) * 100)
+    : 0;
 
   const slotConfig = [
     { key: 'tue' as const, label: 'Mar' },
@@ -653,16 +693,10 @@ function DashboardContent() {
 
   const slotStatus = (slot: 'tue' | 'fri') => {
     const reconcile = reconcileWeekly?.reconciliation[slot];
-    if (reconcile === 'ok') {
-      return { tone: 'bg-emerald-400/15 text-emerald-200 border-emerald-400/40', dot: 'bg-emerald-400', label: 'OK' };
-    }
-    if (reconcile === 'missing_publish_event') {
-      return { tone: 'bg-amber-400/15 text-amber-200 border-amber-400/40', dot: 'bg-amber-400', label: 'Registrar' };
-    }
-    if (reconcile === 'missing_youtube_video') {
-      return { tone: 'bg-slate-400/10 text-slate-300 border-slate-400/30', dot: 'bg-slate-400', label: 'Sin video' };
-    }
-    return { tone: 'bg-slate-400/10 text-slate-300 border-slate-400/30', dot: 'bg-slate-400', label: 'Pendiente' };
+    if (reconcile === 'ok') return RECONCILE_SLOT_STYLES.ok;
+    if (reconcile === 'missing_publish_event') return RECONCILE_SLOT_STYLES.missing_publish_event;
+    if (reconcile === 'missing_youtube_video') return RECONCILE_SLOT_STYLES.missing_youtube_video;
+    return RECONCILE_SLOT_STYLES.pending;
   };
 
   const registerNeedsAttention = disciplineMissing > 0 ||
@@ -693,6 +727,34 @@ function DashboardContent() {
     }
     return { label: 'Semana completa. Planifica la próxima.', action: 'Planificar' };
   }, [disciplineMissing, reconcileWeekly]);
+
+  const activeProductions = productions.filter((production) => production.status !== 'published');
+  const focusProduction = useMemo(() => {
+    const base = activeStage
+      ? activeProductions.filter((production) => production.status === activeStage)
+      : activeProductions;
+    if (focusedProductionId) {
+      const match = base.find((production) => production.id === focusedProductionId);
+      if (match) return match;
+    }
+    return [...base].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
+  }, [activeProductions, activeStage, focusedProductionId]);
+  const focusChecklist = focusProduction ? getChecklistStatus(focusProduction) : null;
+  const focusOptions = useMemo(() => {
+    return activeProductions.map((production) => ({
+      id: production.id,
+      title: production.title,
+    }));
+  }, [activeProductions]);
+
+  const buildAiUrl = (profile: string, params: Record<string, string | null | undefined>) => {
+    const search = new URLSearchParams();
+    search.set('profile', profile);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) search.set(key, value);
+    });
+    return `/ai?${search.toString()}`;
+  };
 
   const handleQuickPublish = async (targetDay: 'tuesday' | 'friday') => {
     if (!selectedChannelId) {
@@ -759,16 +821,136 @@ function DashboardContent() {
     return disciplineMissing > 0 ? 'tue' : 'fri';
   }, [reconcileWeekly, disciplineMissing]);
 
-  const handleDockRegister = () => {
+  const handleDockRegister = useCallback(() => {
     openDrawerForSlot(nextSlot);
-  };
+  }, [nextSlot]);
 
-  const handleDockPlan = () => {
+  const handleDockPlan = useCallback(() => {
     setActiveTab('calendar');
     if (reduceMotion) {
       calendarRef.current?.scrollIntoView({ behavior: 'auto', block: 'start' });
     } else {
       calendarRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [reduceMotion]);
+
+  const nextAction = useMemo(() => {
+    if (!focusProduction) {
+      return {
+        label: 'No hay producciones activas. Crea la primera para empezar el pipeline.',
+        action: 'Crear contenido',
+        onClick: () => setShowModal(true),
+      };
+    }
+    if (focusProduction && focusChecklist) {
+      if (!focusChecklist.scriptReady) {
+        return {
+          label: 'Falta guion para avanzar la producción.',
+          action: 'Generar guion',
+          onClick: () => router.push(buildAiUrl('script_architect', {
+            ideaId: focusProduction.idea_id ?? null,
+            channelId: focusProduction.channel_id ?? null,
+          })),
+        };
+      }
+      if (!focusChecklist.seoReady) {
+        return {
+          label: 'Falta SEO para preparar la publicación.',
+          action: 'Generar SEO',
+          onClick: () => router.push(buildAiUrl('titles_thumbs', {
+            ideaId: focusProduction.idea_id ?? null,
+            scriptId: focusProduction.script_id ?? null,
+            channelId: focusProduction.channel_id ?? null,
+          })),
+        };
+      }
+      if (!focusChecklist.thumbnailReady) {
+        return {
+          label: 'Falta miniatura aprobada.',
+          action: 'Ir a miniaturas',
+          onClick: () => router.push(`/thumbnails${focusProduction.channel_id ? `?channelId=${focusProduction.channel_id}` : ''}`),
+        };
+      }
+      if (!focusChecklist.published) {
+        return {
+          label: 'Listo para publicar. Registrá el enlace.',
+          action: 'Marcar publicado',
+          onClick: () => setPublishTarget(focusProduction),
+        };
+      }
+    }
+
+    return {
+      label: nextStepCopy.label,
+      action: nextStepCopy.action,
+      onClick: nextStepCopy.action === 'Registrar' ? handleDockRegister : handleDockPlan,
+    };
+  }, [focusProduction, focusChecklist, nextStepCopy, router, handleDockRegister, handleDockPlan]);
+
+  const stageCtas = useMemo(() => {
+    if (!focusProduction) return {};
+    const stageKey = focusProduction.status as keyof PipelineStats;
+    return {
+      [stageKey]: {
+        label: nextAction.action,
+        onClick: nextAction.onClick,
+      },
+    } as Partial<Record<keyof PipelineStats, { label: string; onClick: () => void }>>;
+  }, [focusProduction, nextAction]);
+
+  const handleFocusSearch = (value: string) => {
+    setFocusSearch(value);
+    if (!value) {
+      setFocusedProductionId(null);
+      return;
+    }
+    const direct = focusOptions.find((option) => option.id === value);
+    if (direct) {
+      setFocusedProductionId(direct.id);
+      return;
+    }
+    const match = focusOptions.find((option) => option.title.toLowerCase() === value.toLowerCase());
+    if (match) {
+      setFocusedProductionId(match.id);
+    }
+  };
+
+  const toggleProductionSelection = (id: string) => {
+    setSelectedProductionIds((current) => current.includes(id)
+      ? current.filter((item) => item !== id)
+      : [...current, id]
+    );
+  };
+
+  const clearProductionSelection = () => setSelectedProductionIds([]);
+
+  const bulkUpdateProductions = async (status: string) => {
+    if (selectedProductionIds.length === 0) return;
+    try {
+      await Promise.all(selectedProductionIds.map((id) => authFetch(`/api/productions?id=${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      })));
+      clearProductionSelection();
+      fetchData();
+      addToast('Producciones actualizadas', 'success');
+    } catch {
+      addToast('Error al actualizar producciones', 'error');
+    }
+  };
+
+  const bulkUpdateTargetDate = async (date: string) => {
+    if (selectedProductionIds.length === 0) return;
+    try {
+      await Promise.all(selectedProductionIds.map((id) => authFetch(`/api/productions?id=${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ targetDate: date || null }),
+      })));
+      clearProductionSelection();
+      fetchData();
+      addToast('Fecha objetivo actualizada', 'success');
+    } catch {
+      addToast('Error al actualizar fecha objetivo', 'error');
     }
   };
 
@@ -802,18 +984,6 @@ function DashboardContent() {
   };
 
   const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions);
-  const activeProductions = productions.filter(p => p.status !== 'published');
-  const focusProduction = useMemo(() => {
-    const base = activeStage
-      ? activeProductions.filter((production) => production.status === activeStage)
-      : activeProductions;
-    if (focusedProductionId) {
-      const match = base.find((production) => production.id === focusedProductionId);
-      if (match) return match;
-    }
-    return [...base].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0] ?? null;
-  }, [activeProductions, activeStage, focusedProductionId]);
-  const focusChecklist = focusProduction ? getChecklistStatus(focusProduction) : null;
   const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
   const publishMissing = publishChecklist
     ? [
@@ -923,6 +1093,11 @@ function DashboardContent() {
       <Header />
       <PageTransition className="flex-1">
           <main className="w-full max-w-full px-4 sm:px-6 lg:px-12 py-6 sm:py-8 pb-24 lg:pb-8">
+            <datalist id="focus-productions">
+              {focusOptions.map((option) => (
+                <option key={option.id} value={option.title} />
+              ))}
+            </datalist>
             {/* Context bar */}
             <motion.div
               className="surface-card glow-hover p-4 sm:p-5 mb-6"
@@ -1033,6 +1208,62 @@ function DashboardContent() {
               </motion.div>
             )}
 
+            <motion.div
+              className="surface-card glow-hover p-5 mb-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-yellow-400/90">Impacto</p>
+                  <p className="text-sm text-slate-300">Resumen de avance y valor generado.</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Publicados</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{publishedTotal}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Ahorro estimado</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{estimatedHoursSaved}h</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Racha</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{streakCurrent} / {streakBest} semanas</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div
+              className="surface-card glow-hover p-5 mb-6"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-yellow-400/90">KPIs</p>
+                  <p className="text-sm text-slate-300">Conversion y cumplimiento semanal.</p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Idea → Guion</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{ideaToScriptRate}%</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Cumplimiento semanal</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{weeklyCompletion}%</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Activas</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{activeProductions.length}</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
             {/* Header */}
             <motion.div
               className="mb-8 sm:mb-10"
@@ -1118,6 +1349,7 @@ function DashboardContent() {
                       stats={pipelineStats}
                       activeStage={activeStage}
                       onStageClick={(stage) => setActiveStage((current) => (current === stage ? null : stage))}
+                      stageCtas={stageCtas}
                     />
                   </div>
                 )}
@@ -1135,15 +1367,15 @@ function DashboardContent() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-3">
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-3 text-center sm:text-left">
                         {DASHBOARD_COPY.weeklyStreak.title}
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
                         <div>
                           <p className="text-xs text-slate-400">{DASHBOARD_COPY.weeklyStreak.current}</p>
                           <p className="text-lg font-semibold text-white">🔥 {streakCurrent} semanas</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-center sm:text-right">
                           <p className="text-xs text-slate-400">{DASHBOARD_COPY.weeklyStreak.best}</p>
                           <p className="text-lg font-semibold text-white">🏆 {streakBest} semanas</p>
                         </div>
@@ -1154,7 +1386,7 @@ function DashboardContent() {
                           .map((week, index) => (
                             <span
                               key={`${week.status}-${index}`}
-                              className={`h-3 w-3 rounded-full ${streakColors[week.status] || 'bg-gray-700'}`}
+                              className={`h-3 w-3 rounded-full ${WEEKLY_STATUS_STYLES[week.status]?.dot || 'bg-gray-700'}`}
                               title={week.status}
                             />
                           ))}
@@ -1225,14 +1457,49 @@ function DashboardContent() {
                         {focusOpen && (
                           <div className="mt-3 space-y-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
                             <div>
+                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Buscar producción</label>
+                              <div className="relative mt-2">
+                                <input
+                                  value={focusSearch}
+                                  onChange={(event) => handleFocusSearch(event.target.value)}
+                                  list="focus-productions"
+                                  placeholder="Escribe un título"
+                                  className="w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 pr-8 text-xs text-slate-200"
+                                />
+                                {focusSearch && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleFocusSearch('')}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                    aria-label="Limpiar búsqueda"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div>
                               <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Próximo paso</div>
-                              <p className="mt-1 text-sm text-slate-200">{nextStepCopy.label}</p>
+                              {focusProduction && (
+                                <div className="mt-1 text-xs text-slate-400">
+                                  <p className="truncate">{focusProduction.title}</p>
+                                  <p className="mt-1 flex flex-wrap items-center gap-2">
+                                    <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
+                                    <span className="text-slate-600">•</span>
+                                    <span>{stageLabels[focusProduction.status] ?? focusProduction.status}</span>
+                                  </p>
+                                </div>
+                              )}
+                              {!focusProduction && (
+                                <p className="mt-2 text-xs text-slate-400">Aún no hay producciones activas.</p>
+                              )}
+                              <p className="mt-1 text-sm text-slate-200">{nextAction.label}</p>
                               <button
                                 type="button"
-                                onClick={nextStepCopy.action === 'Registrar' ? handleDockRegister : handleDockPlan}
+                                onClick={nextAction.onClick}
                                 className="mt-3 w-full rounded-lg bg-yellow-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
                               >
-                                {nextStepCopy.action}
+                                {nextAction.action}
                               </button>
                             </div>
                             <div>
@@ -1305,8 +1572,8 @@ function DashboardContent() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-center sm:text-left">
                           <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
                             {DASHBOARD_COPY.weeklyStatus.title}
                           </div>
@@ -1316,7 +1583,7 @@ function DashboardContent() {
                             </p>
                           )}
                         </div>
-                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${weeklyStyle.badge}`}>
+                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${weeklyStyle.badge} self-center sm:self-auto`}>
                           <span className={`h-2 w-2 rounded-full ${weeklyStyle.dot}`} />
                           {weeklyStatus?.status ?? 'OK'}
                         </span>
@@ -1360,7 +1627,25 @@ function DashboardContent() {
                       </div>
                         <div className="divide-y divide-gray-800/50">
                           {filteredIdeas.length === 0 ? (
-                          <div className="px-4 sm:px-5 py-6 text-slate-300">{DASHBOARD_COPY.pipeline.noIdeas}</div>
+                          <div className="px-4 sm:px-5 py-6 text-slate-300">
+                            <p className="mb-3">{DASHBOARD_COPY.pipeline.noIdeas}</p>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/ai?profile=evergreen_ideas${selectedChannelId ? `&channelId=${selectedChannelId}` : ''}`)}
+                                className="rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                              >
+                                Generar ideas
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowModal(true)}
+                                className="rounded-lg border border-gray-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300"
+                              >
+                                Crear manual
+                              </button>
+                            </div>
+                          </div>
                         ) : (
                           filteredIdeas.slice(0, 6).map((idea) => (
                             <div key={idea.id} className="px-4 sm:px-5 py-4">
@@ -1387,6 +1672,15 @@ function DashboardContent() {
                       onClearFilter={() => setActiveStage(null)}
                       title={activeStage ? DASHBOARD_COPY.pipeline.inStage : DASHBOARD_COPY.pipeline.active}
                       showCreateButton={false}
+                      emptyActions={[
+                        { label: 'Crear producción', onClick: () => setShowModal(true) },
+                        { label: 'AI Studio', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
+                      ]}
+                      selectedIds={selectedProductionIds}
+                      onToggleSelection={toggleProductionSelection}
+                      onClearSelection={clearProductionSelection}
+                      onBulkStatus={bulkUpdateProductions}
+                      onBulkTargetDate={bulkUpdateTargetDate}
                     />
                   )}
                   </div>
@@ -1426,7 +1720,7 @@ function DashboardContent() {
                                 </span>
                                 {!focusChecklist?.scriptReady && (
                                   <Link
-                                    href={`/ai?profile=script_architect&channelId=${selectedChannelId || ''}`}
+                                    href={`/ai?profile=script_architect${focusProduction?.idea_id ? `&ideaId=${focusProduction.idea_id}` : ''}${focusProduction?.channel_id ? `&channelId=${focusProduction.channel_id}` : ''}`}
                                     className="text-emerald-300 hover:text-emerald-200"
                                   >
                                     Generar
@@ -1440,7 +1734,7 @@ function DashboardContent() {
                                 </span>
                                 {!focusChecklist?.seoReady && (
                                   <Link
-                                    href={`/ai?profile=titles_thumbs&channelId=${selectedChannelId || ''}`}
+                                    href={`/ai?profile=titles_thumbs${focusProduction?.idea_id ? `&ideaId=${focusProduction.idea_id}` : ''}${focusProduction?.script_id ? `&scriptId=${focusProduction.script_id}` : ''}${focusProduction?.channel_id ? `&channelId=${focusProduction.channel_id}` : ''}`}
                                     className="text-sky-300 hover:text-sky-200"
                                   >
                                     Generar
@@ -1454,7 +1748,7 @@ function DashboardContent() {
                                 </span>
                                 {!focusChecklist?.thumbnailReady && (
                                   <Link
-                                    href={`/thumbnails`}
+                                    href={`/thumbnails${focusProduction?.channel_id ? `?channelId=${focusProduction.channel_id}` : ''}`}
                                     className="text-yellow-300 hover:text-yellow-200"
                                   >
                                     Ver
@@ -1479,19 +1773,69 @@ function DashboardContent() {
                             </div>
                           </div>
                         ) : (
-                          <div className="mt-3 text-xs text-slate-400">No hay producciones activas.</div>
+                          <div className="mt-3 space-y-3 text-xs text-slate-400">
+                            <p>No hay producciones activas.</p>
+                            <div className="flex flex-col gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setShowModal(true)}
+                                className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                              >
+                                Crear contenido
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => router.push('/ideas?new=1')}
+                                className="w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                              >
+                                Crear idea
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
 
                       <div className="surface-card glow-hover p-4 sm:p-5">
+                        <div>
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Buscar producción</label>
+                          <div className="relative mt-2">
+                            <input
+                              value={focusSearch}
+                              onChange={(event) => handleFocusSearch(event.target.value)}
+                              list="focus-productions"
+                              placeholder="Escribe un título"
+                              className="w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 pr-8 text-xs text-slate-200"
+                            />
+                            {focusSearch && (
+                              <button
+                                type="button"
+                                onClick={() => handleFocusSearch('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                                aria-label="Limpiar búsqueda"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        </div>
                         <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Próximo paso</div>
-                        <p className="mt-3 text-sm text-slate-200">{nextStepCopy.label}</p>
+                        {focusProduction && (
+                          <div className="mt-2 text-xs text-slate-400">
+                            <p className="truncate">{focusProduction.title}</p>
+                            <p className="mt-1 flex flex-wrap items-center gap-2">
+                              <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
+                              <span className="text-slate-600">•</span>
+                              <span>{stageLabels[focusProduction.status] ?? focusProduction.status}</span>
+                            </p>
+                          </div>
+                        )}
+                        <p className="mt-3 text-sm text-slate-200">{nextAction.label}</p>
                         <button
                           type="button"
-                          onClick={nextStepCopy.action === 'Registrar' ? handleDockRegister : handleDockPlan}
+                          onClick={nextAction.onClick}
                           className="mt-4 w-full rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
                         >
-                          {nextStepCopy.action}
+                          {nextAction.action}
                         </button>
                       </div>
 
@@ -1585,7 +1929,7 @@ function DashboardContent() {
                       transition={{ delay: 0.15 }}
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                        <div>
+                        <div className="text-center sm:text-left">
                           <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.calendar.title}</div>
                           <p className="text-xs sm:text-sm text-slate-300">{DASHBOARD_COPY.calendar.subtitle}</p>
                         </div>
@@ -1794,7 +2138,7 @@ function DashboardContent() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
                     >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4">{DASHBOARD_COPY.social.title}</div>
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4 text-center sm:text-left">{DASHBOARD_COPY.social.title}</div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3">
                         {DASHBOARD_COPY.social.items.map((item) => {
                           const iconMap: Record<string, ReactNode> = {
@@ -1901,7 +2245,7 @@ function DashboardContent() {
         <div className="fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/60" onClick={() => setDrawerOpen(false)} />
           <div
-            className={`absolute inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t border-gray-800 bg-gray-950 p-6 lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:max-h-none lg:w-[min(92vw,420px)] lg:rounded-none lg:border-l ${
+            className={`absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-gray-800 bg-gray-950 p-6 lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:max-h-none lg:w-[min(92vw,420px)] lg:rounded-none lg:border-l ${
               reduceMotion ? '' : 'transition-transform duration-300'
             }`}
           >
@@ -1995,7 +2339,7 @@ function DashboardContent() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="dashboard-modal-title"
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg max-h-[85vh] overflow-y-auto"
+            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg max-h-[85dvh] overflow-y-auto"
             ref={modalRef}
             tabIndex={-1}
             initial={{ scale: 0.9, opacity: 0 }}
@@ -2088,6 +2432,11 @@ function DashboardContent() {
                     onChange={(event) => {
                       setPublishPlatformId(event.target.value);
                       setPublishPlatformTouched(true);
+                    }}
+                    onBlur={() => {
+                      if (!publishUrl && publishPlatformId.trim()) {
+                        setPublishUrl(`https://www.youtube.com/watch?v=${publishPlatformId.trim()}`);
+                      }
                     }}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
                     placeholder="YouTube videoId"

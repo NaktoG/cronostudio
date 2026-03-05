@@ -10,6 +10,8 @@
     "test": "mkdir -p .tmp && TMPDIR=$(pwd)/.tmp vitest",
     "test:run": "mkdir -p .tmp && TMPDIR=$(pwd)/.tmp vitest run",
     "test:coverage": "mkdir -p .tmp && TMPDIR=$(pwd)/.tmp vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "prepare": "husky"
   },
   "dependencies": {
@@ -30,6 +32,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

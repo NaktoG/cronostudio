@@ -54,9 +54,9 @@ async function resolveChannel(userId: string, channelId?: string | null): Promis
   return { id: result.rows[0].id, name: result.rows[0].name, source: 'default' };
 }
 
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getAuthUser(request)?.userId ?? null;
+    const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }
@@ -120,14 +120,14 @@ export async function GET(request: NextRequest) {
       isoWeek,
       source: 'stored',
     }));
-  } catch (error) {
+  } catch {
     return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener metas semanales' }, { status: 500 }));
   }
-}
+});
 
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getAuthUser(request)?.userId ?? null;
+    const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }

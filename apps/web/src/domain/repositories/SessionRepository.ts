@@ -9,6 +9,7 @@ export interface SessionRecord {
 
 export interface SessionRepository {
   create(userId: string, refreshTokenHash: string, expiresAt: Date): Promise<SessionRecord>;
+  findValidById(sessionId: string): Promise<SessionRecord | null>;
   findValidByTokenHash(refreshTokenHash: string): Promise<SessionRecord | null>;
   revokeById(sessionId: string): Promise<void>;
   revokeByTokenHash(refreshTokenHash: string): Promise<void>;

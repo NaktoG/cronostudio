@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from 'react';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -13,24 +13,16 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 const THEME_STORAGE_KEY = 'cronostudio_theme';
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-    const [theme, setTheme] = useState<ThemeMode>(() => {
-        if (typeof window === 'undefined') return 'dark';
-        const stored = localStorage.getItem(THEME_STORAGE_KEY) as ThemeMode | null;
-        if (stored === 'light' || stored === 'dark') {
-            return stored;
-        }
-        const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-        return prefersLight ? 'light' : 'dark';
-    });
+    const theme: ThemeMode = 'dark';
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        document.documentElement.dataset.theme = theme;
-        localStorage.setItem(THEME_STORAGE_KEY, theme);
+        document.documentElement.dataset.theme = 'dark';
+        localStorage.removeItem(THEME_STORAGE_KEY);
     }, [theme]);
 
     const toggleTheme = useCallback(() => {
-        setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
+        // Modo oscuro fijo. No-op intencional.
     }, []);
 
     const value = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme]);

@@ -18,6 +18,39 @@ export const dynamic = 'force-dynamic';
 
 const TIME_ZONE = 'Europe/Madrid';
 
+type PlaylistItem = {
+  videoId?: string;
+  title?: string;
+  publishedAt?: string;
+};
+
+type YouTubeEvidenceVideo = {
+  videoId: string;
+  title: string;
+  publishedAt: string;
+  url: string;
+};
+
+type YoutubeEvidenceEntry = {
+  matched: boolean;
+  video: YouTubeEvidenceVideo | null;
+};
+
+type SuggestedAction = {
+  type: 'register_publish_event';
+  slot: 'tue' | 'fri';
+  payload: {
+    channelId: string;
+    targetDay: 'tuesday' | 'friday';
+    publishedAt?: string | null;
+    platform: 'youtube';
+    platformId?: string | null;
+    publishedUrl?: string | null;
+    source: 'youtube';
+    note: string;
+  };
+};
+
 function buildVideoUrl(videoId: string) {
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
@@ -32,7 +65,7 @@ function normalizeSlotDate(date: Date, time: string, endOfDay = false) {
 
 export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getAuthUser(request)?.userId ?? null;
+    const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }
@@ -116,12 +149,13 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     });
 
     const items = await fetchPlaylistItems(accessToken, uploads.uploadsPlaylistId, 50);
-    const weekItems = items.filter((item: { publishedAt: string }) => {
+    const weekItems = (items as PlaylistItem[]).filter((item) => {
+      if (!item.publishedAt) return false;
       const published = new Date(item.publishedAt);
       return published >= weekStart && published <= weekEnd;
     });
 
-    const youtubeEvidence: Record<string, { matched: boolean; video: any | null }> = {
+    const youtubeEvidence: Record<'tue' | 'fri', YoutubeEvidenceEntry> = {
       tue: { matched: false, video: null },
       fri: { matched: false, video: null },
     };
@@ -138,10 +172,10 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
         youtubeEvidence[slot.key] = {
           matched: true,
           video: {
-            videoId: match.videoId,
-            title: match.title,
-            publishedAt: match.publishedAt,
-            url: buildVideoUrl(match.videoId),
+            videoId: match.videoId ?? '',
+            title: match.title ?? '',
+            publishedAt: match.publishedAt ?? '',
+            url: buildVideoUrl(match.videoId ?? ''),
           },
         };
       }
@@ -174,7 +208,7 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     }
 
     const reconciliation: Record<string, string> = { tue: 'ok', fri: 'ok' };
-    const suggestedActions: any[] = [];
+    const suggestedActions: SuggestedAction[] = [];
 
     for (const slot of expectedSlots) {
       const key = slot.key as 'tue' | 'fri';

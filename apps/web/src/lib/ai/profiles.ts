@@ -37,6 +37,7 @@ export type AiProfile<Input, Output> = {
 const EvergreenIdeasInputSchema = z.object({
   channelId: z.string().uuid(),
   topicSeed: z.string().max(200).optional(),
+  styleGuide: z.string().max(200).optional(),
 });
 
 const EvergreenIdeasOutputSchema = z.object({
@@ -53,6 +54,7 @@ const EvergreenIdeasOutputSchema = z.object({
 const ScriptArchitectInputSchema = z.object({
   channelId: z.string().uuid(),
   ideaId: z.string().uuid(),
+  styleGuide: z.string().max(200).optional(),
 });
 
 const ScriptArchitectOutputSchema = z.object({
@@ -149,8 +151,9 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
         user: [
           buildPromptHeader(channel),
           data.topicSeed ? `Tema base: ${data.topicSeed}` : 'Tema base: libre',
+          data.styleGuide ? `Estilo: ${data.styleGuide}` : null,
           'Entrega exactamente 10 ideas.',
-        ].join('\n'),
+        ].filter(Boolean).join('\n'),
       };
     },
     apply: async (output, context) => {
@@ -200,8 +203,9 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
         user: [
           buildPromptHeader(channel),
           `Idea ID: ${data.ideaId}`,
+          data.styleGuide ? `Estilo: ${data.styleGuide}` : null,
           'Entrega un guion completo listo para grabar.',
-        ].join('\n'),
+        ].filter(Boolean).join('\n'),
       };
     },
     apply: async (output, context) => {

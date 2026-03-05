@@ -28,7 +28,7 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
       return withSecurityHeaders(NextResponse.json({ error: 'Not found' }, { status: 404 }));
     }
 
-    const userId = getAuthUser(request)?.userId ?? null;
+    const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }

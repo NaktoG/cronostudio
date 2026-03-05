@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
+import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { query } from '@/lib/db';
 import { getDateFromIsoWeek, getIsoWeekInfo, startOfIsoWeek, endOfIsoWeek } from '@/lib/dates';
 import { evaluateEstadoSemana, ProductionCheck, WeeklyGoalConfig, WeeklyPipelineState } from '@/lib/weeklyStatus';
@@ -511,9 +512,9 @@ function buildTasks(
   return unique.slice(0, 3);
 }
 
-export async function GET(request: NextRequest) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
-    const userId = getAuthUser(request)?.userId ?? null;
+    const userId = (await getAuthUser(request))?.userId ?? null;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }
@@ -577,7 +578,7 @@ export async function GET(request: NextRequest) {
       last4Weeks: streak.last4Weeks,
       tasks,
     }));
-  } catch (error) {
+  } catch {
     return withSecurityHeaders(NextResponse.json({ error: 'Error al evaluar la semana' }, { status: 500 }));
   }
-}
+});

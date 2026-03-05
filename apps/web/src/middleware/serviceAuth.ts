@@ -64,7 +64,7 @@ export async function authenticateUserOrService(request: NextRequest, options: S
   const ownerOnly = options.ownerOnly ?? false;
   const requireAuth = options.requireAuth ?? true;
 
-  const authUser = getAuthUser(request);
+  const authUser = await getAuthUser(request);
   if (authUser) {
     if (ownerOnly && authUser.role !== 'owner') {
       const response = buildErrorResponse(403, 'Forbidden');

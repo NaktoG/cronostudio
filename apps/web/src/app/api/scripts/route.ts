@@ -28,6 +28,16 @@ const UpdateScriptSchema = z.object({
     status: z.enum(['draft', 'review', 'approved', 'recorded']).optional(),
 });
 
+const ScriptQuerySchema = z.object({
+    status: z.enum(['draft', 'review', 'approved', 'recorded']).optional(),
+    ideaId: z.string().uuid().optional(),
+    channelId: z.string().uuid().optional(),
+});
+
+function isValidationError(error: unknown): boolean {
+    return error instanceof Error && error.message.startsWith('Validation error:');
+}
+
 function calculateMetrics(intro?: string, body?: string, cta?: string, outro?: string) {
     const fullContent = [intro, body, cta, outro].filter(Boolean).join('\n\n');
     const wordCount = fullContent.split(/\s+/).filter(Boolean).length;
@@ -37,16 +47,19 @@ function calculateMetrics(intro?: string, body?: string, cta?: string, outro?: s
 
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { searchParams } = new URL(request.url);
-        const status = searchParams.get('status');
-        const ideaId = searchParams.get('ideaId');
-        const channelId = searchParams.get('channelId');
+        const queryParams = validateInput(ScriptQuerySchema, {
+            status: searchParams.get('status') || undefined,
+            ideaId: searchParams.get('ideaId') || undefined,
+            channelId: searchParams.get('channelId') || undefined,
+        });
+        const { status, ideaId, channelId } = queryParams;
 
         let queryText = `SELECT s.*, i.title as idea_title FROM scripts s LEFT JOIN ideas i ON s.idea_id = i.id WHERE s.user_id = $1`;
         const params: (string | null)[] = [userId];
@@ -61,13 +74,16 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         return withSecurityHeaders(NextResponse.json(result.rows));
     } catch (error) {
         console.error('Error fetching scripts:', error);
+        if (error instanceof z.ZodError || isValidationError(error)) {
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+        }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener guiones' }, { status: 500 }));
     }
 });
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -86,7 +102,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
     } catch (error) {
         console.error('Error creating script:', error);
-        if (error instanceof z.ZodError) {
+        if (error instanceof z.ZodError || isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al crear guion' }, { status: 500 }));
@@ -95,7 +111,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
 
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -140,13 +156,16 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
         console.error('Error updating script:', error);
+        if (isValidationError(error)) {
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+        }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar guion' }, { status: 500 }));
     }
 }));
 
 export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));

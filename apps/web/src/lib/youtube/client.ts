@@ -57,6 +57,16 @@ export async function fetchUploadsPlaylist(accessToken: string) {
   };
 }
 
+type PlaylistItemResponse = {
+  contentDetails?: {
+    videoId?: string;
+    videoPublishedAt?: string;
+  };
+  snippet?: {
+    title?: string;
+  };
+};
+
 export async function fetchPlaylistItems(accessToken: string, playlistId: string, limit: number) {
   const url = new URL(`${YOUTUBE_API_BASE}/playlistItems`);
   url.searchParams.set('part', 'snippet,contentDetails');
@@ -73,11 +83,11 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
     throw error;
   }
 
-  const data = await response.json();
-  return (data.items || []).map((item: any) => ({
-    videoId: item.contentDetails?.videoId as string,
-    title: item.snippet?.title as string,
-    publishedAt: item.contentDetails?.videoPublishedAt as string,
+  const data = (await response.json()) as { items?: PlaylistItemResponse[] };
+  return (data.items ?? []).map((item) => ({
+    videoId: item.contentDetails?.videoId,
+    title: item.snippet?.title,
+    publishedAt: item.contentDetails?.videoPublishedAt,
   }));
 }
 

@@ -25,9 +25,13 @@ const UpdateThumbnailSchema = z.object({
     status: z.enum(['pending', 'designing', 'designed', 'approved']).optional(),
 });
 
+function isValidationError(error: unknown): boolean {
+    return error instanceof Error && error.message.startsWith('Validation error:');
+}
+
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -38,11 +42,12 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         const channelId = searchParams.get('channelId');
 
         let queryText = `
-            SELECT t.*, s.title as script_title
+            SELECT t.*, s.title as script_title, p.id as production_id, c.id as channel_id
             FROM thumbnails t
             LEFT JOIN scripts s ON t.script_id = s.id
             LEFT JOIN ideas i ON s.idea_id = i.id
             LEFT JOIN videos v ON t.video_id = v.id
+            LEFT JOIN productions p ON (p.script_id = t.script_id OR p.video_id = t.video_id) AND p.user_id = $1
             LEFT JOIN channels c ON c.id = COALESCE(i.channel_id, v.channel_id)
             WHERE t.user_id = $1`;
         const params: (string | null)[] = [userId];
@@ -67,7 +72,7 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -105,7 +110,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
     } catch (error) {
         console.error('Error creating thumbnail:', error);
-        if (error instanceof z.ZodError) {
+        if (error instanceof z.ZodError || isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al crear miniatura' }, { status: 500 }));
@@ -114,7 +119,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
 
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -171,13 +176,16 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
         console.error('Error updating thumbnail:', error);
+        if (isValidationError(error)) {
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+        }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar miniatura' }, { status: 500 }));
     }
 }));
 
 export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));

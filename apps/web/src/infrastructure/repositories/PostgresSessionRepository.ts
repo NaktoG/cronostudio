@@ -26,6 +26,19 @@ export class PostgresSessionRepository implements SessionRepository {
     return this.toDomain(result.rows[0]);
   }
 
+  async findValidById(sessionId: string): Promise<SessionRecord | null> {
+    const result = await query(
+      `SELECT id, user_id, refresh_token_hash, expires_at, created_at, revoked_at
+       FROM auth_sessions
+       WHERE id = $1 AND revoked_at IS NULL AND expires_at > NOW()
+       LIMIT 1`,
+      [sessionId]
+    );
+
+    if (result.rows.length === 0) return null;
+    return this.toDomain(result.rows[0]);
+  }
+
   async revokeById(sessionId: string): Promise<void> {
     await query(
       'UPDATE auth_sessions SET revoked_at = NOW() WHERE id = $1 AND revoked_at IS NULL',

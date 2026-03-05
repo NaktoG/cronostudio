@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { Lightbulb, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Header from '../components/Header';
@@ -10,111 +10,41 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { SEO_COPY } from '../content/pages/seo';
+import { SEO_SCORE_THRESHOLDS, SEO_SCORE_LABELS, getSeoScoreLabel } from '@/app/content/status/seo';
 import { useRouter } from 'next/navigation';
-
-interface SeoData {
-    id: string;
-    optimized_title: string;
-    description: string | null;
-    tags: string[];
-    keywords: string[];
-    score: number;
-    video_title: string | null;
-    youtube_video_id: string | null;
-    created_at: string;
-}
-
-interface Channel {
-    id: string;
-    name: string;
-}
+import { useChannels } from '@/app/hooks/useChannels';
+import { useSeoData } from '@/app/seo/hooks/useSeoData';
+import { copyToClipboard } from '@/lib/clipboard';
 
 export default function SeoPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const router = useRouter();
-    const [seoData, setSeoData] = useState<SeoData[]>([]);
-    const [channels, setChannels] = useState<Channel[]>([]);
-    const [selectedChannel, setSelectedChannel] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    const fetchSeoData = useCallback(async (signal?: AbortSignal) => {
+    const { channels } = useChannels({ isAuthenticated, authFetch });
+    const { state, actions } = useSeoData({ isAuthenticated, authFetch, addToast });
+    const { seoData, loading, error, selectedChannel, selectedIds, ideaOptions, scriptOptions } = state;
+    const { setSelectedChannel, refreshSeo, toggleSelection, clearSelection, copySelected, copyItem } = actions;
+    const [showPresets, setShowPresets] = useState(false);
+    const handlePresetCopy = async (value: string) => {
         try {
-            setLoading(true);
-            if (!isAuthenticated) {
-                setSeoData([]);
-                setError(null);
-                return;
-            }
-            const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
-            const response = await authFetch(`/api/seo${query}`, { signal });
-            if (!response.ok) {
-                throw new Error(SEO_COPY.errors.load);
-            }
-            setSeoData(await response.json());
-            setError(null);
-        } catch (err) {
-            if (signal?.aborted) return;
-            const message = err instanceof Error ? err.message : SEO_COPY.errors.unknown;
-            setError(message);
-            addToast(message, 'error');
-        } finally {
-            if (signal?.aborted) return;
-            setLoading(false);
+            await copyToClipboard(value);
+            addToast(SEO_COPY.toasts.copied, 'success');
+        } catch {
+            addToast(SEO_COPY.toasts.error, 'error');
         }
-    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
-
-    useEffect(() => {
-        const controller = new AbortController();
-        fetchSeoData(controller.signal);
-        return () => controller.abort();
-    }, [fetchSeoData]);
-
-    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
-        try {
-            if (!isAuthenticated) {
-                setChannels([]);
-                return;
-            }
-            const response = await authFetch('/api/channels', { signal });
-            if (response.ok) {
-                setChannels(await response.json());
-            }
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error fetching channels:', err);
-        }
-    }, [isAuthenticated, authFetch]);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        const controller = new AbortController();
-        fetchChannels(controller.signal);
-        return () => controller.abort();
-    }, [isAuthenticated, fetchChannels]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
-        if (storedChannel && storedChannel !== selectedChannel) {
-            setSelectedChannel(storedChannel);
-        }
-    }, [selectedChannel]);
+    };
 
     const getScoreColor = (score: number) => {
-        if (score >= 80) return 'text-green-400';
-        if (score >= 60) return 'text-yellow-400';
-        if (score >= 40) return 'text-orange-400';
+        if (score >= SEO_SCORE_THRESHOLDS.excellent) return 'text-green-400';
+        if (score >= SEO_SCORE_THRESHOLDS.good) return 'text-yellow-400';
+        if (score >= SEO_SCORE_THRESHOLDS.ok) return 'text-orange-400';
         return 'text-red-400';
     };
 
     const getScoreLabel = (score: number) => {
-        if (score >= 80) return SEO_COPY.score.excellent;
-        if (score >= 60) return SEO_COPY.score.good;
-        if (score >= 40) return SEO_COPY.score.ok;
-        return SEO_COPY.score.bad;
+        const labelKey = getSeoScoreLabel(score);
+        return SEO_SCORE_LABELS[labelKey];
     };
 
     return (
@@ -122,6 +52,7 @@ export default function SeoPage() {
             <div className="min-h-screen flex flex-col">
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
+                    <h1 className="sr-only">{SEO_COPY.title}</h1>
                     <motion.div
                         className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-start sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
@@ -160,6 +91,39 @@ export default function SeoPage() {
                                 </select>
                             </div>
                         )}
+                        {selectedIds.length > 0 && (
+                            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                <span className="text-xs text-slate-400">{selectedIds.length} seleccionados</span>
+                                <button
+                                    type="button"
+                                    onClick={() => copySelected('title')}
+                                    className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                                >
+                                    Copiar títulos
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => copySelected('description')}
+                                    className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                >
+                                    Copiar descripciones
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => copySelected('tags')}
+                                    className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                >
+                                    Copiar tags
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={clearSelection}
+                                    className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                >
+                                    Limpiar
+                                </button>
+                            </div>
+                        )}
                     </motion.div>
 
                     {/* Tips Card */}
@@ -193,7 +157,16 @@ export default function SeoPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                         >
-                            {error}
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <span>{error}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => refreshSeo()}
+                                    className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
+                                >
+                                    Reintentar
+                                </button>
+                            </div>
                         </motion.div>
                     ) : seoData.length === 0 ? (
                         <motion.div className="text-center py-20" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -224,10 +197,20 @@ export default function SeoPage() {
                         </motion.div>
                     ) : (
                         <motion.div className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                            <datalist id="seo-idea-options">
+                                {ideaOptions.map((idea) => (
+                                    <option key={idea.id} value={idea.id}>{idea.title}</option>
+                                ))}
+                            </datalist>
+                            <datalist id="seo-script-options">
+                                {scriptOptions.map((script) => (
+                                    <option key={script.id} value={script.id}>{script.title}</option>
+                                ))}
+                            </datalist>
                             {seoData.map((item, index) => (
                             <motion.div
                                 key={item.id}
-                                className="surface-panel glow-hover p-6 transition-all min-w-0"
+                                className={`surface-panel glow-hover p-6 transition-all min-w-0 ${selectedIds.includes(item.id) ? 'ring-2 ring-yellow-400/60' : ''}`}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.05 }}
@@ -235,13 +218,64 @@ export default function SeoPage() {
                                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-4">
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-3 mb-2">
+                                            <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(item.id)}
+                                                    onChange={() => toggleSelection(item.id)}
+                                                    aria-label={`Seleccionar SEO ${item.optimized_title}`}
+                                                    className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
+                                                />
+                                                Seleccionar
+                                            </label>
                                             <h3 className="text-lg font-semibold text-white break-words">
                                                 {item.optimized_title}
                                             </h3>
                                         </div>
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => copyItem(item, 'title')}
+                                                className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
+                                            >
+                                                Copiar título
+                                            </button>
+                                            {item.description && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyItem(item, 'description')}
+                                                    className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
+                                                >
+                                                    Copiar descripción
+                                                </button>
+                                            )}
+                                            {item.tags?.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyItem(item, 'tags')}
+                                                    className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
+                                                >
+                                                    Copiar tags
+                                                </button>
+                                            )}
+                                        </div>
                                             {item.video_title && (
                                                 <p className="text-sm text-gray-500">{SEO_COPY.videoPrefix} {item.video_title}</p>
                                             )}
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                <input
+                                                    type="text"
+                                                    list="seo-idea-options"
+                                                    placeholder="Idea ID"
+                                                    className="w-40 rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    list="seo-script-options"
+                                                    placeholder="Script ID"
+                                                    className="w-40 rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
+                                                />
+                                            </div>
                                         </div>
                                         <div className="text-right">
                                             <div className={`text-3xl font-bold ${getScoreColor(item.score)}`}>
@@ -272,13 +306,69 @@ export default function SeoPage() {
                                         </div>
                                     )}
 
+                                    {(item.suggestions?.titles?.length || item.suggestions?.thumbnailTexts?.length) && (
+                                        <div className="mt-2 rounded-lg border border-gray-800 bg-gray-900/60 p-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPresets((current) => !current)}
+                                                className="text-xs uppercase tracking-[0.2em] text-yellow-300"
+                                            >
+                                                {showPresets ? 'Ocultar presets' : 'Ver presets'}
+                                            </button>
+                                            {showPresets && (
+                                                <div className="mt-3 space-y-3">
+                                                    {item.suggestions?.titles?.length ? (
+                                                        <div>
+                                                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Títulos sugeridos</div>
+                                                            <div className="mt-2 flex flex-col gap-2">
+                                                                {item.suggestions.titles.slice(0, 6).map((title) => (
+                                                                    <button
+                                                                        key={title}
+                                                                        type="button"
+                                                                        onClick={() => handlePresetCopy(title)}
+                                                                        className="text-left text-xs text-slate-200 rounded-lg border border-gray-800 px-3 py-2 hover:border-yellow-400/50"
+                                                                    >
+                                                                        {title}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
+                                                    {item.suggestions?.thumbnailTexts?.length ? (
+                                                        <div>
+                                                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Textos de miniatura</div>
+                                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                                {item.suggestions.thumbnailTexts.slice(0, 6).map((text) => (
+                                                                    <button
+                                                                        key={text}
+                                                                        type="button"
+                                                                        onClick={() => handlePresetCopy(text)}
+                                                                        className="text-xs text-slate-200 rounded-full border border-gray-800 px-3 py-1 hover:border-yellow-400/50"
+                                                                    >
+                                                                        {text}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Score Bar */}
                                     <div className="mt-4 pt-4 border-t border-gray-800">
                                         <div className="flex items-center gap-4">
                                             <span className="text-xs text-gray-500">{SEO_COPY.scoreLabel}</span>
                                             <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
                                                 <motion.div
-                                                    className={`h-full ${item.score >= 80 ? 'bg-green-500' : item.score >= 60 ? 'bg-yellow-500' : item.score >= 40 ? 'bg-orange-500' : 'bg-red-500'}`}
+                                                    className={`h-full ${item.score >= SEO_SCORE_THRESHOLDS.excellent
+                                                        ? 'bg-green-500'
+                                                        : item.score >= SEO_SCORE_THRESHOLDS.good
+                                                            ? 'bg-yellow-500'
+                                                            : item.score >= SEO_SCORE_THRESHOLDS.ok
+                                                                ? 'bg-orange-500'
+                                                                : 'bg-red-500'}`}
                                                     initial={{ width: 0 }}
                                                     animate={{ width: `${item.score}%` }}
                                                     transition={{ delay: index * 0.05 + 0.3, duration: 0.5 }}

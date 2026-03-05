@@ -1,52 +1,119 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { BookOpen, CheckCircle2, ChevronRight, Sparkles } from 'lucide-react';
+import { BookOpen, CheckCircle2, ChevronRight, Sparkles, Target } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
+import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { ONBOARDING_GOALS, ONBOARDING_STORAGE_KEYS } from '@/app/content/onboarding';
+import { ONBOARDING_STEPS, OnboardingCounts } from '@/app/content/onboardingSteps';
 
-const STEPS = [
-  {
-    title: 'Conecta tu canal',
-    description: 'Crea o conecta tu canal para que todo quede asociado.',
-    href: '/channels',
-    action: 'Ir a canales',
-  },
-  {
-    title: 'Genera ideas',
-    description: 'En AI Studio usa evergreen_ideas y genera 10 ideas aplicadas.',
-    href: '/ai',
-    action: 'Abrir AI Studio',
-  },
-  {
-    title: 'Aprueba ideas',
-    description: 'Pulí las ideas y marcá las listas para pasar a guion.',
-    href: '/ideas',
-    action: 'Ver ideas',
-  },
-  {
-    title: 'Crea el guion',
-    description: 'Usa script_architect para generar el guion completo.',
-    href: '/ai',
-    action: 'Generar guion',
-  },
-  {
-    title: 'Optimiza SEO',
-    description: 'Genera titulos, miniaturas y tags con titles_thumbs.',
-    href: '/ai',
-    action: 'Optimizar SEO',
-  },
-  {
-    title: 'Publica y registra',
-    description: 'Marca publicado cuando el video este en YouTube.',
-    href: '/',
-    action: 'Ir al dashboard',
-  },
-];
+type OnboardingStep = {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  action: string;
+  done: boolean;
+};
+
 
 export default function StartPage() {
+  const { isAuthenticated } = useAuth();
+  const authFetch = useAuthFetch();
+  const [activeChannelId, setActiveChannelId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [goalKey, setGoalKey] = useState<keyof typeof ONBOARDING_GOALS>('first_publish');
+  const [counts, setCounts] = useState<OnboardingCounts>({
+    channels: 0,
+    ideas: 0,
+    ideasApproved: 0,
+    scripts: 0,
+    scriptsReady: 0,
+    seo: 0,
+    thumbnailsApproved: 0,
+    published: 0,
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const storedChannel = window.localStorage.getItem(ONBOARDING_STORAGE_KEYS.channelId) || '';
+    setActiveChannelId(storedChannel);
+    const storedGoal = window.localStorage.getItem(ONBOARDING_STORAGE_KEYS.goalKey);
+    if (storedGoal === 'first_publish') {
+      setGoalKey('first_publish');
+      return;
+    }
+    window.localStorage.setItem(ONBOARDING_STORAGE_KEYS.goalKey, 'first_publish');
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const controller = new AbortController();
+    const fetchCounts = async () => {
+      setLoading(true);
+      try {
+        const channelParam = activeChannelId ? `?channelId=${activeChannelId}` : '';
+        const publishedParam = activeChannelId
+          ? `?status=published&channelId=${activeChannelId}`
+          : '?status=published';
+        const [channelsRes, ideasRes, scriptsRes, seoRes, thumbnailsRes, publishedRes] = await Promise.all([
+          authFetch('/api/channels', { signal: controller.signal }),
+          authFetch(`/api/ideas${channelParam}`, { signal: controller.signal }),
+          authFetch(`/api/scripts${channelParam}`, { signal: controller.signal }),
+          authFetch(`/api/seo${channelParam}`, { signal: controller.signal }),
+          authFetch(`/api/thumbnails?status=approved${activeChannelId ? `&channelId=${activeChannelId}` : ''}`, { signal: controller.signal }),
+          authFetch(`/api/productions${publishedParam}`, { signal: controller.signal }),
+        ]);
+
+        const channels = channelsRes.ok ? await channelsRes.json() : [];
+        const ideas = ideasRes.ok ? await ideasRes.json() : [];
+        const scripts = scriptsRes.ok ? await scriptsRes.json() : [];
+        const seo = seoRes.ok ? await seoRes.json() : [];
+        const thumbnails = thumbnailsRes.ok ? await thumbnailsRes.json() : [];
+        const published = publishedRes.ok ? await publishedRes.json() : [];
+
+        const ideasApproved = Array.isArray(ideas)
+          ? ideas.filter((idea) => idea.status === 'approved').length
+          : 0;
+        const scriptsReady = Array.isArray(scripts)
+          ? scripts.filter((script) => script.status === 'approved' || script.status === 'recorded').length
+          : 0;
+
+        setCounts({
+          channels: Array.isArray(channels) ? channels.length : 0,
+          ideas: Array.isArray(ideas) ? ideas.length : 0,
+          ideasApproved,
+          scripts: Array.isArray(scripts) ? scripts.length : 0,
+          scriptsReady,
+          seo: Array.isArray(seo) ? seo.length : 0,
+          thumbnailsApproved: Array.isArray(thumbnails) ? thumbnails.length : 0,
+          published: Array.isArray(published) ? published.length : 0,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCounts();
+    return () => controller.abort();
+  }, [isAuthenticated, authFetch, activeChannelId]);
+
+  const steps: OnboardingStep[] = useMemo(() => {
+    return ONBOARDING_STEPS.map((step) => ({
+      ...step,
+      done: step.isDone(counts),
+    }));
+  }, [counts]);
+
+  const completed = steps.filter((step) => step.done).length;
+  const progress = steps.length > 0 ? Math.round((completed / steps.length) * 100) : 0;
+  const nextStep = steps.find((step) => !step.done) ?? steps[steps.length - 1];
+  const goal = ONBOARDING_GOALS[goalKey];
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen flex flex-col">
@@ -71,7 +138,7 @@ export default function StartPage() {
 
           <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-6 items-start">
             <div className="space-y-4">
-              {STEPS.map((step, index) => (
+              {steps.map((step, index) => (
                 <motion.div
                   key={step.title}
                   className="surface-panel glow-hover p-5 sm:p-6"
@@ -87,12 +154,12 @@ export default function StartPage() {
                       <h3 className="mt-2 text-lg font-semibold text-white">{step.title}</h3>
                       <p className="mt-2 text-sm text-slate-400">{step.description}</p>
                     </div>
-                    <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                    <CheckCircle2 className={`h-6 w-6 ${step.done ? 'text-emerald-400' : 'text-gray-700'}`} />
                   </div>
                   <div className="mt-4">
                     <Link
                       href={step.href}
-                      className="inline-flex items-center gap-2 rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${step.done ? 'bg-gray-800 text-slate-200' : 'bg-yellow-400 text-black'}`}
                     >
                       {step.action}
                       <ChevronRight className="h-4 w-4" />
@@ -103,6 +170,39 @@ export default function StartPage() {
             </div>
 
             <div className="space-y-4">
+              <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <Target className="h-5 w-5 text-yellow-300" />
+                  Objetivo actual
+                </div>
+                <p className="mt-2 text-sm text-slate-300">{goal.title}</p>
+                <p className="mt-2 text-xs text-slate-500">{goal.subtitle}</p>
+                <div className="mt-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Progreso</div>
+                  <div className="mt-2 h-2 w-full rounded-full bg-gray-800">
+                    <div
+                      className="h-2 rounded-full bg-yellow-400"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-400">
+                    {loading ? 'Calculando...' : `${completed} / ${steps.length} completados`}
+                  </p>
+                </div>
+                {nextStep && (
+                  <div className="mt-4 rounded-lg border border-gray-800 bg-gray-900/40 p-3">
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Siguiente paso</div>
+                    <p className="mt-2 text-sm text-slate-200">{nextStep.title}</p>
+                    <Link
+                      href={nextStep.href}
+                      className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-yellow-300"
+                    >
+                      {nextStep.action}
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                )}
+              </div>
               <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white">
                   <BookOpen className="h-5 w-5 text-yellow-300" />

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
+import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { query } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -14,12 +15,12 @@ interface RouteParams {
  * GET /api/analytics/channel/[channelId]
  * Obtiene analytics agregados de un canal (requiere autenticación)
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { params }: RouteParams) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { channelId } = await params;
@@ -37,10 +38,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         );
 
         if (channelResult.rows.length === 0) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'Canal no encontrado' },
                 { status: 404 }
-            );
+            ));
         }
 
         const channel = channelResult.rows[0];
@@ -129,9 +130,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     } catch (error) {
         console.error('[GET /api/analytics/channel/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al obtener analytics del canal' },
             { status: 500 }
-        );
+        ));
     }
-}
+});

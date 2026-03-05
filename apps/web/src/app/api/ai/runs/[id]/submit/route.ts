@@ -28,7 +28,7 @@ function parseOutput(value: unknown): unknown {
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { params }: RouteParams) => {
   try {
-    const userId = getAuthUser(request)?.userId;
+    const userId = (await getAuthUser(request))?.userId;
     if (!userId) {
       return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
     }

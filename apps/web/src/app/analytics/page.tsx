@@ -149,6 +149,7 @@ function AnalyticsContent() {
 
     return (
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
+            <h1 className="sr-only">{ANALYTICS_COPY.title}</h1>
             {/* Header */}
             <motion.div
                 className="mb-8"

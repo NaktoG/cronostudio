@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
-import { FileText, Plus, Sparkles } from 'lucide-react';
+import { useState, useEffect, FormEvent, useRef, useMemo, useCallback } from 'react';
+import { Clipboard, FileText, Link as LinkIcon, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
 import Footer from '../components/Footer';
@@ -12,110 +13,56 @@ import { useToast } from '../contexts/ToastContext';
 import { SCRIPTS_COPY } from '../content/pages/scripts';
 import useDialogFocus from '../hooks/useDialogFocus';
 import Link from 'next/link';
-
-interface Script {
-    id: string;
-    title: string;
-    intro: string | null;
-    body: string | null;
-    cta: string | null;
-    outro: string | null;
-    status: string;
-    word_count: number;
-    estimated_duration_seconds: number;
-    idea_id?: string | null;
-    idea_title: string | null;
-    created_at: string;
-}
-
-interface Channel {
-    id: string;
-    name: string;
-}
+import { copyScriptToClipboard, downloadScriptMarkdown, exportScriptToPdf } from '@/lib/scripts/export';
+import { calculateScriptMetrics } from '@/lib/scripts/metrics';
+import { SCRIPT_STATUS_BADGES, SCRIPT_STATUS_LABELS } from '@/app/content/status/scripts';
+import { useChannels } from '@/app/hooks/useChannels';
+import { useScripts } from '@/app/scripts/hooks/useScripts';
+import type { Script } from '@/app/scripts/hooks/useScripts';
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    draft: { label: SCRIPTS_COPY.statuses.draft, color: 'bg-gray-600' },
-    review: { label: SCRIPTS_COPY.statuses.review, color: 'bg-yellow-600' },
-    approved: { label: SCRIPTS_COPY.statuses.approved, color: 'bg-green-600' },
-    recorded: { label: SCRIPTS_COPY.statuses.recorded, color: 'bg-blue-600' },
+    draft: { label: SCRIPT_STATUS_LABELS.draft, color: SCRIPT_STATUS_BADGES.draft },
+    review: { label: SCRIPT_STATUS_LABELS.review, color: SCRIPT_STATUS_BADGES.review },
+    approved: { label: SCRIPT_STATUS_LABELS.approved, color: SCRIPT_STATUS_BADGES.approved },
+    recorded: { label: SCRIPT_STATUS_LABELS.recorded, color: SCRIPT_STATUS_BADGES.recorded },
 };
 
 export default function ScriptsPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
-    const [scripts, setScripts] = useState<Script[]>([]);
-    const [channels, setChannels] = useState<Channel[]>([]);
-    const [selectedChannel, setSelectedChannel] = useState('');
-    const [loading, setLoading] = useState(true);
+    const { channels } = useChannels({ isAuthenticated, authFetch });
+    const { state, actions } = useScripts({ isAuthenticated, authFetch, addToast });
+    const { scripts, ideaOptions, loading, listError, selectedChannel, selectedIds, pipelineLoading } = state;
+    const { setSelectedChannel, refreshScripts, toggleSelection, clearSelection, createOrUpdateScript, deleteScript: deleteScriptAction, updateSelectedStatus, runPipeline } = actions;
+    const [ideaTitleInput, setIdeaTitleInput] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [formData, setFormData] = useState({ title: '', intro: '', body: '', cta: '', outro: '' });
+    const [formData, setFormData] = useState({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+    const [error, setError] = useState<string | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Script | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [visibleCount, setVisibleCount] = useState(12);
+    const openNewRef = useRef(false);
     const modalRef = useRef<HTMLDivElement>(null);
     const deleteRef = useRef<HTMLDivElement>(null);
+    const shareHandledRef = useRef(false);
+    const searchParams = useSearchParams();
 
     useDialogFocus(modalRef, showModal);
     useDialogFocus(deleteRef, Boolean(deleteTarget));
 
-    const fetchScripts = useCallback(async (signal?: AbortSignal) => {
-        try {
-            setLoading(true);
-            if (!isAuthenticated) {
-                setScripts([]);
-                return;
-            }
-            const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
-            const response = await authFetch(`/api/scripts${query}`, { signal });
-            if (response.ok) setScripts(await response.json());
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error:', err);
-            addToast(SCRIPTS_COPY.toasts.error, 'error');
-        } finally {
-            if (signal?.aborted) return;
-            setLoading(false);
-        }
-    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
-
     useEffect(() => {
-        const controller = new AbortController();
-        fetchScripts(controller.signal);
-        return () => controller.abort();
-    }, [fetchScripts]);
-
-    const fetchChannels = useCallback(async (signal?: AbortSignal) => {
-        try {
-            if (!isAuthenticated) {
-                setChannels([]);
-                return;
-            }
-            const response = await authFetch('/api/channels', { signal });
-            if (response.ok) {
-                setChannels(await response.json());
-            }
-        } catch (err) {
-            if (signal?.aborted) return;
-            console.error('Error fetching channels:', err);
+        if (openNewRef.current) return;
+        if (searchParams?.get('new') === '1') {
+            openNewRef.current = true;
+            setEditingId(null);
+            setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+            setIdeaTitleInput('');
+            setError(null);
+            setShowModal(true);
         }
-    }, [isAuthenticated, authFetch]);
-
-    useEffect(() => {
-        if (!isAuthenticated) return;
-        const controller = new AbortController();
-        fetchChannels(controller.signal);
-        return () => controller.abort();
-    }, [isAuthenticated, fetchChannels]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const storedChannel = window.localStorage.getItem('cronostudio.channelId') || '';
-        if (storedChannel && storedChannel !== selectedChannel) {
-            setSelectedChannel(storedChannel);
-        }
-    }, [selectedChannel]);
+    }, [searchParams]);
 
     useEffect(() => {
         if (!showModal && !deleteTarget) return;
@@ -133,53 +80,119 @@ export default function ScriptsPage() {
         e.preventDefault();
         setSubmitting(true);
         try {
-            const url = editingId ? `/api/scripts?id=${editingId}` : '/api/scripts';
-            const method = editingId ? 'PUT' : 'POST';
-
-            const response = await authFetch(url, {
-                method,
-                body: JSON.stringify(formData),
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || SCRIPTS_COPY.errors.save);
-            }
+            const payload = {
+                title: formData.title,
+                intro: formData.intro,
+                body: formData.body,
+                cta: formData.cta,
+                outro: formData.outro,
+                ...(formData.ideaId ? { ideaId: formData.ideaId } : {}),
+            };
+            await createOrUpdateScript(payload, editingId ?? undefined);
             setShowModal(false);
             setEditingId(null);
-            setFormData({ title: '', intro: '', body: '', cta: '', outro: '' });
-            await fetchScripts();
+            setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+            setIdeaTitleInput('');
+            setError(null);
             addToast(editingId ? SCRIPTS_COPY.toasts.updated : SCRIPTS_COPY.toasts.created, 'success');
         } catch (err) {
             addToast(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error, 'error');
+            setError(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error);
         } finally {
             setSubmitting(false);
         }
     };
 
-    const openEdit = (script: Script) => {
+    const scriptChecklist = useMemo(() => calculateScriptMetrics({
+        intro: formData.intro,
+        body: formData.body,
+        cta: formData.cta,
+        outro: formData.outro,
+    }), [formData]);
+
+    const handleCopyScript = async () => {
+        try {
+            await copyScriptToClipboard({
+                title: formData.title,
+                intro: formData.intro,
+                body: formData.body,
+                cta: formData.cta,
+                outro: formData.outro,
+            });
+            addToast('Guion copiado', 'success');
+        } catch {
+            addToast('No se pudo copiar el guion', 'error');
+        }
+    };
+
+    const handleCopyShareLink = async () => {
+        if (!editingId || typeof window === 'undefined') return;
+        const url = `${window.location.origin}/scripts?scriptId=${editingId}`;
+        try {
+            await navigator.clipboard.writeText(url);
+            addToast('Link copiado', 'success');
+        } catch {
+            addToast('No se pudo copiar el link', 'error');
+        }
+    };
+
+    const handleDownloadScript = () => {
+        downloadScriptMarkdown({
+            title: formData.title,
+            intro: formData.intro,
+            body: formData.body,
+            cta: formData.cta,
+            outro: formData.outro,
+        });
+    };
+
+    const handleExportPdf = () => {
+        if (typeof window === 'undefined') return;
+        const ok = exportScriptToPdf({
+            title: formData.title,
+            intro: formData.intro,
+            body: formData.body,
+            cta: formData.cta,
+            outro: formData.outro,
+        });
+        if (!ok) {
+            addToast('No se pudo abrir la ventana de exportacion', 'error');
+        }
+    };
+
+    const openEdit = useCallback((script: Script) => {
+        const ideaTitle = script.idea_id
+            ? ideaOptions.find((idea) => idea.id === script.idea_id)?.title ?? ''
+            : '';
+        setIdeaTitleInput(ideaTitle);
+        setError(null);
         setFormData({
             title: script.title,
             intro: script.intro || '',
             body: script.body || '',
             cta: script.cta || '',
             outro: script.outro || '',
+            ideaId: script.idea_id || '',
         });
         setEditingId(script.id);
         setShowModal(true);
-    };
+    }, [ideaOptions]);
+
+    useEffect(() => {
+        if (shareHandledRef.current) return;
+        const targetId = searchParams?.get('scriptId');
+        if (!targetId) return;
+        const target = scripts.find((script) => script.id === targetId);
+        if (!target) return;
+        shareHandledRef.current = true;
+        openEdit(target);
+    }, [searchParams, scripts, openEdit]);
 
     const deleteScript = async () => {
         if (!deleteTarget) return;
         try {
-            const response = await authFetch(`/api/scripts?id=${deleteTarget.id}`, {
-                method: 'DELETE',
-            });
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || SCRIPTS_COPY.errors.delete);
-            }
+            await deleteScriptAction(deleteTarget.id);
             setDeleteTarget(null);
-            await fetchScripts();
             addToast(SCRIPTS_COPY.toasts.deleted, 'success');
         } catch (err) {
             addToast(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error, 'error');
@@ -197,6 +210,7 @@ export default function ScriptsPage() {
             <div className="min-h-screen flex flex-col">
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
+                    <h1 className="sr-only">{SCRIPTS_COPY.title}</h1>
                     <motion.div
                         className="flex flex-col gap-4 mb-6 sm:mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
@@ -214,7 +228,7 @@ export default function ScriptsPage() {
                                 <p className="text-sm sm:text-base text-slate-300">{SCRIPTS_COPY.subtitle}</p>
                             </div>
                         </div>
-                        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:items-center">
+                        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:flex-wrap sm:items-end">
                             {channels.length > 0 && (
                                 <div className="min-w-[220px]">
                                     <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>
@@ -238,9 +252,48 @@ export default function ScriptsPage() {
                                     </select>
                                 </div>
                             )}
+                            {selectedIds.length > 0 && (
+                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                    <span className="text-xs text-slate-400">{selectedIds.length} seleccionados</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('review')}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        A revisión
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('approved')}
+                                        className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
+                                    >
+                                        Aprobar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => updateSelectedStatus('recorded')}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        Grabado
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={clearSelection}
+                                        className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                            )}
                             <motion.button
-                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '' }); setShowModal(true); }}
-                                className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
+                                onClick={() => {
+                                    setEditingId(null);
+                                    setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+                                    setIdeaTitleInput('');
+                                    setError(null);
+                                    setShowModal(true);
+                                }}
+                                className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto sm:self-end"
                                 style={{
                                     background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
                                     boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
@@ -254,6 +307,25 @@ export default function ScriptsPage() {
                         </div>
                     </motion.div>
 
+                    {listError && !loading && (
+                        <motion.div
+                            className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                        >
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <span>{listError}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => refreshScripts()}
+                                    className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
+                                >
+                                    Reintentar
+                                </button>
+                            </div>
+                        </motion.div>
+                    )}
+
                     {loading ? (
                         <div className="flex justify-center py-20">
                             <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
@@ -266,7 +338,13 @@ export default function ScriptsPage() {
                             <h3 className="text-xl font-semibold text-white mb-2">{SCRIPTS_COPY.emptyTitle}</h3>
                             <p className="text-slate-300 mb-6">{SCRIPTS_COPY.emptySubtitle}</p>
                             <motion.button
-                                onClick={() => { setEditingId(null); setFormData({ title: '', intro: '', body: '', cta: '', outro: '' }); setShowModal(true); }}
+                                onClick={() => {
+                                    setEditingId(null);
+                                    setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
+                                    setIdeaTitleInput('');
+                                    setError(null);
+                                    setShowModal(true);
+                                }}
                                 className="w-full px-6 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 sm:w-auto"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
@@ -279,12 +357,22 @@ export default function ScriptsPage() {
                             {scripts.slice(0, visibleCount).map((script) => (
                                 <motion.div
                                     key={script.id}
-                                    className="surface-panel glow-hover p-6 transition-all min-w-0"
+                                    className={`surface-panel glow-hover p-6 transition-all min-w-0 ${selectedIds.includes(script.id) ? 'ring-2 ring-yellow-400/60' : ''}`}
                                     whileHover={{ x: 4 }}
                                 >
                                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-3 mb-2">
+                                                <label className="inline-flex items-center gap-2 text-xs text-slate-300">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.includes(script.id)}
+                                                        onChange={() => toggleSelection(script.id)}
+                                                        aria-label={`Seleccionar guion ${script.title}`}
+                                                        className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
+                                                    />
+                                                    Seleccionar
+                                                </label>
                                                 <span className={`text-xs px-2 py-1 rounded ${STATUS_LABELS[script.status]?.color || 'bg-gray-600'} text-white`}>
                                                     {STATUS_LABELS[script.status]?.label || script.status}
                                                 </span>
@@ -297,6 +385,14 @@ export default function ScriptsPage() {
                                             )}
                                         </div>
                                         <div className="flex flex-wrap gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => runPipeline(script)}
+                                                disabled={pipelineLoading.includes(script.id)}
+                                                className="text-sky-300 hover:text-sky-200 text-xs px-2 disabled:opacity-60"
+                                            >
+                                                {pipelineLoading.includes(script.id) ? 'Pipeline...' : 'Pipeline Publicar'}
+                                            </button>
                                             <Link
                                                 href={`/ai?profile=retention_editor&scriptId=${script.id}${selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
                                                 className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 text-xs px-2"
@@ -360,7 +456,51 @@ export default function ScriptsPage() {
                                 <h3 id="script-modal-title" className="text-2xl font-bold text-white mb-6">
                                     {editingId ? SCRIPTS_COPY.edit : SCRIPTS_COPY.new}
                                 </h3>
+                                {error && (
+                                    <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                                        {error}
+                                    </div>
+                                )}
                                 <form onSubmit={handleSubmit} className="space-y-4">
+                                    <datalist id="idea-options">
+                                        {ideaOptions.map((idea) => (
+                                            <option key={idea.id} value={idea.id}>{idea.title}</option>
+                                        ))}
+                                    </datalist>
+                                    <datalist id="idea-title-options">
+                                        {ideaOptions.map((idea) => (
+                                            <option key={idea.id} value={idea.title} />
+                                        ))}
+                                    </datalist>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Idea ID (opcional)</label>
+                                        <input
+                                            type="text"
+                                            value={formData.ideaId}
+                                            onChange={(e) => setFormData({ ...formData, ideaId: e.target.value })}
+                                            list="idea-options"
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                            placeholder="UUID de la idea"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">Idea (por título)</label>
+                                        <input
+                                            type="text"
+                                            value={ideaTitleInput}
+                                            onChange={(e) => {
+                                                const next = e.target.value;
+                                                setIdeaTitleInput(next);
+                                                const match = ideaOptions.find((idea) => idea.title.toLowerCase() === next.toLowerCase());
+                                                if (match) {
+                                                    setFormData((prev) => ({ ...prev, ideaId: match.id }));
+                                                }
+                                            }}
+                                            list="idea-title-options"
+                                            className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
+                                            placeholder="Buscar por título"
+                                        />
+                                    </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-2">{SCRIPTS_COPY.fields.title}</label>
                                         <input
@@ -407,8 +547,70 @@ export default function ScriptsPage() {
                                             placeholder={SCRIPTS_COPY.placeholders.outro}
                                         />
                                     </div>
+                                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Checklist rapido</p>
+                                                <p className="text-sm text-slate-300">Score: {scriptChecklist.score}%</p>
+                                                <p className="text-xs text-slate-500">{scriptChecklist.wordCount} palabras · ~{scriptChecklist.estimatedSeconds}s</p>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCopyScript}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
+                                                >
+                                                    <Clipboard className="h-4 w-4" />
+                                                    Copiar guion
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCopyShareLink}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
+                                                >
+                                                    <LinkIcon className="h-4 w-4" />
+                                                    Copiar link
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleDownloadScript}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
+                                                >
+                                                    Descargar .md
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleExportPdf}
+                                                    className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
+                                                >
+                                                    Exportar PDF
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-300">
+                                            <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.introReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
+                                                Intro {scriptChecklist.introReady ? 'ok' : 'pendiente'}
+                                            </div>
+                                            <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.bodyReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
+                                                Cuerpo {scriptChecklist.bodyReady ? 'ok' : 'pendiente'}
+                                            </div>
+                                            <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.ctaReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
+                                                CTA {scriptChecklist.ctaReady ? 'ok' : 'pendiente'}
+                                            </div>
+                                            <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.outroReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
+                                                Outro {scriptChecklist.outroReady ? 'ok' : 'pendiente'}
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div className="flex flex-col gap-3 pt-4 sm:flex-row">
-                                        <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowModal(false);
+                                                setError(null);
+                                            }}
+                                            className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
+                                        >
                                             {SCRIPTS_COPY.cancel}
                                         </button>
                                         <button type="submit" disabled={submitting} className="flex-1 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-50">
