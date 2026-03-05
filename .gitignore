@@ -33,6 +33,9 @@ n8n/credentials/
 *.log
 logs/
 
+# Test artifacts
+apps/web/test-results/
+
 # Session notes
 docs/SESSION_*.md
 
