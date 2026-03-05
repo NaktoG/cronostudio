@@ -145,12 +145,19 @@ export default function ProductionsList({
 
                         const isSelected = selectedProductionId === prod.id;
                         return (
-                            <motion.button
+                            <motion.div
                                 key={prod.id}
-                                type="button"
                                 className={`flex w-full flex-col gap-3 px-4 sm:px-5 py-4 text-left cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60 ${isSelected ? 'bg-yellow-500/10 border-l-2 border-yellow-400/60' : 'hover:bg-gray-800/40'}`}
                                 onClick={() => onProductionClick?.(prod)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        onProductionClick?.(prod);
+                                    }
+                                }}
                                 aria-label={`Abrir contenido ${prod.title}`}
+                                role="button"
+                                tabIndex={0}
                                 variants={itemVariants}
                                 whileHover={{ x: 4 }}
                             >
@@ -192,7 +199,7 @@ export default function ProductionsList({
                                 >
                                     →
                                 </motion.span>
-                            </motion.button>
+                            </motion.div>
                         );
                     })
                 )}
