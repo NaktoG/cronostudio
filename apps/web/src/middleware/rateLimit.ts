@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { config } from '@/lib/config';
+import { getAuthUser } from '@/middleware/auth';
 import { getRedisClient, getRateLimitKey } from '@/lib/redis';
 import { emitMetric } from '@/lib/observability';
 
@@ -16,6 +17,9 @@ if (config.isProduction && !process.env.REDIS_URL && !isBuildPhase) {
 }
 
 function shouldEnforceRateLimit() {
+  if (!config.isProduction && process.env.RATE_LIMIT_DISABLE === 'true') {
+    return false;
+  }
   if (process.env.NODE_ENV === 'test') {
     if (process.env.RATE_LIMIT_DISABLE === 'true') {
       return false;
@@ -28,6 +32,20 @@ function shouldEnforceRateLimit() {
 type RouteContext = { params: Promise<Record<string, string>> };
 type RouteHandler<Context = RouteContext> = (request: NextRequest, context: Context) => Promise<NextResponse> | NextResponse;
 
+function getClientIp(request: NextRequest): string {
+  const directIp = request.ip;
+  if (config.rateLimit.trustProxy) {
+    return (
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      request.headers.get('cf-connecting-ip') ||
+      directIp ||
+      'unknown'
+    );
+  }
+  return directIp || 'unknown';
+}
+
 export function rateLimit(config: RateLimitConfig) {
   return <Context = RouteContext>(handler: RouteHandler<Context>): RouteHandler<Context> => {
     return async (request: NextRequest, context: Context) => {
@@ -35,13 +53,10 @@ export function rateLimit(config: RateLimitConfig) {
         return handler(request, context);
       }
 
-      const ip =
-        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
-        request.headers.get('x-real-ip') ||
-        request.headers.get('cf-connecting-ip') ||
-        'unknown';
+      const ip = getClientIp(request);
 
-      const identifier = `${request.nextUrl.pathname}:${ip}`;
+      const userId = (await getAuthUser(request))?.userId;
+      const identifier = `${request.nextUrl.pathname}:${userId ? `user:${userId}` : `ip:${ip}`}`;
       const retryAfter = await checkRateLimit(identifier, config);
 
       if (retryAfter > 0) {

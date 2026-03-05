@@ -16,11 +16,11 @@ interface RouteParams {
  * GET /api/videos/[id]
  * Obtiene un video específico
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { params }: RouteParams) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { id } = await params;
@@ -36,10 +36,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         );
 
         if (result.rows.length === 0) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'Video no encontrado' },
                 { status: 404 }
-            );
+            ));
         }
 
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
@@ -48,12 +48,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             error: error instanceof Error ? error.message : 'Unknown error',
         });
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al obtener video' },
             { status: 500 }
-        );
+        ));
     }
-}
+});
 
 /**
  * PUT /api/videos/[id]
@@ -61,14 +61,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
     if (!context?.params) {
-        return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
+        return withSecurityHeaders(NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 }));
     }
     const { params } = context;
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { id } = await params;
@@ -86,10 +86,10 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         );
 
         if (existingVideo.rows.length === 0) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'Video no encontrado' },
                 { status: 404 }
-            );
+            ));
         }
 
         // Construir query dinámica para actualización
@@ -119,10 +119,10 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         }
 
         if (updates.length === 0) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'No hay campos para actualizar' },
                 { status: 400 }
-            );
+            ));
         }
 
         updates.push(`updated_at = NOW()`);
@@ -134,7 +134,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
             values
         );
 
-        const user = getAuthUser(request);
+        const user = await getAuthUser(request);
         logger.info('[PUT /api/videos/:id] Video actualizado', {
             id,
             userId: user?.userId,
@@ -144,20 +144,20 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         return withSecurityHeaders(response);
     } catch (error) {
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: error.message },
                 { status: 400 }
-            );
+            ));
         }
 
         logger.error('[PUT /api/videos/:id] Error', {
             error: error instanceof Error ? error.message : 'Unknown error',
         });
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al actualizar video' },
             { status: 500 }
-        );
+        ));
     }
 }));
 
@@ -167,14 +167,14 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
  */
 export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest, context?: RouteParams) => {
     if (!context?.params) {
-        return NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 });
+        return withSecurityHeaders(NextResponse.json({ error: 'Parámetros inválidos' }, { status: 400 }));
     }
     const { params } = context;
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
         }
 
         const { id } = await params;
@@ -188,28 +188,28 @@ export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (r
         );
 
         if (result.rows.length === 0) {
-            return NextResponse.json(
+            return withSecurityHeaders(NextResponse.json(
                 { error: 'Video no encontrado' },
                 { status: 404 }
-            );
+            ));
         }
 
-        const user = getAuthUser(request);
+        const user = await getAuthUser(request);
         logger.info('[DELETE /api/videos/:id] Video eliminado', {
             id,
             title: result.rows[0].title,
             userId: user?.userId,
         });
 
-        return new NextResponse(null, { status: 204 });
+        return withSecurityHeaders(new NextResponse(null, { status: 204 }));
     } catch (error) {
         logger.error('[DELETE /api/videos/:id] Error', {
             error: error instanceof Error ? error.message : 'Unknown error',
         });
 
-        return NextResponse.json(
+        return withSecurityHeaders(NextResponse.json(
             { error: 'Error al eliminar video' },
             { status: 500 }
-        );
+        ));
     }
 }));

@@ -13,8 +13,8 @@ describe('config env validation', () => {
     process.env.JWT_SECRET = 'test_secret_change_me_32_chars_min____';
     process.env.DATABASE_URL = 'postgresql://USER:PASSWORD@localhost:5432/cronostudio_test';
 
-    const module = await import('@/lib/config');
-    const config = module.getConfig();
+    const configModule = await import('@/lib/config');
+    const config = configModule.getConfig();
     expect(config.jwt.secret).toBe(process.env.JWT_SECRET);
     expect(config.database.url).toBe(process.env.DATABASE_URL);
   });

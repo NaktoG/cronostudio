@@ -15,11 +15,7 @@ export default function Header() {
   const { user, isAuthenticated, logout, isLoading } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const reduceMotion = useReducedMotion();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = typeof window !== 'undefined';
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -30,6 +26,19 @@ export default function Header() {
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (mobileMenuOpen) {
+      const previous = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = previous;
+      };
+    }
+    document.body.style.overflow = '';
+    return undefined;
   }, [mobileMenuOpen]);
 
   return (
@@ -160,6 +169,7 @@ export default function Header() {
             <motion.button
               className="lg:hidden p-2.5 text-slate-300 hover:text-yellow-400 rounded-lg hover:bg-gray-800/50"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
               whileTap={{ scale: 0.95 }}
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -178,7 +188,7 @@ export default function Header() {
               >
                 <div className="absolute inset-0 bg-black/70" onClick={() => setMobileMenuOpen(false)} />
                 <motion.div
-                  className="absolute right-0 top-0 h-full w-[min(90vw,320px)] border-l border-gray-800 bg-gray-950 px-5 py-6 pb-[env(safe-area-inset-bottom)]"
+                  className="absolute right-0 top-0 h-full max-h-[100dvh] w-[min(90vw,320px)] overflow-y-auto overscroll-contain border-l border-gray-800 bg-gray-950 px-5 py-6 pb-[env(safe-area-inset-bottom)]"
                   initial={{ x: reduceMotion ? 0 : 80, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: reduceMotion ? 0 : 80, opacity: 0 }}
@@ -189,6 +199,7 @@ export default function Header() {
                     <button
                       type="button"
                       onClick={() => setMobileMenuOpen(false)}
+                      aria-label="Cerrar menú"
                       className="text-slate-400"
                     >
                       <X className="w-5 h-5" />

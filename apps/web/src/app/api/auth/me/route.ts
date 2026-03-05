@@ -5,7 +5,7 @@ import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUs
 const userRepository = new PostgresUserRepository();
 
 export async function GET(request: NextRequest) {
-  const payload = getAuthUser(request);
+  const payload = await getAuthUser(request);
   if (!payload) {
     return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
   }

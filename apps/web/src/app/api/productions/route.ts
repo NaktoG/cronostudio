@@ -41,8 +41,12 @@ const UpdateProductionSchema = z.object({
 });
 
 // Helper to extract userId
-function getUserId(request: NextRequest): string | null {
-    return getAuthUser(request)?.userId ?? null;
+async function getUserId(request: NextRequest): Promise<string | null> {
+    return (await getAuthUser(request))?.userId ?? null;
+}
+
+function isValidationError(error: unknown): boolean {
+    return error instanceof Error && error.message.startsWith('Validation error:');
 }
 
 /**
@@ -51,7 +55,7 @@ function getUserId(request: NextRequest): string | null {
  */
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getUserId(request);
+        const userId = await getUserId(request);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }
@@ -98,7 +102,7 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
  */
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getUserId(request);
+        const userId = await getUserId(request);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }
@@ -121,8 +125,8 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         return withSecurityHeaders(NextResponse.json(production, { status: 201 }));
     } catch (error) {
         logger.error('Error creating production', { error: String(error) });
-        if (error instanceof z.ZodError) {
-            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos', details: error.errors }, { status: 400 }));
+        if (error instanceof z.ZodError || isValidationError(error)) {
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al crear producción' }, { status: 500 }));
     }
@@ -134,7 +138,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
  */
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getUserId(request);
+        const userId = await getUserId(request);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }
@@ -173,6 +177,9 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Error updating production', { error: errorMessage });
 
+        if (isValidationError(error)) {
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+        }
         if (errorMessage.includes('not found') || errorMessage.includes('access denied')) {
             return withSecurityHeaders(NextResponse.json({ error: 'Producción no encontrada' }, { status: 404 }));
         }
@@ -186,7 +193,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
  */
 export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getUserId(request);
+        const userId = await getUserId(request);
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
         }

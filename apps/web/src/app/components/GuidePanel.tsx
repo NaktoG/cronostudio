@@ -1,17 +1,27 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CheckCircle2, ChevronRight, RefreshCw, Sparkles } from 'lucide-react';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { evaluateIdeaReady } from '@/lib/ideaReady';
 
 type GuideCounts = {
   channels: number;
   ideas: number;
+  ideasApproved: number;
   scripts: number;
+  scriptsReady: number;
   seo: number;
+  thumbnailsApproved: number;
   published: number;
+};
+
+type IdeaChecklist = {
+  total: number;
+  ready: number;
+  missing: string[];
 };
 
 const AUTH_ROUTES = new Set([
@@ -132,8 +142,11 @@ export default function GuidePanel() {
   const [counts, setCounts] = useState<GuideCounts>({
     channels: 0,
     ideas: 0,
+    ideasApproved: 0,
     scripts: 0,
+    scriptsReady: 0,
     seo: 0,
+    thumbnailsApproved: 0,
     published: 0,
   });
   const [loading, setLoading] = useState(false);
@@ -142,6 +155,9 @@ export default function GuidePanel() {
   const [showFull, setShowFull] = useState(false);
   const [activeChannelId, setActiveChannelId] = useState('');
   const [panelRight, setPanelRight] = useState<number | null>(null);
+  const [tourSeen, setTourSeen] = useState(false);
+  const [ideaChecklist, setIdeaChecklist] = useState<IdeaChecklist>({ total: 0, ready: 0, missing: [] });
+  const stepsDialogRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const stored = typeof window !== 'undefined'
@@ -174,6 +190,45 @@ export default function GuidePanel() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    const seen = window.localStorage.getItem(`cronostudio.guide.tour_seen.${pathname}`) === 'true';
+    setTourSeen(seen);
+  }, [pathname, showSteps]);
+
+  useEffect(() => {
+    if (!showSteps) return;
+    const focusable = stepsDialogRef.current?.querySelector<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable?.focus();
+  }, [showSteps]);
+
+  const handleStepsKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setShowSteps(false);
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const focusable = stepsDialogRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable || focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (event.shiftKey) {
+      if (active === first) {
+        event.preventDefault();
+        last.focus();
+      }
+    } else if (active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     const updatePanelRight = () => {
       if (pathname !== '/ai' || window.innerWidth < 1024) {
         setPanelRight(null);
@@ -193,11 +248,12 @@ export default function GuidePanel() {
     try {
       const channelParam = activeChannelId ? `?channelId=${activeChannelId}` : '';
       const publishedParam = activeChannelId ? `?status=published&channelId=${activeChannelId}` : '?status=published';
-      const [channelsRes, ideasRes, scriptsRes, seoRes, publishedRes] = await Promise.all([
+      const [channelsRes, ideasRes, scriptsRes, seoRes, thumbnailsRes, publishedRes] = await Promise.all([
         authFetch('/api/channels', { signal }),
         authFetch(`/api/ideas${channelParam}`, { signal }),
         authFetch(`/api/scripts${channelParam}`, { signal }),
         authFetch(`/api/seo${channelParam}`, { signal }),
+        authFetch(`/api/thumbnails?status=approved${activeChannelId ? `&channelId=${activeChannelId}` : ''}`, { signal }),
         authFetch(`/api/productions${publishedParam}`, { signal }),
       ]);
 
@@ -205,22 +261,53 @@ export default function GuidePanel() {
       const ideas = ideasRes.ok ? await ideasRes.json() : [];
       const scripts = scriptsRes.ok ? await scriptsRes.json() : [];
       const seo = seoRes.ok ? await seoRes.json() : [];
+      const thumbnails = thumbnailsRes.ok ? await thumbnailsRes.json() : [];
       const published = publishedRes.ok ? await publishedRes.json() : [];
+
+      let ideasApproved = 0;
+      if (Array.isArray(ideas)) {
+        const missing = new Set<string>();
+        let ready = 0;
+        ideas.forEach((idea) => {
+          const readiness = evaluateIdeaReady(idea.title, idea.description);
+          if (readiness.isReady) {
+            ready += 1;
+          } else {
+            readiness.errors.forEach((error) => missing.add(error));
+          }
+          if (idea.status === 'approved') {
+            ideasApproved += 1;
+          }
+        });
+        setIdeaChecklist({ total: ideas.length, ready, missing: Array.from(missing) });
+      } else {
+        setIdeaChecklist({ total: 0, ready: 0, missing: [] });
+      }
+
+      const scriptsReady = Array.isArray(scripts)
+        ? scripts.filter((script) => script.status === 'approved' || script.status === 'recorded').length
+        : 0;
+
+      const thumbnailsApproved = Array.isArray(thumbnails) ? thumbnails.length : 0;
 
       setCounts({
         channels: Array.isArray(channels) ? channels.length : 0,
         ideas: Array.isArray(ideas) ? ideas.length : 0,
+        ideasApproved,
         scripts: Array.isArray(scripts) ? scripts.length : 0,
+        scriptsReady,
         seo: Array.isArray(seo) ? seo.length : 0,
+        thumbnailsApproved,
         published: Array.isArray(published) ? published.length : 0,
       });
     } catch {
-      setCounts({ channels: 0, ideas: 0, scripts: 0, seo: 0, published: 0 });
+      setCounts({ channels: 0, ideas: 0, ideasApproved: 0, scripts: 0, scriptsReady: 0, seo: 0, thumbnailsApproved: 0, published: 0 });
+      setIdeaChecklist({ total: 0, ready: 0, missing: [] });
     } finally {
       if (signal?.aborted) return;
       setLoading(false);
     }
-  }, [authFetch]);
+  }, [authFetch, activeChannelId]);
 
   useEffect(() => {
     if (!isAuthenticated || AUTH_ROUTES.has(pathname)) return;
@@ -243,7 +330,7 @@ export default function GuidePanel() {
         key: 'ideas',
         title: 'Genera ideas',
         description: 'Usa AI Studio para generar ideas evergreen.',
-        complete: counts.ideas > 0,
+        complete: counts.ideasApproved > 0,
         href: '/ai',
         actionLabel: 'Ir a AI Studio',
       },
@@ -251,7 +338,7 @@ export default function GuidePanel() {
         key: 'scripts',
         title: 'Crea el guion',
         description: 'Transforma una idea en un guion listo para grabar.',
-        complete: counts.scripts > 0,
+        complete: counts.scriptsReady > 0,
         href: '/ai',
         actionLabel: 'Crear guion',
       },
@@ -277,6 +364,16 @@ export default function GuidePanel() {
   const completedCount = steps.filter((step) => step.complete).length;
   const progress = Math.round((completedCount / steps.length) * 100);
   const currentStep = steps.find((step) => !step.complete) ?? steps[steps.length - 1];
+  const quickAction = useMemo(() => {
+    const map: Record<string, { label: string; href: string }> = {
+      channel: { label: 'Crear canal', href: '/channels' },
+      ideas: { label: 'Crear idea', href: '/ideas?new=1' },
+      scripts: { label: 'Crear guion', href: '/scripts?new=1' },
+      seo: { label: 'Abrir SEO', href: '/seo' },
+      publish: { label: 'Abrir dashboard', href: '/?new=1' },
+    };
+    return map[currentStep.key] ?? null;
+  }, [currentStep.key]);
   const tip = PAGE_TIPS[pathname] ?? null;
   const sectionSteps = PAGE_STEPS[pathname] ?? null;
 
@@ -285,7 +382,7 @@ export default function GuidePanel() {
 
   return (
     <div
-      className="fixed bottom-6 right-6 z-[65] flex flex-col items-end gap-3"
+      className="fixed bottom-[calc(env(safe-area-inset-bottom)+88px)] right-6 z-[65] flex flex-col items-end gap-3 lg:bottom-6"
       style={panelRight ? { right: `${panelRight}px` } : undefined}
     >
       <div className="w-[min(92vw,360px)] rounded-2xl border border-gray-800 bg-gray-950/95 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
@@ -312,6 +409,29 @@ export default function GuidePanel() {
         <div className="mt-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
           <p className="text-sm font-semibold text-slate-100">{currentStep.title}</p>
           <p className="text-xs text-slate-400 mt-1">{currentStep.description}</p>
+          {currentStep.key === 'ideas' && ideaChecklist.total > 0 && counts.ideasApproved === 0 && ideaChecklist.ready > 0 && (
+            <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-200">
+              Tenes {ideaChecklist.ready} ideas listas para aprobar.
+              <Link href="/ideas" className="mt-1 inline-flex items-center text-[11px] font-semibold text-emerald-200">
+                Aprobar ahora
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
+          {currentStep.key === 'ideas' && ideaChecklist.total > 0 && ideaChecklist.ready === 0 && ideaChecklist.missing.length > 0 && (
+            <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+              <div className="font-semibold">Checklist para aprobar</div>
+              <ul className="mt-1 list-disc pl-4 space-y-0.5">
+                {ideaChecklist.missing.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <Link href="/ideas" className="mt-2 inline-flex items-center text-[11px] font-semibold text-yellow-300">
+                Ir a Ideas
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
           <div className="mt-3 flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Progreso {progress}%</span>
             <Link
@@ -322,6 +442,17 @@ export default function GuidePanel() {
               <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
+          {quickAction && (
+            <div className="mt-3">
+              <Link
+                href={quickAction.href}
+                className="inline-flex items-center gap-1 rounded-md border border-yellow-400/40 px-3 py-2 text-[11px] font-semibold text-yellow-200 hover:border-yellow-400 hover:text-yellow-100"
+              >
+                {quickAction.label}
+                <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
           <div className="mt-2 h-1.5 w-full rounded-full bg-gray-800">
             <div className="h-1.5 rounded-full bg-yellow-400" style={{ width: `${progress}%` }} />
           </div>
@@ -378,7 +509,7 @@ export default function GuidePanel() {
                 onClick={() => setShowSteps(true)}
                 className="text-[10px] uppercase tracking-[0.2em] text-yellow-300"
               >
-                Guíame
+                {tourSeen ? 'Repetir' : 'Guíame'}
               </button>
             )}
             <span className="text-[10px] text-slate-500">{completedCount}/{steps.length} completados</span>
@@ -386,13 +517,20 @@ export default function GuidePanel() {
         </div>
       </div>
 
-      {showSteps && sectionSteps && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
-          <div className="w-[min(92vw,420px)] rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl">
+        {showSteps && sectionSteps && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 px-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="guide-steps-title"
+              className="w-[min(92vw,420px)] rounded-2xl border border-gray-800 bg-gray-950 p-5 shadow-xl"
+              ref={stepsDialogRef}
+              onKeyDown={handleStepsKeyDown}
+            >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Guía rápida</div>
-                <h4 className="mt-1 text-lg font-semibold text-white">{sectionSteps.title}</h4>
+                <h4 id="guide-steps-title" className="mt-1 text-lg font-semibold text-white">{sectionSteps.title}</h4>
               </div>
               <button
                 type="button"

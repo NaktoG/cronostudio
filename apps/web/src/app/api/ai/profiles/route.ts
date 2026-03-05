@@ -6,7 +6,7 @@ import { AI_PROFILES } from '@/lib/ai/profiles';
 export const dynamic = 'force-dynamic';
 
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-  const userId = getAuthUser(request)?.userId;
+  const userId = (await getAuthUser(request))?.userId;
   if (!userId) {
     return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
   }

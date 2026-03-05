@@ -32,6 +32,9 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     clearAccessCookie(response);
     return withSecurityHeaders(response);
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Validation error')) {
+      return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+    }
     logger.error('auth.logout.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al cerrar sesion' }, { status: 500 }));
   }

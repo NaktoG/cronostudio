@@ -1,14 +1,18 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import { CheckCircle2, FileText, Film, Lightbulb, Smartphone, Scissors, Upload, Video } from 'lucide-react';
 import { COMPONENT_COPY } from '../content/components';
-import { NEXT_ACTION_LABELS, PRODUCTION_STATUS_BADGES } from '../content/labels';
+import { NEXT_ACTION_LABELS, PRODUCTION_STATUS_BADGES, SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 
 export interface Production {
     id: string;
     title: string;
     status: string;
+    channel_id?: string | null;
+    idea_id?: string | null;
+    script_id?: string | null;
     channel_name?: string;
     script_status?: string;
     thumbnail_status?: string;
@@ -31,6 +35,12 @@ interface ProductionsListProps {
     onClearFilter?: () => void;
     showCreateButton?: boolean;
     selectedProductionId?: string | null;
+    emptyActions?: Array<{ label: string; onClick: () => void; tone?: 'primary' | 'ghost' }>;
+    selectedIds?: string[];
+    onToggleSelection?: (id: string) => void;
+    onClearSelection?: () => void;
+    onBulkStatus?: (status: string) => void;
+    onBulkTargetDate?: (date: string) => void;
 }
 
 const STATUS_BADGE: Record<string, { label: string; color: string; icon: typeof Lightbulb }> = {
@@ -64,6 +74,32 @@ function getNextAction(prod: Production): string {
     return NEXT_ACTION_LABELS.published;
 }
 
+function getNextActionCta(prod: Production): { label: string; href: string; tone: string } | null {
+    if (prod.status === 'scripting' && (!prod.script_status || prod.script_status === 'draft')) {
+        const params = new URLSearchParams();
+        params.set('profile', 'script_architect');
+        if (prod.idea_id) params.set('ideaId', prod.idea_id);
+        if (prod.channel_id) params.set('channelId', prod.channel_id);
+        return { label: 'Generar guion', href: `/ai?${params.toString()}`, tone: 'text-emerald-300' };
+    }
+
+    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < SEO_SCORE_MIN_READY)) {
+        const params = new URLSearchParams();
+        params.set('profile', 'titles_thumbs');
+        if (prod.idea_id) params.set('ideaId', prod.idea_id);
+        if (prod.script_id) params.set('scriptId', prod.script_id);
+        if (prod.channel_id) params.set('channelId', prod.channel_id);
+        return { label: 'SEO + Títulos', href: `/ai?${params.toString()}`, tone: 'text-sky-300' };
+    }
+
+    if ((prod.status === 'editing' || prod.status === 'shorts' || prod.status === 'publishing') && prod.thumbnail_status !== 'approved') {
+        const query = prod.channel_id ? `?channelId=${prod.channel_id}` : '';
+        return { label: 'Miniatura', href: `/thumbnails${query}`, tone: 'text-yellow-300' };
+    }
+
+    return null;
+}
+
 export default function ProductionsList({
     productions,
     onProductionClick,
@@ -74,6 +110,12 @@ export default function ProductionsList({
     onClearFilter,
     showCreateButton = true,
     selectedProductionId,
+    emptyActions = [],
+    selectedIds = [],
+    onToggleSelection,
+    onClearSelection,
+    onBulkStatus,
+    onBulkTargetDate,
 }: ProductionsListProps) {
     return (
         <motion.div
@@ -97,16 +139,58 @@ export default function ProductionsList({
                         </button>
                     )}
                 </div>
-                {showCreateButton && (
-                    <motion.button
-                        onClick={onCreateNew}
-                        className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                    >
-                        {COMPONENT_COPY.productionsList.new}
-                    </motion.button>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                    {selectedIds.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{selectedIds.length} seleccionadas</span>
+                            {onBulkTargetDate && (
+                                <input
+                                    type="date"
+                                    onChange={(event) => onBulkTargetDate(event.target.value)}
+                                    className="rounded-lg border border-gray-700 bg-gray-900/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
+                                />
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => onBulkStatus?.('recording')}
+                                className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
+                            >
+                                Grabación
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onBulkStatus?.('editing')}
+                                className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
+                            >
+                                Edición
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onBulkStatus?.('publishing')}
+                                className="rounded-lg bg-emerald-400 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-black"
+                            >
+                                Publicar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => onClearSelection?.()}
+                                className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
+                            >
+                                Limpiar
+                            </button>
+                        </div>
+                    )}
+                    {showCreateButton && (
+                        <motion.button
+                            onClick={onCreateNew}
+                            className="text-xs text-yellow-400 hover:text-yellow-300 font-semibold flex items-center gap-1"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            {COMPONENT_COPY.productionsList.new}
+                        </motion.button>
+                    )}
+                </div>
             </div>
 
             {/* Productions list */}
@@ -136,26 +220,67 @@ export default function ProductionsList({
                                 {filterLabel ? COMPONENT_COPY.productionsList.changeFilter : COMPONENT_COPY.productionsList.createFirst}
                             </span>
                         )}
+                        {emptyActions.length > 0 && (
+                            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-center">
+                                {emptyActions.map((action) => (
+                                    <button
+                                        key={action.label}
+                                        type="button"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            action.onClick();
+                                        }}
+                                        className={action.tone === 'ghost'
+                                            ? 'rounded-lg border border-gray-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300'
+                                            : 'rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black'}
+                                    >
+                                        {action.label}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </motion.button>
                 ) : (
                     productions.slice(0, 6).map((prod) => {
                         const badge = STATUS_BADGE[prod.status] || STATUS_BADGE.idea;
                         const Icon = badge.icon;
                         const nextAction = getNextAction(prod);
+                        const cta = getNextActionCta(prod);
 
                         const isSelected = selectedProductionId === prod.id;
                         return (
-                            <motion.button
+                            <motion.div
                                 key={prod.id}
-                                type="button"
                                 className={`flex w-full flex-col gap-3 px-4 sm:px-5 py-4 text-left cursor-pointer transition-colors group sm:flex-row sm:items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60 ${isSelected ? 'bg-yellow-500/10 border-l-2 border-yellow-400/60' : 'hover:bg-gray-800/40'}`}
                                 onClick={() => onProductionClick?.(prod)}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                        event.preventDefault();
+                                        onProductionClick?.(prod);
+                                    }
+                                }}
                                 aria-label={`Abrir contenido ${prod.title}`}
+                                role="button"
+                                tabIndex={0}
                                 variants={itemVariants}
                                 whileHover={{ x: 4 }}
                             >
                                 {/* Status badge with icon */}
                                 <div className="flex items-center gap-2">
+                                    {onToggleSelection && (
+                                        <label
+                                            className="inline-flex items-center gap-2 text-xs text-slate-300"
+                                            onClick={(event) => event.stopPropagation()}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(prod.id)}
+                                                onChange={() => onToggleSelection(prod.id)}
+                                                aria-label={`Seleccionar producción ${prod.title}`}
+                                                className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
+                                            />
+                                        </label>
+                                    )}
                                     <span className="w-8 h-8 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                         <Icon className="w-4 h-4" />
                                     </span>
@@ -168,6 +293,15 @@ export default function ProductionsList({
                                 <div className="flex-1 min-w-0">
                                     <span className="text-sm sm:text-base font-medium text-white truncate block">{prod.title}</span>
                                     <span className="text-xs sm:text-sm text-slate-400 truncate block">{nextAction}</span>
+                                    {cta && (
+                                        <Link
+                                            href={cta.href}
+                                            onClick={(event) => event.stopPropagation()}
+                                            className={`mt-1 inline-flex items-center text-xs ${cta.tone} hover:opacity-80`}
+                                        >
+                                            {cta.label}
+                                        </Link>
+                                    )}
                                 </div>
 
                                 {prod.status === 'publishing' && onMarkPublished && (
@@ -192,7 +326,7 @@ export default function ProductionsList({
                                 >
                                     →
                                 </motion.span>
-                            </motion.button>
+                            </motion.div>
                         );
                     })
                 )}

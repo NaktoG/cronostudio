@@ -37,6 +37,9 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
 
     return withSecurityHeaders(NextResponse.json({ message: 'Contraseña actualizada' }));
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Validation error')) {
+      return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+    }
     logger.error('auth.password_reset.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al restablecer contraseña' }, { status: 500 }));
   }

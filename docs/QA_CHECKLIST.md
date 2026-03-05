@@ -71,6 +71,9 @@ Guía para validar la app de extremo a extremo después de cada release.
 2. Validar que `/api/automation-runs` registre `status=success`.
 3. Forzar un error y revisar notificaciones (email/slack si existe).
 
+## 11.1 AI Studio (OpenAI)
+- Ejecutar checklist en `docs/AI_STUDIO_QA.md`.
+
 ## 12. Adminer / DB checks
 1. Ingresar a https://adminer.atonixdev.com con Basic Auth.
 2. Validar tablas principales (`ideas`, `productions`, `videos`, `automation_runs`).

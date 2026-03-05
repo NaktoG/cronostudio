@@ -84,13 +84,13 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
         // Handle AuthError
         if (error instanceof AuthError) {
             if (error.code === 'EMAIL_EXISTS') {
-                return withSecurityHeaders(NextResponse.json({ error: 'Email ya registrado' }, { status: 409 }));
+                return withSecurityHeaders(NextResponse.json({ message: 'Si el email es válido, recibirás un correo para verificar tu cuenta.' }, { status: 201 }));
             }
         }
 
         // Handle validation errors
         if (error instanceof Error && error.message.includes('Validation error')) {
-            return withSecurityHeaders(NextResponse.json({ error: error.message }, { status: 400 }));
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
 
         logger.error('Registration error', { error: String(error) });

@@ -14,6 +14,8 @@
 /coverage
 .tmp
 .vite-cache
+test-results
+playwright-report
 
 # next.js
 /.next/

@@ -15,13 +15,17 @@ const PublishSchema = z.object({
 });
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
-  const userId = getAuthUser(request)?.userId ?? null;
+  const userId = (await getAuthUser(request))?.userId ?? null;
   if (!userId) {
     return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
   }
 
   const body = await request.json();
-  const data = PublishSchema.parse(body);
+  const parsed = PublishSchema.safeParse(body);
+  if (!parsed.success) {
+    return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+  }
+  const data = parsed.data;
 
   const client = await getClient();
   try {
@@ -69,7 +73,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
       publishedUrl: production.published_url,
       platformId: production.platform_id,
     }));
-  } catch (error) {
+  } catch {
     await client.query('ROLLBACK');
     return withSecurityHeaders(NextResponse.json({ error: 'Error al marcar como publicado' }, { status: 500 }));
   } finally {

@@ -10,7 +10,7 @@ import {
     Upload,
     Video,
 } from 'lucide-react';
-import { PIPELINE_STAGE_LABELS } from '../content/labels';
+import { PIPELINE_STAGE_LABELS } from '@/app/content/status/productions';
 import { COMPONENT_COPY } from '../content/components';
 
 interface PipelineStats {
@@ -27,6 +27,7 @@ interface ProductionPipelineProps {
     stats: PipelineStats;
     onStageClick?: (stage: keyof PipelineStats) => void;
     activeStage?: keyof PipelineStats | null;
+    stageCtas?: Partial<Record<keyof PipelineStats, { label: string; onClick: () => void }>>;
 }
 
 const STAGES: { key: keyof PipelineStats; icon: typeof Lightbulb; label: string; color: string; bgColor: string }[] = [
@@ -54,7 +55,7 @@ const itemVariants = {
     visible: { opacity: 1, y: 0 }
 };
 
-export default function ProductionPipeline({ stats, onStageClick, activeStage }: ProductionPipelineProps) {
+export default function ProductionPipeline({ stats, onStageClick, activeStage, stageCtas }: ProductionPipelineProps) {
     const total = Object.values(stats).reduce((sum, count) => sum + count, 0);
 
     return (
@@ -80,11 +81,21 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage }:
                 {STAGES.map((stage, index) => {
                     const count = stats[stage.key] || 0;
                     const hasItems = count > 0;
+                    const cta = stageCtas?.[stage.key];
 
                     return (
-                        <motion.button
+                        <motion.div
                             key={stage.key}
+                            role={hasItems ? 'button' : undefined}
+                            tabIndex={hasItems ? 0 : -1}
                             onClick={() => hasItems && onStageClick?.(stage.key)}
+                            onKeyDown={(event) => {
+                                if (!hasItems) return;
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    onStageClick?.(stage.key);
+                                }
+                            }}
                             className={`flex flex-col items-center justify-center py-2.5 px-2 rounded-xl transition-all sm:py-4 ${hasItems
                                 ? 'bg-gray-800/70 hover:bg-gray-800 cursor-pointer shadow-lg'
                                 : 'bg-gray-900/40 cursor-default'
@@ -113,7 +124,20 @@ export default function ProductionPipeline({ stats, onStageClick, activeStage }:
                             <span className={`text-[11px] sm:text-sm font-medium ${hasItems ? stage.color : 'text-gray-600'}`}>
                                 {stage.label}
                             </span>
-                        </motion.button>
+
+                            {cta && hasItems && (
+                                <button
+                                    type="button"
+                                    onClick={(event) => {
+                                        event.stopPropagation();
+                                        cta.onClick();
+                                    }}
+                                    className="mt-2 text-[10px] uppercase tracking-[0.2em] text-yellow-300 hover:text-yellow-200"
+                                >
+                                    {cta.label}
+                                </button>
+                            )}
+                        </motion.div>
                     );
                 })}
             </motion.div>

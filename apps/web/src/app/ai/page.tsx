@@ -1,6 +1,5 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Clipboard, Check, RefreshCw, History, ArrowRight } from 'lucide-react';
 import Header from '../components/Header';
@@ -9,65 +8,12 @@ import BackToDashboard from '../components/BackToDashboard';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import useDialogFocus from '../hooks/useDialogFocus';
 import { useSearchParams } from 'next/navigation';
 import { formatDateTime } from '@/lib/dates';
+import { IDEA_PRESETS, SCRIPT_STYLE_PRESETS } from '@/app/content/aiPresets';
+import { useAiStudio } from '@/app/ai/hooks/useAiStudio';
 
-type Profile = {
-  key: string;
-  version: number;
-  name: string;
-  description: string;
-};
 
-type Channel = {
-  id: string;
-  name: string;
-};
-
-type IdeaOption = {
-  id: string;
-  title: string;
-};
-
-type ScriptOption = {
-  id: string;
-  title: string;
-};
-
-type Run = {
-  id: string;
-  channel_id: string | null;
-  profile_key: string;
-  profile_version: number;
-  status: string;
-  input_json: unknown;
-  output_json: unknown;
-  error: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type PromptPayload = {
-  system: string;
-  user: string;
-};
-
-const PROFILE_FIELDS: Record<string, { label: string; placeholder: string; key: 'topicSeed' | 'ideaId' | 'scriptId'; required?: boolean }[]> = {
-  evergreen_ideas: [
-    { key: 'topicSeed', label: 'Tema base (opcional)', placeholder: 'Ej: productividad, marketing, IA' },
-  ],
-  script_architect: [
-    { key: 'ideaId', label: 'Idea ID', placeholder: 'UUID de la idea', required: true },
-  ],
-  retention_editor: [
-    { key: 'scriptId', label: 'Script ID', placeholder: 'UUID del guion', required: true },
-  ],
-  titles_thumbs: [
-    { key: 'ideaId', label: 'Idea ID', placeholder: 'UUID de la idea', required: true },
-    { key: 'scriptId', label: 'Script ID (opcional)', placeholder: 'UUID del guion' },
-  ],
-};
 
 export default function AiStudioPage() {
   const searchParams = useSearchParams();
@@ -76,328 +22,54 @@ export default function AiStudioPage() {
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
   const { addToast } = useToast();
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [selectedChannel, setSelectedChannel] = useState<string>('');
-  const [runs, setRuns] = useState<Run[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeProfile, setActiveProfile] = useState<Profile | null>(null);
-  const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
-  const [scriptOptions, setScriptOptions] = useState<ScriptOption[]>([]);
-  const [prompt, setPrompt] = useState<PromptPayload | null>(null);
-  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
-  const [currentStatus, setCurrentStatus] = useState<string | null>(null);
-  const [outputText, setOutputText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [executing, setExecuting] = useState(false);
-  const [applying, setApplying] = useState(false);
-  const [selectedRun, setSelectedRun] = useState<Run | null>(null);
-  const [autoOutput, setAutoOutput] = useState<unknown | null>(null);
-  const [autoApplied, setAutoApplied] = useState<Record<string, unknown> | null>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-  const queryInitializedRef = useRef(false);
-
-  useDialogFocus(modalRef, Boolean(selectedRun));
-
-  const [formInputs, setFormInputs] = useState({
-    topicSeed: '',
-    ideaId: '',
-    scriptId: '',
+  const { state, actions, refs } = useAiStudio({
+    isAuthenticated,
+    authFetch,
+    addToast,
+    searchParams,
   });
 
-  const fetchProfiles = useCallback(async () => {
-    try {
-      const response = await authFetch('/api/ai/profiles');
-      if (!response.ok) return;
-      const data = await response.json();
-      setProfiles(data.profiles ?? []);
-    } catch (error) {
-      console.error('Error fetching profiles', error);
-    }
-  }, [authFetch]);
+  const {
+    loading,
+    submitting,
+    executing,
+    applying,
+    profiles,
+    channels,
+    runs,
+    ideaOptions,
+    scriptOptions,
+    selectedChannel,
+    activeProfile,
+    selectedRun,
+    formInputs,
+    prompt,
+    currentRunId,
+    currentStatus,
+    outputText,
+    autoOutput,
+    autoApplied,
+    activeFields,
+    showIdeaPresets,
+    showScriptPresets,
+  } = state;
 
-  const fetchChannels = useCallback(async () => {
-    try {
-      const response = await authFetch('/api/channels');
-      if (!response.ok) return;
-      const data = await response.json();
-      setChannels(data ?? []);
-      if (!selectedChannel && data?.length) {
-        setSelectedChannel(data[0].id);
-      }
-    } catch (error) {
-      console.error('Error fetching channels', error);
-    }
-  }, [authFetch, selectedChannel]);
+  const {
+    setSelectedChannel,
+    setActiveProfile,
+    setSelectedRun,
+    setFormInputs,
+    setOutputText,
+    generatePrompt,
+    executeRun,
+    submitOutput,
+    applyRun,
+    copyPrompt,
+    resetRunState,
+  } = actions;
 
-  const fetchRuns = useCallback(async (channelId: string) => {
-    if (!channelId) return;
-    try {
-      const response = await authFetch(`/api/ai/runs?channelId=${channelId}&limit=20`);
-      if (!response.ok) return;
-      const data = await response.json();
-      setRuns(data.runs ?? []);
-    } catch (error) {
-      console.error('Error fetching runs', error);
-    }
-  }, [authFetch]);
+  const { modalRef } = refs;
 
-  const fetchIdeaOptions = useCallback(async (channelId: string) => {
-    if (!channelId) return;
-    try {
-      const response = await authFetch(`/api/ideas?channelId=${channelId}`);
-      if (!response.ok) return;
-      const data = await response.json();
-      const options = Array.isArray(data)
-        ? data.map((idea: { id: string; title: string }) => ({ id: idea.id, title: idea.title }))
-        : [];
-      setIdeaOptions(options);
-    } catch (error) {
-      console.error('Error fetching ideas', error);
-    }
-  }, [authFetch]);
-
-  const fetchScriptOptions = useCallback(async (channelId: string) => {
-    if (!channelId) return;
-    try {
-      const response = await authFetch(`/api/scripts?channelId=${channelId}`);
-      if (!response.ok) return;
-      const data = await response.json();
-      const options = Array.isArray(data)
-        ? data.map((script: { id: string; title: string }) => ({ id: script.id, title: script.title }))
-        : [];
-      setScriptOptions(options);
-    } catch (error) {
-      console.error('Error fetching scripts', error);
-    }
-  }, [authFetch]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    Promise.all([fetchProfiles(), fetchChannels()]).finally(() => setLoading(false));
-  }, [isAuthenticated, fetchProfiles, fetchChannels]);
-
-  useEffect(() => {
-    if (!selectedChannel) return;
-    fetchRuns(selectedChannel);
-    fetchIdeaOptions(selectedChannel);
-    fetchScriptOptions(selectedChannel);
-  }, [selectedChannel, fetchRuns, fetchIdeaOptions, fetchScriptOptions]);
-
-  useEffect(() => {
-    if (queryInitializedRef.current) return;
-    if (!searchParams) return;
-
-    const profileKey = searchParams.get('profile');
-    const channelId = searchParams.get('channelId');
-    const ideaId = searchParams.get('ideaId');
-    const scriptId = searchParams.get('scriptId');
-
-    if (!profileKey && !channelId && !ideaId && !scriptId) return;
-
-    if (profileKey && profiles.length === 0) {
-      return;
-    }
-
-    if (channelId) {
-      setSelectedChannel(channelId);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('cronostudio.channelId', channelId);
-      }
-    }
-
-    if (profileKey) {
-      const match = profiles.find((profile) => profile.key === profileKey);
-      if (match) setActiveProfile(match);
-    }
-
-    if (ideaId || scriptId) {
-      setFormInputs((prev) => ({
-        ...prev,
-        ideaId: ideaId ?? prev.ideaId,
-        scriptId: scriptId ?? prev.scriptId,
-      }));
-    }
-
-    queryInitializedRef.current = true;
-  }, [searchParams, profiles]);
-
-  const activeFields = useMemo(() => {
-    if (!activeProfile) return [];
-    return PROFILE_FIELDS[activeProfile.key] ?? [];
-  }, [activeProfile]);
-
-  const handleGeneratePrompt = async () => {
-    if (!activeProfile) {
-      addToast('Selecciona un perfil primero', 'info');
-      return;
-    }
-    if (!selectedChannel) {
-      addToast('Selecciona un canal', 'info');
-      return;
-    }
-
-    const missingField = activeFields.find((field) => field.required && !formInputs[field.key]);
-    if (missingField) {
-      addToast(`Completa el campo: ${missingField.label}`, 'info');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const inputPayload: Record<string, string> = {};
-      if (formInputs.topicSeed.trim()) inputPayload.topicSeed = formInputs.topicSeed.trim();
-      if (formInputs.ideaId.trim()) inputPayload.ideaId = formInputs.ideaId.trim();
-      if (formInputs.scriptId.trim()) inputPayload.scriptId = formInputs.scriptId.trim();
-
-      const response = await authFetch('/api/ai/runs', {
-        method: 'POST',
-        body: JSON.stringify({
-          profileKey: activeProfile.key,
-          channelId: selectedChannel,
-          input: inputPayload,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'No se pudo generar el prompt');
-      }
-
-      const data = await response.json();
-      setPrompt(data.prompt);
-      setCurrentRunId(data.runId);
-      setCurrentStatus(data.status);
-      setOutputText('');
-      setAutoOutput(null);
-      setAutoApplied(null);
-      addToast('Prompt generado', 'success');
-      fetchRuns(selectedChannel);
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al generar prompt', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleExecuteRun = async () => {
-    if (!activeProfile) {
-      addToast('Selecciona un perfil primero', 'info');
-      return;
-    }
-    if (!selectedChannel) {
-      addToast('Selecciona un canal', 'info');
-      return;
-    }
-
-    const missingField = activeFields.find((field) => field.required && !formInputs[field.key]);
-    if (missingField) {
-      addToast(`Completa el campo: ${missingField.label}`, 'info');
-      return;
-    }
-
-    setExecuting(true);
-    try {
-      const inputPayload: Record<string, string> = {};
-      if (formInputs.topicSeed.trim()) inputPayload.topicSeed = formInputs.topicSeed.trim();
-      if (formInputs.ideaId.trim()) inputPayload.ideaId = formInputs.ideaId.trim();
-      if (formInputs.scriptId.trim()) inputPayload.scriptId = formInputs.scriptId.trim();
-
-      const response = await authFetch('/api/ai/runs/execute', {
-        method: 'POST',
-        body: JSON.stringify({
-          profileKey: activeProfile.key,
-          channelId: selectedChannel,
-          input: inputPayload,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'No se pudo ejecutar el run');
-      }
-
-      const data = await response.json();
-      setAutoOutput(data.output ?? null);
-      setAutoApplied(data.applied ?? null);
-      setCurrentRunId(data.runId ?? null);
-      setCurrentStatus('completed');
-      setPrompt(null);
-      setOutputText('');
-      addToast('Generado y aplicado', 'success');
-      fetchRuns(selectedChannel);
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al ejecutar run', 'error');
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  const handleCopyPrompt = async () => {
-    if (!prompt) return;
-    const combined = `SYSTEM:\n${prompt.system}\n\nUSER:\n${prompt.user}`;
-    try {
-      await navigator.clipboard.writeText(combined);
-      addToast('Prompt copiado', 'success');
-    } catch {
-      addToast('No se pudo copiar el prompt', 'error');
-    }
-  };
-
-  const handleSubmitOutput = async () => {
-    if (!currentRunId) return;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(outputText);
-    } catch {
-      addToast('JSON inválido. Revisa el formato.', 'error');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const response = await authFetch(`/api/ai/runs/${currentRunId}/submit`, {
-        method: 'POST',
-        body: JSON.stringify({ outputJson: parsed }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'No se pudo guardar el output');
-      }
-      setCurrentStatus('completed');
-      addToast('Resultado guardado', 'success');
-      fetchRuns(selectedChannel);
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al guardar output', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleApply = async () => {
-    if (!currentRunId) return;
-    setApplying(true);
-    try {
-      const response = await authFetch(`/api/ai/runs/${currentRunId}/apply`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'No se pudo aplicar');
-      }
-      const data = await response.json();
-      addToast(`Aplicado: ${Object.keys(data.applied ?? {}).join(', ') || 'OK'}`, 'success');
-      fetchRuns(selectedChannel);
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al aplicar', 'error');
-    } finally {
-      setApplying(false);
-    }
-  };
 
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
@@ -413,6 +85,7 @@ export default function AiStudioPage() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 pb-24 lg:pb-12 w-full">
+          <h1 className="sr-only">AI Studio</h1>
           <motion.div
             className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between"
             initial={{ opacity: 0, y: -20 }}
@@ -462,7 +135,7 @@ export default function AiStudioPage() {
                       <p className="text-sm text-slate-400">Selecciona un perfil y completa el input.</p>
                     </div>
                     <select
-                      className="bg-gray-900/60 border border-gray-800 text-sm text-slate-200 rounded-lg px-3 py-2"
+                      className="w-full sm:w-auto bg-gray-900/60 border border-gray-800 text-sm text-slate-200 rounded-lg px-3 py-2"
                       value={selectedChannel}
                       onChange={(event) => setSelectedChannel(event.target.value)}
                       disabled={!channels.length}
@@ -483,11 +156,7 @@ export default function AiStudioPage() {
                           type="button"
                           onClick={() => {
                             setActiveProfile(profile);
-                            setPrompt(null);
-                            setCurrentRunId(null);
-                            setCurrentStatus(null);
-                            setAutoOutput(null);
-                            setAutoApplied(null);
+                            resetRunState();
                           }}
                           className={`text-left rounded-xl border px-4 py-3 transition-all ${activeProfile?.key === profile.key
                             ? 'border-yellow-500/60 bg-yellow-500/10 text-yellow-200'
@@ -527,6 +196,42 @@ export default function AiStudioPage() {
                         />
                       </label>
                     ))}
+                    {showIdeaPresets && (
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Presets por nicho</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {IDEA_PRESETS.map((preset) => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              className="rounded-full border border-gray-800 px-3 py-1 text-xs text-slate-200 hover:border-yellow-500/40"
+                              onClick={() => setFormInputs((prev) => ({ ...prev, topicSeed: preset.seed }))}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500">Selecciona un preset para completar el tema base con tono y estructura.</p>
+                      </div>
+                    )}
+                    {showScriptPresets && (
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Plantillas de guion</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {SCRIPT_STYLE_PRESETS.map((preset) => (
+                            <button
+                              key={preset.label}
+                              type="button"
+                              className="rounded-full border border-gray-800 px-3 py-1 text-xs text-slate-200 hover:border-yellow-500/40"
+                              onClick={() => setFormInputs((prev) => ({ ...prev, styleGuide: preset.guide }))}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500">Selecciona un estilo para orientar el guion.</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -544,7 +249,7 @@ export default function AiStudioPage() {
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={handleGeneratePrompt}
+                    onClick={generatePrompt}
                     disabled={submitting || !activeProfile}
                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-black rounded-lg bg-yellow-400 hover:bg-yellow-300 disabled:opacity-60"
                   >
@@ -553,7 +258,7 @@ export default function AiStudioPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={handleExecuteRun}
+                    onClick={executeRun}
                     disabled={executing || !activeProfile}
                     className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-black rounded-lg bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60"
                   >
@@ -563,7 +268,7 @@ export default function AiStudioPage() {
                   {prompt && (
                     <button
                       type="button"
-                      onClick={handleCopyPrompt}
+                      onClick={copyPrompt}
                       className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-gray-800 text-slate-200 rounded-lg hover:border-yellow-500/40"
                     >
                       <Clipboard className="w-4 h-4" />
@@ -594,7 +299,7 @@ export default function AiStudioPage() {
                     <div className="flex flex-wrap items-center gap-3">
                       <button
                         type="button"
-                        onClick={handleSubmitOutput}
+                        onClick={submitOutput}
                         disabled={submitting || !currentRunId}
                         className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-black rounded-lg bg-emerald-400 hover:bg-emerald-300 disabled:opacity-60"
                       >
@@ -603,7 +308,7 @@ export default function AiStudioPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={handleApply}
+                        onClick={applyRun}
                         disabled={applying || currentStatus !== 'completed'}
                         className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-gray-800 text-slate-200 rounded-lg hover:border-yellow-500/40 disabled:opacity-60"
                       >
@@ -662,10 +367,10 @@ export default function AiStudioPage() {
                       onClick={() => setSelectedRun(run)}
                       className="w-full text-left rounded-xl border border-gray-800 bg-gray-900/50 px-4 py-3 hover:border-yellow-500/40"
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-100">{run.profile_key}</p>
-                          <p className="text-xs text-slate-500">{formatDateTime(run.created_at)}</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-100 truncate">{run.profile_key}</p>
+                          <p className="text-xs text-slate-500 truncate">{formatDateTime(run.created_at)}</p>
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full ${statusBadge(run.status)}`}>{run.status}</span>
                       </div>

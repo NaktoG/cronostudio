@@ -28,7 +28,6 @@ export const NAV_ITEMS = [
   { href: '/channels', label: NAV_LABELS.channels, icon: Tv },
   { href: '/analytics', label: NAV_LABELS.analytics, icon: BarChart3 },
   { href: '/ai', label: NAV_LABELS.aiStudio, icon: Sparkles },
-  { href: '/start', label: NAV_LABELS.guide, icon: BookOpen },
 ];
 
 export const QUICK_LINKS = [

@@ -34,6 +34,9 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
 
     return withSecurityHeaders(NextResponse.json({ message: 'Email verificado' }));
   } catch (error) {
+    if (error instanceof Error && error.message.includes('Validation error')) {
+      return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+    }
     logger.error('auth.email_verify.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al verificar email' }, { status: 500 }));
   }

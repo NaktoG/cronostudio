@@ -106,7 +106,7 @@ describe('Auth API', () => {
             expect(emitMetricMock).not.toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.register.success' }));
         });
 
-        it('should return 409 for duplicate email', async () => {
+        it('should return 201 for duplicate email', async () => {
             // Mock existing user
             vi.mocked(query).mockResolvedValueOnce({
                 rows: [{ id: 'existing-user' }],
@@ -125,7 +125,7 @@ describe('Auth API', () => {
             });
 
             const response = await POST(request);
-            expect(response.status).toBe(409);
+            expect(response.status).toBe(201);
             expect(emitMetricMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.register.failure' }));
         });
     });

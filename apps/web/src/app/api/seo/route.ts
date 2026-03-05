@@ -26,6 +26,10 @@ const UpdateSeoSchema = z.object({
     score: z.number().int().min(0).max(100).optional(),
 });
 
+function isValidationError(error: unknown): boolean {
+    return error instanceof Error && error.message.startsWith('Validation error:');
+}
+
 function calculateSeoScore(title?: string, description?: string, tags?: string[]): number {
     let score = 0;
     if (title) {
@@ -50,7 +54,7 @@ function calculateSeoScore(title?: string, description?: string, tags?: string[]
 
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -82,7 +86,7 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 
 export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -100,7 +104,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
         return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
     } catch (error) {
         console.error('Error creating SEO data:', error);
-        if (error instanceof z.ZodError) {
+        if (error instanceof z.ZodError || isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al crear datos SEO' }, { status: 500 }));
@@ -109,7 +113,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
 
 export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
@@ -151,13 +155,16 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
         console.error('Error updating SEO data:', error);
+        if (isValidationError(error)) {
+            return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
+        }
         return withSecurityHeaders(NextResponse.json({ error: 'Error al actualizar datos SEO' }, { status: 500 }));
     }
 }));
 
 export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
-        const userId = getAuthUser(request)?.userId;
+        const userId = (await getAuthUser(request))?.userId;
 
         if (!userId) {
             return withSecurityHeaders(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));

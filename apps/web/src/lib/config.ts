@@ -29,6 +29,8 @@ const envSchema = z
     REDIS_URL: z.string().optional(),
     REDIS_SKIP_TLS_VERIFY: z.string().optional(),
 
+    RATE_LIMIT_TRUST_PROXY: z.string().optional(),
+
     CRONOSTUDIO_WEBHOOK_SECRET: z.string().optional(),
 
     CSP_CONNECT_SRC: z.string().optional(),
@@ -36,6 +38,9 @@ const envSchema = z
     CSP_SCRIPT_SRC: z.string().optional(),
     CSP_STYLE_SRC: z.string().optional(),
     CSP_FONT_SRC: z.string().optional(),
+    CSP_REPORT_ONLY: z.string().optional(),
+    CSP_REPORT_URI: z.string().optional(),
+    CSP_STYLE_UNSAFE_INLINE: z.string().optional(),
   })
   .passthrough();
 
@@ -85,6 +90,8 @@ function buildConfig() {
   const env = parsed.data;
   requireDatabaseEnv();
 
+  const baseUrl = env.APP_BASE_URL || 'http://localhost:3000';
+
   return {
     nodeEnv: env.NODE_ENV || 'development',
     isProduction,
@@ -100,7 +107,7 @@ function buildConfig() {
     },
 
     app: {
-      baseUrl: env.APP_BASE_URL || 'http://localhost:3000',
+      baseUrl,
     },
 
     automation: {
@@ -130,15 +137,27 @@ function buildConfig() {
       secret: env.CRONOSTUDIO_WEBHOOK_SECRET,
     },
 
-    csp: {
-      connectSrc: getArrayEnv(env.CSP_CONNECT_SRC, ["'self'"]),
-      imgSrc: getArrayEnv(env.CSP_IMG_SRC, ["'self'", 'data:', 'https:']),
-      scriptSrc: getArrayEnv(env.CSP_SCRIPT_SRC, ["'self'"]),
-      styleSrc: getArrayEnv(env.CSP_STYLE_SRC, ["'self'", "'unsafe-inline'"]),
-      fontSrc: getArrayEnv(env.CSP_FONT_SRC, ["'self'", 'data:', 'https://fonts.gstatic.com']),
-    },
+    csp: (() => {
+      const styleUnsafeInline = (env.CSP_STYLE_UNSAFE_INLINE || 'true') === 'true';
+      const styleSrc = getArrayEnv(env.CSP_STYLE_SRC, ["'self'", "'unsafe-inline'"]);
+      const normalizedStyleSrc = styleUnsafeInline ? styleSrc : styleSrc.filter((item) => item !== "'unsafe-inline'");
+      const reportOnly = (env.CSP_REPORT_ONLY || 'false') === 'true';
+      const reportUri = env.CSP_REPORT_URI || (reportOnly ? `${baseUrl}/api/csp-report` : undefined);
+
+      return {
+        connectSrc: getArrayEnv(env.CSP_CONNECT_SRC, ["'self'"]),
+        imgSrc: getArrayEnv(env.CSP_IMG_SRC, ["'self'", 'data:', 'https:']),
+        scriptSrc: getArrayEnv(env.CSP_SCRIPT_SRC, ["'self'"]),
+        styleSrc: normalizedStyleSrc,
+        fontSrc: getArrayEnv(env.CSP_FONT_SRC, ["'self'", 'data:', 'https://fonts.gstatic.com']),
+        reportOnly,
+        reportUri,
+        styleUnsafeInline,
+      };
+    })(),
 
     rateLimit: {
+      trustProxy: env.RATE_LIMIT_TRUST_PROXY === 'true',
       api: {
         windowMs: 15 * 60 * 1000,
         max: 100,
