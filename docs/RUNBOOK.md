@@ -2,12 +2,10 @@
 
 ## Inicio de Sesión de Desarrollo
 
-### Levantar infraestructura
+### Levantar infraestructura (modo prod-like)
 
 ```bash
-cd /Volumes/SSD-QVO/projects/cronostudio/infra/docker
-docker compose up -d
-docker ps
+./scripts/local_up.sh
 ```
 
 > **Nota:** En entornos de producción (Hetzner) todas las variables obligatorias (`JWT_SECRET`, `DATABASE_URL`, `POSTGRES_*`, `N8N_*`, `SMTP_*`, etc.) deben estar definidas manualmente. El runtime no aplicará valores de respaldo, así que valida el `.env` antes de desplegar.
@@ -34,8 +32,7 @@ Acceso:
 ## Parar Servicios
 
 ```bash
-cd infra/docker
-docker compose down
+./scripts/local_down.sh
 ```
 
 Nota: Los datos en volúmenes persisten. Los containers van a estado `Exited`.
@@ -76,12 +73,10 @@ docker exec -i cronostudio-postgres psql -U postgres cronostudio < backup_202501
 Si quieres "empezar de cero" (borra todos los datos de n8n y Postgres):
 
 ```bash
-cd infra/docker
-docker compose down -v
-docker compose up -d
+./scripts/local_reset.sh --i-know
 ```
 
-El flag `-v` elimina volúmenes. Usar solo en desarrollo local.
+El reset elimina volúmenes. Usar solo cuando sea intencional.
 
 ## Incidentes Comunes
 
@@ -138,9 +133,8 @@ docker logs cronostudio-postgres
 # Reiniciar container
 docker restart cronostudio-postgres
 
-# Si sigue fallando, resetear volumen
-docker compose -f infra/docker/docker-compose.yml down -v
-docker compose -f infra/docker/docker-compose.yml up -d
+# Si sigue fallando y necesitas reset intencional
+./scripts/local_reset.sh --i-know
 ```
 
 ### Permisos negados en volúmenes
@@ -149,8 +143,8 @@ docker compose -f infra/docker/docker-compose.yml up -d
 # En macOS/Linux, puede ser permisos
 docker exec cronostudio-postgres chown -R postgres:postgres /var/lib/postgresql/data
 
-# O simplemente resetear
-docker compose down -v && docker compose up -d
+# Reset intencional
+./scripts/local_reset.sh --i-know
 ```
 
 ## Monitoreo

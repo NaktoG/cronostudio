@@ -65,7 +65,7 @@ function getPool(): Pool {
       },
       { dedupeKey: 'db.pool_error', cooldownMs: 300000 }
     );
-    process.exit(-1);
+    pool = null;
   });
 
   return pool;

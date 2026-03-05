@@ -75,6 +75,30 @@ Punto de entrada de la aplicación.
 
 ---
 
+## 🔁 Flujos Críticos
+
+### 1) Autenticación
+1. Login → `/api/auth/login`.
+2. Emisión de access + refresh.
+3. Sesión persistida en DB.
+
+### 2) OAuth YouTube
+1. `/api/google/oauth/start` redirige a Google.
+2. `/api/google/oauth/callback` intercambia tokens.
+3. Tokens cifrados en DB + refresh automático.
+
+### 3) Automatización n8n
+1. n8n ejecuta workflow.
+2. Llama endpoints internos (sync/analytics).
+3. Registra `automation_runs`.
+
+### 4) Analytics
+1. n8n llama `/api/integrations/youtube/analytics/video`.
+2. Backend renueva token si expiró.
+3. Guarda métricas en DB.
+
+---
+
 ## 🛡 Principios SOLID Aplicados
 
 - **Single Responsibility Principle (SRP)**: Cada Use Case hace una sola cosa.

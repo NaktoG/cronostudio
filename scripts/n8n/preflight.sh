@@ -46,13 +46,9 @@ else
   fi
 fi
 
-if [[ -z "${YOUTUBE_API_KEY:-}" ]]; then
-  echo "YOUTUBE_API_KEY falta (sync channels/videos fallara)"
-fi
+echo "YouTube API Key: not required (OAuth via CronoStudio)"
 
-if [[ -z "${YOUTUBE_ANALYTICS_ACCESS_TOKEN:-}" ]]; then
-  echo "YOUTUBE_ANALYTICS_ACCESS_TOKEN falta (analytics fallara)"
-fi
+echo "YouTube Analytics token: not required (OAuth via CronoStudio)"
 
 echo "==> n8n health"
 curl -sS -o /tmp/cronostudio_n8n_healthz.json -w "%{http_code}\n" http://localhost:5678/healthz || true

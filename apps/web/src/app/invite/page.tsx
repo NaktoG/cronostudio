@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle2, AlertTriangle } from 'lucide-react';
@@ -9,7 +9,7 @@ import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuthFetch } from '../contexts/AuthContext';
 
-export default function InviteAcceptPage() {
+function InviteAcceptContent() {
   const searchParams = useSearchParams();
   const authFetch = useAuthFetch();
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -79,5 +79,13 @@ export default function InviteAcceptPage() {
         <Footer />
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function InviteAcceptPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex flex-col" />}>
+      <InviteAcceptContent />
+    </Suspense>
   );
 }

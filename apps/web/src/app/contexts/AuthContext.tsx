@@ -20,7 +20,7 @@ interface AuthContextType {
     isLoading: boolean;
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string, name: string) => Promise<void>;
+    register: (email: string, password: string, name: string) => Promise<{ message?: string; verificationUrl?: string }>;
     logout: () => void;
     error: string | null;
     clearError: () => void;
@@ -140,6 +140,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             // Registro requiere verificación, no iniciamos sesión
             setStatus('unauthenticated');
+            return {
+                message: data.message,
+                verificationUrl: data.enlaceVerificacion,
+            };
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Error desconocido';
             setError(message);
@@ -187,15 +191,28 @@ export function useAuth() {
 
 // Hook para hacer fetch autenticado
 export function useAuthFetch() {
-    return useCallback(async (url: string, options: RequestInit = {}) => {
-        const headers = new Headers(options.headers);
-        if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
+    return useCallback(async (input: RequestInfo, options: RequestInit = {}) => {
+        let url = input;
+        let baseOptions = options;
+
+        if (input instanceof Request) {
+            url = input.url;
+            baseOptions = {
+                method: input.method,
+                headers: input.headers,
+                body: input.body,
+                ...options,
+            };
+        }
+
+        const headers = new Headers(baseOptions.headers);
+        if (!headers.has('Content-Type') && baseOptions.body && !(baseOptions.body instanceof FormData)) {
             headers.set('Content-Type', 'application/json');
         }
 
         return fetch(url, {
             credentials: 'include',
-            ...options,
+            ...baseOptions,
             headers,
         });
     }, []);

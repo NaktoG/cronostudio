@@ -9,7 +9,7 @@ Objetivo: evitar que los workflows expongan credenciales o accedan a CronoStudio
 
 ## 2. Variables sensibles
 - Usar credenciales nativas de n8n (se almacenan cifradas con `N8N_ENCRYPTION_KEY`).
-- Tokens como `CRONOSTUDIO_EMAIL`/`PASSWORD`, `YOUTUBE_API_KEY`, `YOUTUBE_ANALYTICS_ACCESS_TOKEN` deben configurarse vía env vars (ver `n8n/workflows/README.md`).
+- Tokens como `CRONOSTUDIO_EMAIL`/`PASSWORD` deben configurarse vía env vars (ver `n8n/workflows/README.md`).
 - Revisar los JSON exportados antes de commit: si contienen valores reales, rotar las credenciales inmediatamente.
 
 ## 3. Roles y permisos

@@ -1,0 +1,15 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gold" x1="14" y1="12" x2="54" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7D26A" />
+      <stop offset="1" stop-color="#F2A63A" />
+    </linearGradient>
+  </defs>
+  <path
+    d="M44 20A18 18 0 1 0 44 44"
+    stroke="url(#gold)"
+    stroke-width="6"
+    stroke-linecap="round"
+  />
+  <circle cx="44" cy="32" r="3.5" fill="url(#gold)" />
+</svg>

@@ -51,7 +51,7 @@ export function GuestRoute({ children, fallback }: ProtectedRouteProps) {
 
     useEffect(() => {
         if (!isLoading && isAuthenticated) {
-            router.push('/');
+            router.push('/dashboard');
         }
     }, [isAuthenticated, isLoading, router]);
 

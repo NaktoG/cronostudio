@@ -2,13 +2,12 @@
 
 import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { CheckCircle2, ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter, XCircle } from 'lucide-react';
+import { CheckCircle2, ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter, Wand2, XCircle, Youtube, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatDate, formatDateTime, formatMonthYear, getIsoWeekInfo } from '@/lib/dates';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import ProtectedRoute from './components/ProtectedRoute';
 import { PageTransition } from './components/Animations';
 import PriorityActions from './components/PriorityActions';
 import ProductionPipeline from './components/ProductionPipeline';
@@ -275,7 +274,7 @@ function OnboardingTour({
   );
 }
 
-function DashboardContent() {
+export function DashboardContent() {
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
   const { addToast } = useToast();
@@ -372,7 +371,18 @@ function DashboardContent() {
         const data = await response.json();
         const list = Array.isArray(data) ? data : [];
         setChannels(list);
-        if (!selectedChannelId && list.length > 0) {
+        if (list.length === 0) {
+          setSelectedChannelId('');
+          if (typeof window !== 'undefined') {
+            window.localStorage.removeItem('cronostudio.channelId');
+          }
+          return;
+        }
+
+        const hasSelected = selectedChannelId
+          ? list.some((channel: { id: string }) => channel.id === selectedChannelId)
+          : false;
+        if (!selectedChannelId || !hasSelected) {
           const defaultId = list[0].id;
           setSelectedChannelId(defaultId);
           if (typeof window !== 'undefined') {
@@ -394,22 +404,39 @@ function DashboardContent() {
     try {
       const isoYear = fallbackIso.isoYear;
       const isoWeek = fallbackIso.isoWeek;
+      const resolvedChannelId = selectedChannelId
+        && channels.some((channel: { id: string }) => channel.id === selectedChannelId)
+        ? selectedChannelId
+        : '';
+
       const params = new URLSearchParams({
-        channelId: selectedChannelId,
         isoYear: String(isoYear),
         isoWeek: String(isoWeek),
       });
+      if (resolvedChannelId) {
+        params.set('channelId', resolvedChannelId);
+      }
       const query = `?${params.toString()}`;
+
+      const weeklyRequests = resolvedChannelId
+        ? [
+            authFetch(`/api/weekly-status${query}`, { signal }),
+            authFetch(`/api/weekly-goals${query}`, { signal }),
+            authFetch(`/api/discipline/weekly${query}`, { signal }),
+            authFetch(`/api/integrations/youtube/reconcile/weekly${query}&channelId=${resolvedChannelId}`, { signal }),
+          ]
+        : [
+            Promise.resolve(new Response(null, { status: 204 })),
+            Promise.resolve(new Response(null, { status: 204 })),
+            Promise.resolve(new Response(null, { status: 204 })),
+            Promise.resolve(new Response(null, { status: 204 })),
+          ];
+
       const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes, reconcileRes] = await Promise.all([
         authFetch('/api/productions?stats=true', { signal }),
         authFetch('/api/ideas', { signal }),
         authFetch('/api/automation-runs', { signal }),
-        authFetch(`/api/weekly-status${query}`, { signal }),
-        authFetch(`/api/weekly-goals${query}`, { signal }),
-        authFetch(`/api/discipline/weekly${query}`, { signal }),
-        selectedChannelId
-          ? authFetch(`/api/integrations/youtube/reconcile/weekly${query}&channelId=${selectedChannelId}`, { signal })
-          : Promise.resolve(new Response(null, { status: 204 }))
+        ...weeklyRequests,
       ]);
 
       if (productionsRes.ok) {
@@ -440,10 +467,14 @@ function DashboardContent() {
         setRuns([]);
       }
 
-      if (weeklyRes.ok) {
+      if (weeklyRes.ok && weeklyRes.status !== 204) {
         const weeklyData: WeeklyStatus = await weeklyRes.json();
         setWeeklyStatus(weeklyData);
         setWeeklyActions(Array.isArray(weeklyData.tasks) ? weeklyData.tasks : []);
+        setWeeklyError(null);
+      } else if (weeklyRes.ok) {
+        setWeeklyStatus(null);
+        setWeeklyActions([]);
         setWeeklyError(null);
       } else {
         const errorData = await weeklyRes.json().catch(() => null);
@@ -452,14 +483,14 @@ function DashboardContent() {
         setWeeklyActions([]);
       }
 
-      if (weeklyGoalsRes.ok) {
+      if (weeklyGoalsRes.ok && weeklyGoalsRes.status !== 204) {
         const goalsData: WeeklyGoalResponse = await weeklyGoalsRes.json();
         setWeeklyGoal(goalsData);
       } else {
         setWeeklyGoal(null);
       }
 
-      if (disciplineRes.ok) {
+      if (disciplineRes.ok && disciplineRes.status !== 204) {
         const disciplineData: DisciplineWeekly = await disciplineRes.json();
         setDisciplineWeekly(disciplineData);
       } else {
@@ -479,7 +510,7 @@ function DashboardContent() {
       if (signal?.aborted) return;
       setLoading(false);
     }
-  }, [authFetch, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek]);
+  }, [authFetch, selectedChannelId, channels, fallbackIso.isoYear, fallbackIso.isoWeek]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -637,6 +668,7 @@ function DashboardContent() {
   };
 
   const stageLabels: Record<keyof PipelineStats, string> = STAGE_LABELS;
+  const resolveStageLabel = (status: string) => stageLabels[status as keyof PipelineStats] ?? status;
   const weeklyStyle = weeklyStatus ? WEEKLY_STATUS_STYLES[weeklyStatus.status] : WEEKLY_STATUS_STYLES.OK;
   const nextConditionText = weeklyStatus?.nextCondition?.label ?? DASHBOARD_COPY.weeklyStatus.noNext;
   const nextConditionDue = weeklyStatus?.nextCondition?.dueAt
@@ -670,6 +702,11 @@ function DashboardContent() {
   const streakCurrent = weeklyStatus?.currentStreak ?? 0;
   const streakBest = weeklyStatus?.bestStreak ?? 0;
   const last4Weeks = weeklyStatus?.last4Weeks ?? [];
+  const fallbackWeeks: NonNullable<WeeklyStatus['last4Weeks']> = Array.from({ length: 4 }, () => ({
+    isoYear: 0,
+    isoWeek: 0,
+    status: 'EN_RIESGO',
+  }));
   const disciplineStatus = disciplineWeekly?.status ?? 'OK';
   const disciplineStyle = WEEKLY_STATUS_STYLES[disciplineStatus] ?? WEEKLY_STATUS_STYLES.OK;
   const disciplineCount = disciplineWeekly?.scoreboard.count ?? 0;
@@ -1381,7 +1418,7 @@ function DashboardContent() {
                         </div>
                       </div>
                       <div className="mt-4 flex items-center gap-2">
-                        {(last4Weeks.length > 0 ? last4Weeks : Array.from({ length: 4 }).map(() => ({ status: 'EN_RIESGO' })))
+                        {(last4Weeks.length > 0 ? last4Weeks : fallbackWeeks)
                           .slice(0, 4)
                           .map((week, index) => (
                             <span
@@ -1486,7 +1523,7 @@ function DashboardContent() {
                                   <p className="mt-1 flex flex-wrap items-center gap-2">
                                     <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
                                     <span className="text-slate-600">•</span>
-                                    <span>{stageLabels[focusProduction.status] ?? focusProduction.status}</span>
+                                    <span>{resolveStageLabel(focusProduction.status)}</span>
                                   </p>
                                 </div>
                               )}
@@ -1695,7 +1732,7 @@ function DashboardContent() {
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
                               <span className="uppercase tracking-[0.2em]">Estado</span>
                               <span className="rounded-full border border-gray-800 px-2 py-0.5 text-slate-200">
-                                {stageLabels[focusProduction.status] ?? focusProduction.status}
+                                {resolveStageLabel(focusProduction.status)}
                               </span>
                               <span className="text-slate-600">•</span>
                               <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
@@ -1825,7 +1862,7 @@ function DashboardContent() {
                             <p className="mt-1 flex flex-wrap items-center gap-2">
                               <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
                               <span className="text-slate-600">•</span>
-                              <span>{stageLabels[focusProduction.status] ?? focusProduction.status}</span>
+                              <span>{resolveStageLabel(focusProduction.status)}</span>
                             </p>
                           </div>
                         )}
@@ -2470,21 +2507,282 @@ function DashboardContent() {
   );
 }
 
-export default function DashboardPage() {
+function HomeContent() {
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      router.replace('/dashboard');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  return <PublicLanding />;
+}
+
+export default function HomePage() {
   return (
-    <ProtectedRoute>
-      <Suspense
-        fallback={
-          <div className="min-h-screen flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-               <p className="text-slate-300">{DASHBOARD_COPY.loading.dashboard}</p>
+    <Suspense fallback={<div className="min-h-screen flex flex-col" />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+export function PublicLanding() {
+  return (
+    <div className="min-h-screen flex flex-col relative overflow-hidden">
+      <div className="absolute inset-0">
+        <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-yellow-400/10 blur-3xl" />
+        <div className="absolute top-1/3 -right-32 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl" />
+      </div>
+      <Header />
+      <main className="flex-1 w-full px-4 sm:px-6 lg:px-10 xl:px-14 py-10 sm:py-14 relative">
+        <section className="grid gap-8 sm:gap-10 lg:gap-12 lg:grid-cols-[1.15fr_0.85fr] items-center">
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-yellow-300">
+              <Sparkles className="h-4 w-4" />
+              Estudio creativo
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-tight">
+              La suite de produccion para creadores que publican con consistencia.
+            </h1>
+            <p className="text-base sm:text-lg text-slate-300 max-w-xl">
+              CronoStudio integra ideas, guiones, miniaturas, SEO y analytics en un flujo unico con automatizaciones listas para escalar.
+            </p>
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+              <Link
+                href="/register"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-400 px-5 py-3 text-sm font-semibold text-black w-full sm:w-auto"
+              >
+                Crear cuenta
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-700 px-5 py-3 text-sm font-semibold text-slate-200 w-full sm:w-auto"
+              >
+                Iniciar sesion
+              </Link>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {[
+                { title: 'Conecta', text: 'Autoriza YouTube y define tu canal.' },
+                { title: 'Planifica', text: 'Idea, guion, SEO y miniatura con flujo claro.' },
+                { title: 'Automatiza', text: 'Sincroniza videos y analytics sin tocar APIs.' },
+              ].map((step, index) => (
+                <div key={step.title} className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+                  <div className="text-xs text-yellow-300">Paso {index + 1}</div>
+                  <div className="mt-2 text-sm font-semibold text-white">{step.title}</div>
+                  <div className="mt-2 text-xs text-slate-400">{step.text}</div>
+                </div>
+              ))}
             </div>
           </div>
-        }
-      >
-        <DashboardContent />
-      </Suspense>
-    </ProtectedRoute>
+
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
+              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                <Wand2 className="h-5 w-5 text-yellow-300" />
+                Para que sirve
+              </div>
+              <p className="mt-3 text-sm text-slate-400">
+                Converti tu canal en un sistema: cada semana sabe que producir, cuando publicar y que medir.
+              </p>
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
+                  Pipeline claro para ideas, guiones, SEO y miniaturas.
+                </div>
+                <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
+                  Metricas semanales y alertas de disciplina.
+                </div>
+                <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
+                  Automatizaciones para sincronizar contenido real.
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
+              <div className="flex items-center gap-2 text-sm font-semibold text-white">
+                <Zap className="h-5 w-5 text-yellow-300" />
+                Como funciona
+              </div>
+              <div className="mt-4 space-y-3 text-sm text-slate-300">
+                <p>1. Conectas YouTube con OAuth seguro.</p>
+                <p>2. CronoStudio sincroniza videos y analytics.</p>
+                <p>3. Planificas la semana con metas claras.</p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
+              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Integraciones</div>
+              <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-300">
+                <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
+                  <Youtube className="h-4 w-4 text-red-400" /> YouTube
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
+                  <Instagram className="h-4 w-4 text-pink-400" /> Instagram
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
+                  <Twitter className="h-4 w-4 text-sky-400" /> X / Twitter
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
+                  <Linkedin className="h-4 w-4 text-blue-400" /> LinkedIn
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
+                  <Music2 className="h-4 w-4 text-emerald-400" /> TikTok
+                </span>
+              </div>
+            </div>
+          </div>
+          </section>
+
+          <section className="mt-10 sm:mt-12 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] items-start">
+            <div className="min-w-0 space-y-6">
+              <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
+                <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Testimonios</div>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:hidden">
+                  {[
+                    {
+                      quote: 'Deje de improvisar: ahora cada semana tengo claro que producir y cuando publicar.',
+                      name: 'Nati R.',
+                      role: 'Creadora de contenido',
+                      photo: '/imgs/aiony-haust-3TLl_97HNJo-unsplash.jpg',
+                    },
+                    {
+                      quote: 'El tablero y las alertas me ayudaron a sostener el ritmo sin quemarme.',
+                      name: 'Leo M.',
+                      role: 'Estratega de canales',
+                      photo: '/imgs/ian-dooley-d1UPkiFd04A-unsplash.jpg',
+                    },
+                    {
+                      quote: 'Conectar YouTube y ver analytics en un solo lugar cambio el juego.',
+                      name: 'Caro V.',
+                      role: 'Productora digital',
+                      photo: '/imgs/andres-mfWsMDdN-Ro-unsplash.jpg',
+                    },
+                    {
+                      quote: 'Pase de caos a una rutina clara. Ahora publico sin apagar incendios.',
+                      name: 'Juli P.',
+                      role: 'Creadora educativa',
+                      photo: '/imgs/rafaella-mendes-diniz-et_78QkMMQs-unsplash.jpg',
+                    },
+                  ].map((item) => (
+                    <div key={item.name} className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+                      <div className="flex items-center gap-3">
+                        <img src={item.photo} alt={item.name} className="h-10 w-10 rounded-full object-cover" />
+                        <div>
+                          <p className="text-sm font-semibold text-white">{item.name}</p>
+                          <p className="text-xs text-slate-500">{item.role}</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-sm text-slate-300">“{item.quote}”</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 hidden lg:block">
+                  <div className="relative overflow-hidden w-full">
+                    <div className="testimonial-track max-w-full">
+                      {[...Array(2)].flatMap(() => [
+                        {
+                          quote: 'Deje de improvisar: ahora cada semana tengo claro que producir y cuando publicar.',
+                          name: 'Nati R.',
+                          role: 'Creadora de contenido',
+                          photo: '/imgs/aiony-haust-3TLl_97HNJo-unsplash.jpg',
+                        },
+                        {
+                          quote: 'El tablero y las alertas me ayudaron a sostener el ritmo sin quemarme.',
+                          name: 'Leo M.',
+                          role: 'Estratega de canales',
+                          photo: '/imgs/ian-dooley-d1UPkiFd04A-unsplash.jpg',
+                        },
+                        {
+                          quote: 'Conectar YouTube y ver analytics en un solo lugar cambio el juego.',
+                          name: 'Caro V.',
+                          role: 'Productora digital',
+                          photo: '/imgs/andres-mfWsMDdN-Ro-unsplash.jpg',
+                        },
+                        {
+                          quote: 'Pase de caos a una rutina clara. Ahora publico sin apagar incendios.',
+                          name: 'Juli P.',
+                          role: 'Creadora educativa',
+                          photo: '/imgs/rafaella-mendes-diniz-et_78QkMMQs-unsplash.jpg',
+                        },
+                      ]).map((item, index) => (
+                        <div key={`${item.name}-${index}`} className="testimonial-card rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+                          <div className="flex items-center gap-3">
+                            <img src={item.photo} alt={item.name} className="h-10 w-10 rounded-full object-cover" />
+                            <div>
+                              <p className="text-sm font-semibold text-white">{item.name}</p>
+                              <p className="text-xs text-slate-500">{item.role}</p>
+                            </div>
+                          </div>
+                          <p className="mt-3 text-sm text-slate-300">“{item.quote}”</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
+                <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Newsletter</div>
+                <p className="mt-2 text-sm text-slate-300">
+                  Recibi ideas, insights y actualizaciones del estudio creativo cada semana.
+                </p>
+                <p className="mt-2 text-xs text-slate-500">Sin spam. Solo contenido accionable.</p>
+                <form className="mt-4 flex flex-col gap-3 sm:flex-row">
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="tu@email.com"
+                    className="w-full rounded-lg border border-gray-700 bg-gray-950/60 px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/60"
+                  />
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-lg bg-yellow-400 px-5 py-3 text-sm font-semibold text-black"
+                  >
+                    Suscribirme
+                  </button>
+                </form>
+              </div>
+            </div>
+            <div className="min-w-0 rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
+              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Precios</div>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="rounded-xl border border-yellow-400/40 bg-yellow-400/10 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold text-white">Creator Pro</div>
+                    <div className="text-sm text-yellow-300">Recomendado</div>
+                  </div>
+                  <div className="mt-2 text-3xl font-semibold text-white">$29<span className="text-sm text-slate-400">/mes</span></div>
+                  <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                    <li>Pipeline completo + panel de produccion</li>
+                    <li>Sync con YouTube y analytics diario</li>
+                    <li>Alertas semanales y objetivos</li>
+                  </ul>
+                  <Link href="/register" className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-black">
+                    Empezar ahora
+                  </Link>
+                </div>
+                <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+                  <div className="text-sm font-semibold text-white">Starter</div>
+                  <div className="mt-2 text-3xl font-semibold text-white">Gratis</div>
+                  <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                    <li>Ideas y guiones esenciales</li>
+                    <li>Tablero de produccion basico</li>
+                    <li>1 canal conectado</li>
+                  </ul>
+                  <Link href="/register" className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-slate-200">
+                    Crear cuenta
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </main>
+      <Footer />
+    </div>
   );
 }

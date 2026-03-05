@@ -57,6 +57,34 @@ export async function fetchUploadsPlaylist(accessToken: string) {
   };
 }
 
+export async function fetchUploadsPlaylistByChannelId(accessToken: string, channelId: string) {
+  const url = new URL(`${YOUTUBE_API_BASE}/channels`);
+  url.searchParams.set('part', 'id,contentDetails,snippet');
+  url.searchParams.set('id', channelId);
+
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const error = new Error('Failed to fetch YouTube uploads playlist.');
+    (error as { status?: number }).status = response.status;
+    throw error;
+  }
+
+  const data = await response.json();
+  const channel = data.items?.[0];
+  if (!channel) {
+    throw new Error('No YouTube channel found for account.');
+  }
+
+  return {
+    channelId: channel.id as string,
+    channelTitle: channel.snippet?.title as string | undefined,
+    uploadsPlaylistId: channel.contentDetails?.relatedPlaylists?.uploads as string,
+  };
+}
+
 type PlaylistItemResponse = {
   contentDetails?: {
     videoId?: string;
@@ -116,5 +144,36 @@ export async function refreshAccessToken(refreshTokenEnc: string) {
     accessTokenEnc: sealSecret(data.access_token as string),
     expiresIn: data.expires_in as number | undefined,
     scope: data.scope as string | undefined,
+  };
+}
+
+export async function fetchChannelDetails(accessToken: string, channelId: string) {
+  const url = new URL(`${YOUTUBE_API_BASE}/channels`);
+  url.searchParams.set('part', 'snippet,statistics');
+  url.searchParams.set('id', channelId);
+
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const error = new Error('Failed to fetch YouTube channel details.');
+    (error as { status?: number }).status = response.status;
+    throw error;
+  }
+
+  const data = await response.json();
+  const channel = data.items?.[0];
+  if (!channel) {
+    throw new Error('No YouTube channel found for account.');
+  }
+
+  const subscribersRaw = channel.statistics?.subscriberCount;
+  const subscribers = Number.isFinite(Number(subscribersRaw)) ? Number(subscribersRaw) : null;
+
+  return {
+    id: channel.id as string,
+    title: channel.snippet?.title as string | undefined,
+    subscribers,
   };
 }

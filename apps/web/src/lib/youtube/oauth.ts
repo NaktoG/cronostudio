@@ -18,11 +18,20 @@ function getRequiredEnv(name: string): string {
   return value;
 }
 
+function getRequiredEnvFrom(primary: string, fallback: string): string {
+  const value = process.env[primary] || process.env[fallback];
+  if (!value) {
+    throw new Error(`Missing ${primary} (or ${fallback}). Set it in apps/web/.env.local.`);
+  }
+  return value;
+}
+
 export function getOAuthConfig(): OAuthConfig {
-  const clientId = getRequiredEnv('YOUTUBE_OAUTH_CLIENT_ID');
-  const clientSecret = getRequiredEnv('YOUTUBE_OAUTH_CLIENT_SECRET');
-  const redirectUri = getRequiredEnv('YOUTUBE_OAUTH_REDIRECT_URI');
-  const scopesRaw = process.env.YOUTUBE_OAUTH_SCOPES || 'https://www.googleapis.com/auth/youtube.readonly';
+  const clientId = getRequiredEnvFrom('GOOGLE_CLIENT_ID', 'YOUTUBE_OAUTH_CLIENT_ID');
+  const clientSecret = getRequiredEnvFrom('GOOGLE_CLIENT_SECRET', 'YOUTUBE_OAUTH_CLIENT_SECRET');
+  const redirectUri = getRequiredEnvFrom('GOOGLE_REDIRECT_URI', 'YOUTUBE_OAUTH_REDIRECT_URI');
+  const scopesRaw = process.env.YOUTUBE_OAUTH_SCOPES
+    || 'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly';
   const scopes = scopesRaw.split(/[\s,]+/).filter(Boolean);
   return { clientId, clientSecret, redirectUri, scopes };
 }

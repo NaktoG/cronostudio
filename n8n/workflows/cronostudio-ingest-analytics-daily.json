@@ -277,17 +277,26 @@
       "name": "Fetch YouTube Analytics",
       "parameters": {
         "options": {},
-        "url": "={{'https://youtubeanalytics.googleapis.com/v2/reports?ids=channel==MINE&metrics=views,estimatedMinutesWatched,averageViewDuration&dimensions=day&filters=video==' + $json.youtubeVideoId + '&startDate=' + $json.startDate + '&endDate=' + $json.endDate}}",
+        "url": "={{$env.CRONOSTUDIO_API_BASE_URL || 'http://localhost:3000/api'}}/integrations/youtube/analytics/video",
         "sendHeaders": true,
         "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "=Bearer {{$env.YOUTUBE_ANALYTICS_ACCESS_TOKEN}}"
+              "name": "Cookie",
+              "value": "={{$node[\"Login CronoStudio\"].json[\"headers\"][\"set-cookie\"].map(cookie => cookie.split(\";\")[0]).join(\"; \")}}"
+            },
+            {
+              "name": "x-cronostudio-webhook-secret",
+              "value": "={{$env.CRONOSTUDIO_WEBHOOK_SECRET}}"
             }
           ]
-        }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\"videoId\": $json.videoId, \"startDate\": $json.startDate, \"endDate\": $json.endDate}"
       },
       "position": [
         112,

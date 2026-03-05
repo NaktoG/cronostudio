@@ -33,7 +33,7 @@ type RouteContext = { params: Promise<Record<string, string>> };
 type RouteHandler<Context = RouteContext> = (request: NextRequest, context: Context) => Promise<NextResponse> | NextResponse;
 
 function getClientIp(request: NextRequest): string {
-  const directIp = request.ip;
+  const directIp = (request as NextRequest & { ip?: string }).ip;
   if (config.rateLimit.trustProxy) {
     return (
       request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||

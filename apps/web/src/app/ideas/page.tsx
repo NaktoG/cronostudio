@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent, useRef } from 'react';
+import { Suspense, useState, useEffect, FormEvent, useRef } from 'react';
 import { Lightbulb, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
@@ -27,7 +27,7 @@ const STATUS_LABELS: Record<IdeaStatus, { label: string; color: string }> = {
     archived: { label: IDEA_STATUS_LABELS.archived, color: IDEA_STATUS_BADGES.archived },
 };
 
-export default function IdeasPage() {
+function IdeasContent() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
@@ -569,5 +569,13 @@ export default function IdeasPage() {
                 </AnimatePresence>
             </div>
         </ProtectedRoute>
+    );
+}
+
+export default function IdeasPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex flex-col" />}>
+            <IdeasContent />
+        </Suspense>
     );
 }

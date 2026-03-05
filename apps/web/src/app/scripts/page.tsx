@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent, useRef, useMemo, useCallback } from 'react';
+import { Suspense, useState, useEffect, FormEvent, useRef, useMemo, useCallback } from 'react';
 import { Clipboard, FileText, Link as LinkIcon, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
@@ -27,7 +27,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     recorded: { label: SCRIPT_STATUS_LABELS.recorded, color: SCRIPT_STATUS_BADGES.recorded },
 };
 
-export default function ScriptsPage() {
+function ScriptsContent() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
@@ -656,5 +656,13 @@ export default function ScriptsPage() {
                 </AnimatePresence>
             </div>
         </ProtectedRoute>
+    );
+}
+
+export default function ScriptsPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex flex-col" />}>
+            <ScriptsContent />
+        </Suspense>
     );
 }

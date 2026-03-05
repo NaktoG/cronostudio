@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clipboard, Users } from 'lucide-react';
+import { Clipboard, Eye, EyeOff, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
 import BackToDashboard from '../components/BackToDashboard';
@@ -47,6 +47,9 @@ export default function ConfiguracionPage() {
   const [passwordActual, setPasswordActual] = useState('');
   const [passwordNueva, setPasswordNueva] = useState('');
   const [passwordConfirmacion, setPasswordConfirmacion] = useState('');
+  const [showPasswordActual, setShowPasswordActual] = useState(false);
+  const [showPasswordNueva, setShowPasswordNueva] = useState(false);
+  const [showPasswordConfirmacion, setShowPasswordConfirmacion] = useState(false);
   const [textoConfirmacion, setTextoConfirmacion] = useState('');
   const [eliminando, setEliminando] = useState(false);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
@@ -262,30 +265,60 @@ export default function ConfiguracionPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className="text-sm text-gray-400">Contraseña actual</label>
-            <input
-              type="password"
-              value={passwordActual}
-              onChange={(e) => setPasswordActual(e.target.value)}
-              className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showPasswordActual ? 'text' : 'password'}
+                value={passwordActual}
+                onChange={(e) => setPasswordActual(e.target.value)}
+                className="w-full rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 pr-10 text-white focus:border-yellow-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasswordActual((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
+                aria-label={showPasswordActual ? 'Ocultar contraseña actual' : 'Mostrar contraseña actual'}
+              >
+                {showPasswordActual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <div>
             <label className="text-sm text-gray-400">Nueva contraseña</label>
-            <input
-              type="password"
-              value={passwordNueva}
-              onChange={(e) => setPasswordNueva(e.target.value)}
-              className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showPasswordNueva ? 'text' : 'password'}
+                value={passwordNueva}
+                onChange={(e) => setPasswordNueva(e.target.value)}
+                className="w-full rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 pr-10 text-white focus:border-yellow-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasswordNueva((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
+                aria-label={showPasswordNueva ? 'Ocultar nueva contraseña' : 'Mostrar nueva contraseña'}
+              >
+                {showPasswordNueva ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <div>
             <label className="text-sm text-gray-400">Confirmar nueva</label>
-            <input
-              type="password"
-              value={passwordConfirmacion}
-              onChange={(e) => setPasswordConfirmacion(e.target.value)}
-              className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showPasswordConfirmacion ? 'text' : 'password'}
+                value={passwordConfirmacion}
+                onChange={(e) => setPasswordConfirmacion(e.target.value)}
+                className="w-full rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 pr-10 text-white focus:border-yellow-400 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPasswordConfirmacion((prev) => !prev)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
+                aria-label={showPasswordConfirmacion ? 'Ocultar confirmación' : 'Mostrar confirmación'}
+              >
+                {showPasswordConfirmacion ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
         </div>
         <motion.button

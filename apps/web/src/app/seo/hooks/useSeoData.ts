@@ -52,8 +52,8 @@ export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataO
       setSeoData(result.items as SeoData[]);
     } catch (err) {
       if (signal?.aborted) return;
-      addToast(SEO_COPY.toasts.error, 'error');
-      setError(err instanceof Error ? err.message : SEO_COPY.toasts.error);
+      addToast(SEO_COPY.errors.load, 'error');
+      setError(err instanceof Error ? err.message : SEO_COPY.errors.load);
     } finally {
       if (signal?.aborted) return;
       setLoading(false);

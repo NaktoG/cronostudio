@@ -21,6 +21,10 @@ export const SEO_COPY = {
   },
   scoreLabel: 'Score SEO',
   videoPrefix: 'Video:',
+  toasts: {
+    copied: 'Copiado al portapapeles',
+    error: 'No se pudo copiar',
+  },
   errors: {
     load: 'Error al cargar SEO',
     unknown: 'Error',

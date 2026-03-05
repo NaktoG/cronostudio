@@ -49,7 +49,13 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     } catch (error) {
         // Handle AuthError
         if (error instanceof AuthError) {
-            if (error.code === 'INVALID_CREDENTIALS' || error.code === 'EMAIL_NOT_VERIFIED') {
+            if (error.code === 'EMAIL_NOT_VERIFIED') {
+                return withSecurityHeaders(NextResponse.json({
+                    error: 'Email no verificado. Revisá tu correo o reenviá la verificación.',
+                    code: 'EMAIL_NOT_VERIFIED',
+                }, { status: 403 }));
+            }
+            if (error.code === 'INVALID_CREDENTIALS') {
                 return withSecurityHeaders(NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 }));
             }
         }

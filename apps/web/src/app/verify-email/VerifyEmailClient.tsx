@@ -55,15 +55,15 @@ export default function VerifyEmailClient() {
             transition={{ duration: 0.5 }}
           >
             <motion.div
-              className="inline-flex items-center justify-center w-16 h-16 bg-yellow-400 rounded-2xl mb-4 shadow-lg shadow-yellow-400/20"
+              className="inline-flex items-center justify-center w-20 h-20 sm:w-[88px] sm:h-[88px] bg-yellow-400 rounded-[22px] sm:rounded-[24px] mb-4 shadow-[0_0_30px_rgba(246,201,69,0.25)] ring-2 ring-black/50"
               whileHover={{ scale: 1.05, rotate: 4 }}
             >
-              <Image
-                src="/Logo_Crono_02.png"
-                alt="CronoStudio"
-                width={40}
-                height={40}
-                className="w-10 h-10 object-contain"
+                <Image
+                  src="/crono-mark-dark.svg"
+                  alt="CronoStudio"
+                width={72}
+                height={72}
+                className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
                 priority
               />
             </motion.div>

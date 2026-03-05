@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
-import { Plus, Tv } from 'lucide-react';
+import { Link2, Plus, Tv } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Header from '../components/Header';
@@ -172,19 +172,30 @@ export default function ChannelsPage() {
                             <p className="text-sm sm:text-base text-slate-300">{CHANNELS_COPY.subtitle}</p>
                         </div>
 
-                        <motion.button
-                            onClick={() => setShowModal(true)}
-                            className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
-                            style={{
-                                background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
-                                boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
-                            }}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                        >
-                            <Plus className="w-4 h-4" />
-                            {CHANNELS_COPY.create}
-                        </motion.button>
+                        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+                            <motion.a
+                                href="/api/google/oauth/start"
+                                className="w-full px-6 py-3 text-sm font-semibold text-white rounded-lg flex items-center justify-center gap-2 border border-gray-700 bg-gray-900/70 hover:border-yellow-400/60 sm:w-auto"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <Link2 className="w-4 h-4" />
+                                Conectar YouTube
+                            </motion.a>
+                            <motion.button
+                                onClick={() => setShowModal(true)}
+                                className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.95), rgba(246, 201, 69, 0.7))',
+                                    boxShadow: '0 10px 20px rgba(246, 201, 69, 0.22)',
+                                }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                            >
+                                <Plus className="w-4 h-4" />
+                                {CHANNELS_COPY.create}
+                            </motion.button>
+                        </div>
                     </motion.div>
 
                     {/* Mensajes */}

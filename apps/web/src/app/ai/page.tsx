@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Clipboard, Check, RefreshCw, History, ArrowRight } from 'lucide-react';
 import Header from '../components/Header';
@@ -15,7 +16,7 @@ import { useAiStudio } from '@/app/ai/hooks/useAiStudio';
 
 
 
-export default function AiStudioPage() {
+function AiStudioContent() {
   const searchParams = useSearchParams();
   const publicModel = process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini';
   const publicMaxTokens = process.env.NEXT_PUBLIC_OPENAI_MAX_OUTPUT_TOKENS || '800';
@@ -60,6 +61,7 @@ export default function AiStudioPage() {
     setSelectedRun,
     setFormInputs,
     setOutputText,
+    refreshRuns,
     generatePrompt,
     executeRun,
     submitOutput,
@@ -114,11 +116,11 @@ export default function AiStudioPage() {
                 <History className="w-4 h-4" />
                 <span>{runs.length} runs</span>
               </div>
-              <button
-                type="button"
-                onClick={() => fetchRuns(selectedChannel)}
-                className="inline-flex items-center gap-2 px-3 py-2 text-xs rounded-lg border border-gray-800 text-slate-300 hover:text-yellow-300 hover:border-yellow-500/40"
-              >
+                <button
+                  type="button"
+                  onClick={refreshRuns}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-xs rounded-lg border border-gray-800 text-slate-300 hover:text-yellow-300 hover:border-yellow-500/40"
+                >
                 <RefreshCw className="w-4 h-4" />
                 Actualizar
               </button>
@@ -431,5 +433,13 @@ export default function AiStudioPage() {
         </AnimatePresence>
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function AiStudioPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex flex-col" />}>
+      <AiStudioContent />
+    </Suspense>
   );
 }

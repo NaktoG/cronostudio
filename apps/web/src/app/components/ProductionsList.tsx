@@ -201,10 +201,21 @@ export default function ProductionsList({
                 animate="visible"
             >
                 {productions.length === 0 ? (
-                    <motion.button
-                        type="button"
+                    <motion.div
+                        role="button"
+                        tabIndex={0}
                         className="w-full px-4 sm:px-5 py-6 text-center cursor-pointer hover:bg-gray-800/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
                         onClick={filterLabel && onClearFilter ? onClearFilter : showCreateButton ? onCreateNew : undefined}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                if (filterLabel && onClearFilter) {
+                                    onClearFilter();
+                                } else if (showCreateButton) {
+                                    onCreateNew?.();
+                                }
+                            }
+                        }}
                         aria-label="Crear nuevo contenido"
                         variants={itemVariants}
                         whileHover={{ scale: 1.01 }}
@@ -239,7 +250,7 @@ export default function ProductionsList({
                                 ))}
                             </div>
                         )}
-                    </motion.button>
+                    </motion.div>
                 ) : (
                     productions.slice(0, 6).map((prod) => {
                         const badge = STATUS_BADGE[prod.status] || STATUS_BADGE.idea;

@@ -10,26 +10,17 @@ timestamp=$(date +%Y%m%d_%H%M%S)
 backup_file="$backup_dir/cronostudio_${timestamp}.sql"
 
 confirm=${1:-}
-if [[ "$confirm" != "--yes" ]]; then
-  echo "Esto BORRA los volumenes de Postgres y n8n."
-  echo "Se creara un backup en $backup_file"
-  read -r -p "Continuar? [y/N] " reply
-  if [[ "$reply" != "y" && "$reply" != "Y" ]]; then
-    echo "Cancelado."
-    exit 0
-  fi
+if [[ "$confirm" != "--i-know" ]]; then
+  echo "Bloqueado: local_reset borra datos persistentes." >&2
+  echo "Para un reset intencional, ejecuta:" >&2
+  echo "  ./scripts/local_reset.sh --i-know" >&2
+  exit 1
 fi
 
 mkdir -p "$backup_dir"
 
 echo "==> Backup DB"
-if [[ -f "$infra_env" ]]; then
-  set -a
-  source "$infra_env"
-  set +a
-fi
-
-docker exec cronostudio-postgres pg_dump -U "${POSTGRES_USER:-postgres}" "${POSTGRES_DB:-postgres}" > "$backup_file"
+"$repo_root/scripts/local_backup_db.sh"
 
 echo "==> Bajar infraestructura y borrar volumenes"
 if [[ -f "$infra_env" ]]; then

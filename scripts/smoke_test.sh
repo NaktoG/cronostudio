@@ -22,4 +22,9 @@ if command -v jq >/dev/null 2>&1; then
   jq -r '.services.n8n' /tmp/cronostudio_health.json || true
 fi
 
+echo "-> /api/health (redis check)"
+if command -v jq >/dev/null 2>&1; then
+  jq -r '.services.redis' /tmp/cronostudio_health.json || true
+fi
+
 echo "Smoke test complete."

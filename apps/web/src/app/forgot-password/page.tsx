@@ -12,11 +12,13 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [manualLink, setManualLink] = useState('');
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setMessage('');
+    setManualLink('');
 
     if (!email) {
       setError('Ingresa tu email');
@@ -35,6 +37,7 @@ export default function ForgotPasswordPage() {
         throw new Error(data.error || 'Error al solicitar reset');
       }
       setMessage(data.message || 'Si el email existe, se envio un link');
+      setManualLink(data.enlaceManual || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
@@ -54,15 +57,15 @@ export default function ForgotPasswordPage() {
           >
             <div className="text-center mb-8">
               <motion.div
-                className="inline-flex items-center justify-center w-16 h-16 bg-yellow-400 rounded-2xl mb-4 shadow-lg shadow-yellow-400/20"
+                className="inline-flex items-center justify-center w-20 h-20 sm:w-[88px] sm:h-[88px] bg-yellow-400 rounded-[22px] sm:rounded-[24px] mb-4 shadow-[0_0_30px_rgba(246,201,69,0.25)] ring-2 ring-black/50"
                 whileHover={{ scale: 1.05, rotate: 4 }}
               >
-                <Image
-                  src="/Logo_Crono_02.png"
-                  alt="CronoStudio"
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 object-contain"
+                  <Image
+                    src="/crono-mark-dark.svg"
+                    alt="CronoStudio"
+                  width={72}
+                  height={72}
+                  className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
                   priority
                 />
               </motion.div>
@@ -78,7 +81,12 @@ export default function ForgotPasswordPage() {
             >
               {(error || message) && (
                 <div className={`rounded-lg p-3 text-sm ${error ? 'bg-red-500/10 border border-red-500/50 text-red-400' : 'bg-green-500/10 border border-green-500/40 text-green-300'}`}>
-                  {error || message}
+                  <p>{error || message}</p>
+                  {!error && manualLink && (
+                    <p className="mt-2 break-all text-xs text-green-200">
+                      Link manual: <a className="text-yellow-200 underline" href={manualLink}>{manualLink}</a>
+                    </p>
+                  )}
                 </div>
               )}
 

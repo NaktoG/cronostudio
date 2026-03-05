@@ -5,6 +5,7 @@ export interface EmailMessage {
   to: string;
   subject: string;
   html: string;
+  text?: string;
 }
 
 function getTransport() {
@@ -39,6 +40,7 @@ export async function sendEmail(message: EmailMessage): Promise<boolean> {
     to: message.to,
     subject: message.subject,
     html: message.html,
+    text: message.text,
   });
 
   return true;

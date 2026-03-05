@@ -23,6 +23,6 @@ describe('youtube oauth lazy env', () => {
     delete process.env.YOUTUBE_OAUTH_REDIRECT_URI;
 
     const { buildAuthUrl } = await import('@/lib/youtube/oauth');
-    expect(() => buildAuthUrl('state', 'challenge')).toThrow('Missing YOUTUBE_OAUTH_CLIENT_ID');
+    expect(() => buildAuthUrl('state', 'challenge')).toThrow('Missing GOOGLE_CLIENT_ID');
   });
 });

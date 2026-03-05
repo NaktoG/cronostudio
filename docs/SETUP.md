@@ -54,8 +54,7 @@ Variables de logging (opcional):
 - `LOG_LEVEL` (debug | info | warn | error)
 
 Variables para analytics (opcional):
-- `YOUTUBE_ANALYTICS_ACCESS_TOKEN`
-- `YOUTUBE_CHANNEL_IDS`
+- Se gestionan via OAuth en CronoStudio (no requiere tokens manuales).
 
 Servicios adicionales:
 - `REDIS_URL` (URL del cluster Redis usado para rate limiting en producción)
@@ -74,6 +73,16 @@ Variables para email (opcional):
 - `SMTP_PASSWORD`
 - `SMTP_FROM`
 
+OAuth Google (YouTube + Analytics):
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_REDIRECT_URI` (local: `http://localhost:3000/api/google/oauth/callback`)
+- `YOUTUBE_OAUTH_SCOPES` (incluye `youtube.readonly` y `yt-analytics.readonly`)
+
+Conectar YouTube:
+- Abrir CronoStudio → Canales → "Conectar YouTube"
+- Completar consentimiento y volver a la app
+
 Control de registro:
 - `ALLOW_PUBLIC_SIGNUP=false` (recomendado en producción)
 
@@ -81,6 +90,7 @@ QA recomendado:
 - Ver `docs/QA_AUTH_FLOW.md`
 
 **⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` ni `apps/web/.env.local` si contienen credenciales reales y recuerda que en producción no existen valores de respaldo: cada variable crítica debe establecerse explícitamente.
+**⚠️ IMPORTANTE:** No usar `docker compose down -v` en local salvo reset intencional; borra usuarios y datos.
 
 ### 3. Levantar infraestructura (n8n + Postgres)
 
@@ -93,6 +103,10 @@ docker ps
 Verificar que ambos containers están en estado `Up`:
 - `cronostudio-postgres`
 - `cronostudio-n8n`
+ - `cronostudio-redis` (rate limit)
+
+Opcional (SMTP local):
+- `cronostudio-mailpit` (UI en http://localhost:8025, SMTP en 127.0.0.1:1025)
 
 ### 3.1 Ejecutar migraciones de base de datos
 
@@ -178,6 +192,34 @@ Para detener todo:
 
 ```bash
 ./scripts/local_stop.sh
+```
+
+### Modo prod-like (recomendado)
+
+Comandos seguros (NO borran datos):
+
+```bash
+./scripts/local_up.sh
+./scripts/local_down.sh
+```
+
+Reset intencional (BORRA datos, requiere override):
+
+```bash
+./scripts/local_reset.sh --i-know
+```
+
+Backups:
+
+```bash
+./scripts/local_backup_db.sh
+./scripts/local_backup_n8n.sh
+```
+
+Restore DB:
+
+```bash
+./scripts/local_restore_db.sh <archivo.sql>
 ```
 
 ### Ver estado local
