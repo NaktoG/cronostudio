@@ -45,7 +45,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     );
 
     if (integrations.rows.length === 0) {
-      return withSecurityHeaders(NextResponse.json({ error: 'YouTube no conectado' }, { status: 404 }));
+      return withSecurityHeaders(new NextResponse(null, { status: 204 }));
     }
 
     const results: Array<{ youtubeChannelId: string; channelId: string; status: 'created' | 'updated' }> = [];

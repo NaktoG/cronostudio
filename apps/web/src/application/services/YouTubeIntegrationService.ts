@@ -1,9 +1,11 @@
 import { query } from '@/lib/db';
 import { openSecret } from '@/lib/crypto/secretBox';
 import { refreshAccessToken } from '@/lib/youtube/client';
+import { buildOAuthClientService } from '@/application/factories/oauthClientServiceFactory';
 
 export interface YouTubeIntegrationRow {
   id: string;
+  user_id: string;
   access_token_enc: string;
   refresh_token_enc: string | null;
   token_expiry_at: string | null;
@@ -12,7 +14,7 @@ export interface YouTubeIntegrationRow {
 
 export async function getIntegrationForUserChannel(userId: string, youtubeChannelId: string) {
   const result = await query(
-    `SELECT id, access_token_enc, refresh_token_enc, token_expiry_at, scope
+    `SELECT id, user_id, access_token_enc, refresh_token_enc, token_expiry_at, scope
      FROM youtube_integrations
      WHERE user_id = $1 AND youtube_channel_id = $2
      ORDER BY updated_at DESC
@@ -25,7 +27,7 @@ export async function getIntegrationForUserChannel(userId: string, youtubeChanne
 
 export async function getLatestIntegrationForUser(userId: string) {
   const result = await query(
-    `SELECT id, access_token_enc, refresh_token_enc, token_expiry_at, scope
+    `SELECT id, user_id, access_token_enc, refresh_token_enc, token_expiry_at, scope
      FROM youtube_integrations
      WHERE user_id = $1
      ORDER BY updated_at DESC
@@ -48,7 +50,9 @@ export async function getValidAccessToken(integration: YouTubeIntegrationRow) {
     throw new Error('Refresh token faltante');
   }
 
-  const refreshed = await refreshAccessToken(integration.refresh_token_enc);
+  const oauthService = buildOAuthClientService();
+  const { config } = await oauthService.getEffectiveConfig(integration.user_id, 'youtube');
+  const refreshed = await refreshAccessToken(integration.refresh_token_enc, config);
   accessToken = openSecret(refreshed.accessTokenEnc);
   const nextExpiry = refreshed.expiresIn ? new Date(Date.now() + refreshed.expiresIn * 1000) : null;
 

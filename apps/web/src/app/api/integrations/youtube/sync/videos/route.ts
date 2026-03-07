@@ -40,7 +40,7 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     );
 
     if (channels.rows.length === 0) {
-      return withSecurityHeaders(NextResponse.json({ error: 'No hay canales con YouTube conectado' }, { status: 404 }));
+      return withSecurityHeaders(new NextResponse(null, { status: 204 }));
     }
 
     const results: Array<{ channelId: string; youtubeChannelId: string; created: number; skipped: number }> = [];

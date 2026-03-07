@@ -5,6 +5,7 @@ import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { AuthService, AuthError } from '@/application/services/AuthService';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { PostgresSessionRepository } from '@/infrastructure/repositories/PostgresSessionRepository';
+import { logger } from '@/lib/logger';
 
 const userRepository = new PostgresUserRepository();
 const sessionRepository = new PostgresSessionRepository();
@@ -23,7 +24,7 @@ function handleError(error: unknown) {
   if (error instanceof AuthError) {
     return withSecurityHeaders(NextResponse.json({ error: error.message, code: error.code }, { status: 400 }));
   }
-  console.error('[Cambio contraseña] Error inesperado', error);
+  logger.error('auth.password.change.error', { error: String(error) });
   return withSecurityHeaders(NextResponse.json({ error: 'No pudimos actualizar la contraseña' }, { status: 500 }));
 }
 

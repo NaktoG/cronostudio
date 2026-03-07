@@ -3,7 +3,7 @@ import crypto from 'crypto';
 const AUTH_ENDPOINT = 'https://accounts.google.com/o/oauth2/v2/auth';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
-type OAuthConfig = {
+export type OAuthConfig = {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
@@ -26,7 +26,7 @@ function getRequiredEnvFrom(primary: string, fallback: string): string {
   return value;
 }
 
-export function getOAuthConfig(): OAuthConfig {
+export function getEnvOAuthConfig(): OAuthConfig {
   const clientId = getRequiredEnvFrom('GOOGLE_CLIENT_ID', 'YOUTUBE_OAUTH_CLIENT_ID');
   const clientSecret = getRequiredEnvFrom('GOOGLE_CLIENT_SECRET', 'YOUTUBE_OAUTH_CLIENT_SECRET');
   const redirectUri = getRequiredEnvFrom('GOOGLE_REDIRECT_URI', 'YOUTUBE_OAUTH_REDIRECT_URI');
@@ -48,29 +48,46 @@ export function generateCodeChallenge(verifier: string): string {
   return crypto.createHash('sha256').update(verifier).digest('base64url');
 }
 
-export function buildAuthUrl(state: string, codeChallenge: string): string {
-  const config = getOAuthConfig();
+type AuthUrlOptions = {
+  prompt?: string;
+  authuser?: string;
+  loginHint?: string;
+  redirectUri?: string;
+  config?: OAuthConfig;
+};
+
+export function buildAuthUrl(state: string, codeChallenge: string, options?: AuthUrlOptions): string {
+  const config = options?.config ?? getEnvOAuthConfig();
+  const redirectUri = options?.redirectUri ?? config.redirectUri;
   const params = new URLSearchParams({
     client_id: config.clientId,
-    redirect_uri: config.redirectUri,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: config.scopes.join(' '),
     access_type: 'offline',
-    prompt: 'consent',
+    prompt: options?.prompt ?? 'select_account consent',
     state,
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   });
+  if (options?.authuser) params.set('authuser', options.authuser);
+  if (options?.loginHint) params.set('login_hint', options.loginHint);
   return `${AUTH_ENDPOINT}?${params.toString()}`;
 }
 
-export async function exchangeCodeForTokens(code: string, codeVerifier: string) {
-  const config = getOAuthConfig();
+export async function exchangeCodeForTokens(
+  code: string,
+  codeVerifier: string,
+  redirectUri?: string,
+  configOverride?: OAuthConfig
+) {
+  const config = configOverride ?? getEnvOAuthConfig();
+  const effectiveRedirectUri = redirectUri ?? config.redirectUri;
   const body = new URLSearchParams({
     code,
     client_id: config.clientId,
     client_secret: config.clientSecret,
-    redirect_uri: config.redirectUri,
+    redirect_uri: effectiveRedirectUri,
     grant_type: 'authorization_code',
     code_verifier: codeVerifier,
   });

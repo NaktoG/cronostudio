@@ -68,7 +68,7 @@ function AnalyticsView() {
             const response = await authFetch('/api/channels', { signal });
             if (response.ok) {
                 const data = await response.json();
-                setChannels(data);
+                setChannels(Array.isArray(data) ? data : []);
             }
         } catch (err) {
             if (signal?.aborted) return;

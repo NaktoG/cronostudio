@@ -3,6 +3,7 @@ import { testConnection } from '@/lib/db';
 import { validateConfig, config } from '@/lib/config';
 import { emitMetric, emitAlert } from '@/lib/observability';
 import { getRedisClient } from '@/lib/redis';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/health
@@ -71,20 +72,26 @@ export async function GET() {
                 { dedupeKey: `health:${status}`, cooldownMs: 300000 }
             );
         }
-        return NextResponse.json({
-            status,
-            timestamp: new Date().toISOString(),
-            services: {
-                config: 'ok',
-                database: dbHealthy ? 'up' : 'down',
-                n8n: n8nHealthy ? 'up' : 'down',
-                redis: redisHealthy === null ? 'skipped' : redisHealthy ? 'up' : 'down',
-            },
-        }, {
+        const responseBody = config.isProduction
+            ? { status, timestamp: new Date().toISOString() }
+            : {
+                status,
+                timestamp: new Date().toISOString(),
+                services: {
+                    config: 'ok',
+                    database: dbHealthy ? 'up' : 'down',
+                    n8n: n8nHealthy ? 'up' : 'down',
+                    redis: redisHealthy === null ? 'skipped' : redisHealthy ? 'up' : 'down',
+                },
+            };
+
+        return NextResponse.json(responseBody, {
             status: allHealthy ? 200 : 503,
         });
     } catch (error) {
-        console.error('[GET /api/health] Error:', error);
+        logger.error('[GET /api/health] Error', {
+            error: error instanceof Error ? error.message : String(error),
+        });
         emitMetric({ name: 'health.error', value: 1 });
         emitAlert(
             {

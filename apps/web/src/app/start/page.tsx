@@ -76,6 +76,8 @@ export default function StartPage() {
         const thumbnails = thumbnailsRes.ok ? await thumbnailsRes.json() : [];
         const published = publishedRes.ok ? await publishedRes.json() : [];
 
+        if (controller.signal.aborted) return;
+
         const ideasApproved = Array.isArray(ideas)
           ? ideas.filter((idea) => idea.status === 'approved').length
           : 0;
@@ -93,7 +95,10 @@ export default function StartPage() {
           thumbnailsApproved: Array.isArray(thumbnails) ? thumbnails.length : 0,
           published: Array.isArray(published) ? published.length : 0,
         });
+      } catch (error) {
+        if (controller.signal.aborted) return;
       } finally {
+        if (controller.signal.aborted) return;
         setLoading(false);
       }
     };

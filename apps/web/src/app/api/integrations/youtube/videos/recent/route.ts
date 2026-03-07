@@ -27,7 +27,7 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
       : await getLatestIntegrationForUser(userId);
 
     if (!integration) {
-      return withSecurityHeaders(NextResponse.json({ error: 'YouTube no conectado' }, { status: 404 }));
+      return withSecurityHeaders(new NextResponse(null, { status: 204 }));
     }
 
     const accessToken = await getValidAccessToken(integration);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { query } from '@/lib/db';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -128,7 +129,9 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest, { para
 
         return withSecurityHeaders(response);
     } catch (error) {
-        console.error('[GET /api/analytics/channel/:id] Error:', error instanceof Error ? error.message : 'Unknown error');
+        logger.error('analytics.channel.fetch.error', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         return withSecurityHeaders(NextResponse.json(
             { error: 'Error al obtener analytics del canal' },

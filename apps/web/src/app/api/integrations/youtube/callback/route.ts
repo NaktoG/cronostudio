@@ -6,12 +6,19 @@ import { fetchOwnChannel } from '@/lib/youtube/client';
 import { sealSecret } from '@/lib/crypto/secretBox';
 import { query } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { buildOAuthClientService } from '@/application/factories/oauthClientServiceFactory';
 
 export const dynamic = 'force-dynamic';
 
 const STATE_COOKIE = 'yt_oauth_state';
 const VERIFIER_COOKIE = 'yt_oauth_verifier';
 const USER_COOKIE = 'yt_oauth_user';
+const REDIRECT_COOKIE = 'yt_oauth_redirect';
+
+function resolveRedirectUri(request: NextRequest, stored?: string | null): string {
+  if (stored) return stored;
+  return `${request.nextUrl.origin}${request.nextUrl.pathname}`;
+}
 
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
@@ -83,9 +90,13 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
       return withSecurityHeaders(NextResponse.json(payload, { status: 400 }));
     }
 
+    const redirectUri = resolveRedirectUri(request, request.cookies.get(REDIRECT_COOKIE)?.value ?? null);
+    const oauthService = buildOAuthClientService();
+    const { config } = await oauthService.getEffectiveConfig(userId, 'youtube');
+
     let tokenData;
     try {
-      tokenData = await exchangeCodeForTokens(code, verifier);
+      tokenData = await exchangeCodeForTokens(code, verifier, redirectUri, config);
       debug.tokenExchange = { ok: true };
     } catch (error) {
       const err = error as { status?: number; oauth?: { error?: string; error_description?: string }; code?: string };
@@ -188,6 +199,7 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     response.cookies.set(STATE_COOKIE, '', { path: '/', maxAge: 0 });
     response.cookies.set(VERIFIER_COOKIE, '', { path: '/', maxAge: 0 });
     response.cookies.set(USER_COOKIE, '', { path: '/', maxAge: 0 });
+    response.cookies.set(REDIRECT_COOKIE, '', { path: '/', maxAge: 0 });
     return withSecurityHeaders(response);
   } catch (error) {
     const debug = {

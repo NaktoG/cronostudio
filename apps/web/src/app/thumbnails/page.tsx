@@ -88,7 +88,8 @@ function ThumbnailsContent() {
             const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
             const response = await authFetch(`/api/thumbnails${query}`, { signal });
             if (response.ok) {
-                setThumbnails(await response.json());
+                const data = await response.json();
+                setThumbnails(Array.isArray(data) ? data : []);
                 setListError(null);
             } else {
                 const data = await response.json().catch(() => null);
@@ -119,7 +120,8 @@ function ThumbnailsContent() {
             }
             const response = await authFetch('/api/channels', { signal });
             if (response.ok) {
-                setChannels(await response.json());
+                const data = await response.json();
+                setChannels(Array.isArray(data) ? data : []);
             }
         } catch (err) {
             if (signal?.aborted) return;

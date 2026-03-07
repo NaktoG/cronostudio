@@ -1,5 +1,5 @@
 import { openSecret, sealSecret } from '@/lib/crypto/secretBox';
-import { getOAuthConfig } from '@/lib/youtube/oauth';
+import { OAuthConfig, getEnvOAuthConfig } from '@/lib/youtube/oauth';
 
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
@@ -119,9 +119,9 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
   }));
 }
 
-export async function refreshAccessToken(refreshTokenEnc: string) {
+export async function refreshAccessToken(refreshTokenEnc: string, configOverride?: OAuthConfig) {
   const refreshToken = openSecret(refreshTokenEnc);
-  const config = getOAuthConfig();
+  const config = configOverride ?? getEnvOAuthConfig();
   const body = new URLSearchParams({
     client_id: config.clientId,
     client_secret: config.clientSecret,

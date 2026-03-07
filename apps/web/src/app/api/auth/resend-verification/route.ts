@@ -44,7 +44,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     });
 
     const payload: Record<string, unknown> = { message: 'Si el email existe, se enviara un link' };
-    if (!enviado) {
+    if (!enviado && config.auth.allowDebugLinks) {
       payload['enlaceVerificacion'] = verifyUrl;
     }
 

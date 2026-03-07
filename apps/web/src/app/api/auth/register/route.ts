@@ -75,7 +75,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
             },
         };
 
-        if (!enviado) {
+        if (!enviado && config.auth.allowDebugLinks) {
             payload['enlaceVerificacion'] = verifyUrl;
         }
 

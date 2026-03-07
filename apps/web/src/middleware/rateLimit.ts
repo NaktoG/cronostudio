@@ -17,17 +17,19 @@ if (config.isProduction && !process.env.REDIS_URL && !isBuildPhase) {
 }
 
 function shouldEnforceRateLimit() {
-  if (!config.isProduction && process.env.RATE_LIMIT_DISABLE === 'true') {
+  if (config.isProduction) {
+    return true;
+  }
+
+  if (process.env.RATE_LIMIT_DISABLE === 'true') {
     return false;
   }
+
   if (process.env.NODE_ENV === 'test') {
-    if (process.env.RATE_LIMIT_DISABLE === 'true') {
-      return false;
-    }
     return process.env.RATE_LIMIT_ENFORCE === 'true';
   }
 
-  return true;
+  return process.env.RATE_LIMIT_ENFORCE === 'true';
 }
 type RouteContext = { params: Promise<Record<string, string>> };
 type RouteHandler<Context = RouteContext> = (request: NextRequest, context: Context) => Promise<NextResponse> | NextResponse;
@@ -80,9 +82,26 @@ export function rateLimit(config: RateLimitConfig) {
   };
 }
 
-export const API_RATE_LIMIT = { maxRequests: 100, windowMs: 15 * 60 * 1000 };
-export const LOGIN_RATE_LIMIT = { maxRequests: 5, windowMs: 15 * 60 * 1000 };
-export const FILE_UPLOAD_RATE_LIMIT = { maxRequests: 10, windowMs: 60 * 60 * 1000 };
+function readNumberEnv(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+export const API_RATE_LIMIT = {
+  maxRequests: readNumberEnv(process.env.RATE_LIMIT_MAX_REQUESTS, 100),
+  windowMs: readNumberEnv(process.env.RATE_LIMIT_WINDOW_MS, 15 * 60 * 1000),
+};
+
+export const LOGIN_RATE_LIMIT = {
+  maxRequests: readNumberEnv(process.env.RATE_LIMIT_LOGIN_MAX_REQUESTS, 5),
+  windowMs: readNumberEnv(process.env.RATE_LIMIT_LOGIN_WINDOW_MS, 15 * 60 * 1000),
+};
+
+export const FILE_UPLOAD_RATE_LIMIT = {
+  maxRequests: readNumberEnv(process.env.RATE_LIMIT_FILE_MAX_REQUESTS, 10),
+  windowMs: readNumberEnv(process.env.RATE_LIMIT_FILE_WINDOW_MS, 60 * 60 * 1000),
+};
 
 async function checkRateLimit(identifier: string, rateLimitConfig: RateLimitConfig): Promise<number> {
   const redis = getRedisClient();

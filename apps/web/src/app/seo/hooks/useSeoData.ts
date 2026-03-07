@@ -75,27 +75,39 @@ export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataO
   }, [selectedChannel]);
 
   const refreshIdeaOptions = useCallback(async (signal?: AbortSignal) => {
-    if (!selectedChannel) {
+    try {
+      if (!selectedChannel) {
+        setIdeaOptions([]);
+        return;
+      }
+      const data = await seoService.fetchIdeaOptions(authFetch, selectedChannel, signal);
+      if (signal?.aborted) return;
+      const options = Array.isArray(data)
+        ? data.map((idea) => ({ id: (idea as { id: string }).id, title: (idea as { title: string }).title }))
+        : [];
+      setIdeaOptions(options);
+    } catch (err) {
+      if (signal?.aborted) return;
       setIdeaOptions([]);
-      return;
     }
-    const data = await seoService.fetchIdeaOptions(authFetch, selectedChannel, signal);
-    const options = Array.isArray(data)
-      ? data.map((idea) => ({ id: (idea as { id: string }).id, title: (idea as { title: string }).title }))
-      : [];
-    setIdeaOptions(options);
   }, [authFetch, selectedChannel]);
 
   const refreshScriptOptions = useCallback(async (signal?: AbortSignal) => {
-    if (!selectedChannel) {
+    try {
+      if (!selectedChannel) {
+        setScriptOptions([]);
+        return;
+      }
+      const data = await seoService.fetchScriptOptions(authFetch, selectedChannel, signal);
+      if (signal?.aborted) return;
+      const options = Array.isArray(data)
+        ? data.map((script) => ({ id: (script as { id: string }).id, title: (script as { title: string }).title }))
+        : [];
+      setScriptOptions(options);
+    } catch (err) {
+      if (signal?.aborted) return;
       setScriptOptions([]);
-      return;
     }
-    const data = await seoService.fetchScriptOptions(authFetch, selectedChannel, signal);
-    const options = Array.isArray(data)
-      ? data.map((script) => ({ id: (script as { id: string }).id, title: (script as { title: string }).title }))
-      : [];
-    setScriptOptions(options);
   }, [authFetch, selectedChannel]);
 
   useEffect(() => {

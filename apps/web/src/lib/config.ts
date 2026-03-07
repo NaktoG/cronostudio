@@ -20,6 +20,7 @@ const envSchema = z
     APP_BASE_URL: z.string().optional(),
     N8N_BASE_URL: z.string().optional(),
     CORS_ALLOWED_ORIGINS: z.string().optional(),
+    ALLOW_DEBUG_LINKS: z.string().optional(),
 
     OBS_ENABLED: z.string().optional(),
     OBS_ENDPOINT: z.string().optional(),
@@ -108,6 +109,10 @@ function buildConfig() {
 
     app: {
       baseUrl,
+    },
+
+    auth: {
+      allowDebugLinks: (env.ALLOW_DEBUG_LINKS || 'false') === 'true' && !isProduction,
     },
 
     automation: {

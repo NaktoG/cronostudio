@@ -5,6 +5,7 @@ import { AuthService, AuthError } from '@/application/services/AuthService';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { PostgresSessionRepository } from '@/infrastructure/repositories/PostgresSessionRepository';
 import { clearAccessCookie, clearRefreshCookie } from '@/lib/authCookies';
+import { logger } from '@/lib/logger';
 
 const userRepository = new PostgresUserRepository();
 const sessionRepository = new PostgresSessionRepository();
@@ -25,7 +26,7 @@ function handleError(error: unknown, defaultMessage: string) {
   if (error instanceof AuthError) {
     return withSecurityHeaders(NextResponse.json({ error: error.message, code: error.code }, { status: 400 }));
   }
-  console.error('[Perfil] Error inesperado', error);
+  logger.error('auth.profile.error', { error: String(error) });
   return withSecurityHeaders(NextResponse.json({ error: defaultMessage }, { status: 500 }));
 }
 

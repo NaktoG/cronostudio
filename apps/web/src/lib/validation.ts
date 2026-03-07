@@ -15,10 +15,6 @@ export const CreateChannelSchema = z.object({
     .min(1, 'Channel ID requerido')
     .max(100, 'Channel ID inválido')
     .regex(/^[a-zA-Z0-9_-]+$/, 'Channel ID con formato inválido'),
-  refreshToken: z
-    .string()
-    .optional()
-    .nullable(),
 });
 
 export type CreateChannelInput = z.infer<typeof CreateChannelSchema>;

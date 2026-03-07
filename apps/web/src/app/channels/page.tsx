@@ -24,13 +24,14 @@ interface Channel {
 }
 
 export default function ChannelsPage() {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user } = useAuth();
     const authFetch = useAuthFetch();
     const [channels, setChannels] = useState<Channel[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
+    const [isConnecting, setIsConnecting] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         youtubeChannelId: '',
@@ -38,6 +39,9 @@ export default function ChannelsPage() {
     const [submitting, setSubmitting] = useState(false);
     const { addToast } = useToast();
     const modalRef = useRef<HTMLDivElement>(null);
+    const connectTimerRef = useRef<number | null>(null);
+    const connectTimeoutRef = useRef<number | null>(null);
+    const connectWindowRef = useRef<Window | null>(null);
 
     useDialogFocus(modalRef, showModal);
 
@@ -55,7 +59,7 @@ export default function ChannelsPage() {
             }
 
             const data = await response.json();
-            setChannels(data);
+            setChannels(Array.isArray(data) ? data : []);
             setError(null);
         } catch (err) {
             if (signal?.aborted) return;
@@ -82,6 +86,83 @@ export default function ChannelsPage() {
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
     }, [showModal]);
+
+    useEffect(() => {
+        return () => {
+            if (connectTimerRef.current) {
+                window.clearInterval(connectTimerRef.current);
+                connectTimerRef.current = null;
+            }
+            if (connectTimeoutRef.current) {
+                window.clearTimeout(connectTimeoutRef.current);
+                connectTimeoutRef.current = null;
+            }
+            if (connectWindowRef.current && !connectWindowRef.current.closed) {
+                connectWindowRef.current.close();
+            }
+        };
+    }, []);
+
+    const startYoutubeConnect = async () => {
+        if (isConnecting) return;
+        setIsConnecting(true);
+
+        const params = new URLSearchParams({
+            prompt: 'select_account consent',
+        });
+        if (user?.email) {
+            params.set('login_hint', user.email);
+        }
+
+        const connectUrl = `/api/google/oauth/start?${params.toString()}`;
+        const popup = window.open(connectUrl, 'youtube-oauth', 'width=520,height=700');
+        if (!popup) {
+            setIsConnecting(false);
+            addToast('No se pudo abrir la ventana de Google. Revisa el bloqueador de popups.', 'error');
+            return;
+        }
+        connectWindowRef.current = popup;
+
+        const stopConnecting = () => {
+            if (connectTimerRef.current) {
+                window.clearInterval(connectTimerRef.current);
+                connectTimerRef.current = null;
+            }
+            if (connectTimeoutRef.current) {
+                window.clearTimeout(connectTimeoutRef.current);
+                connectTimeoutRef.current = null;
+            }
+            if (connectWindowRef.current && !connectWindowRef.current.closed) {
+                connectWindowRef.current.close();
+            }
+            connectWindowRef.current = null;
+            setIsConnecting(false);
+        };
+
+        connectTimerRef.current = window.setInterval(async () => {
+            if (connectWindowRef.current?.closed) {
+                stopConnecting();
+                return;
+            }
+            try {
+                const statusRes = await authFetch('/api/integrations/youtube/status');
+                if (!statusRes.ok) return;
+                const data = await statusRes.json();
+                if (data?.connected) {
+                    stopConnecting();
+                    addToast('YouTube conectado', 'success');
+                    await fetchChannels();
+                }
+            } catch {
+                // ignore transient errors
+            }
+        }, 1500);
+
+        connectTimeoutRef.current = window.setTimeout(() => {
+            stopConnecting();
+            addToast('No se pudo completar la conexion. Reintenta.', 'error');
+        }, 120000);
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -173,15 +254,17 @@ export default function ChannelsPage() {
                         </div>
 
                         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
-                            <motion.a
-                                href="/api/google/oauth/start"
+                            <motion.button
+                                type="button"
+                                onClick={startYoutubeConnect}
                                 className="w-full px-6 py-3 text-sm font-semibold text-white rounded-lg flex items-center justify-center gap-2 border border-gray-700 bg-gray-900/70 hover:border-yellow-400/60 sm:w-auto"
+                                disabled={isConnecting}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                             >
                                 <Link2 className="w-4 h-4" />
-                                Conectar YouTube
-                            </motion.a>
+                                {isConnecting ? 'Conectando...' : 'Conectar YouTube'}
+                            </motion.button>
                             <motion.button
                                 onClick={() => setShowModal(true)}
                                 className="w-full px-6 py-3 text-sm font-semibold text-black rounded-lg flex items-center justify-center gap-2 sm:w-auto"

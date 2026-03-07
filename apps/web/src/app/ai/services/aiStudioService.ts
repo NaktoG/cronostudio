@@ -6,6 +6,20 @@ async function parseJson<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function parseArray<T>(response: Response, key?: string): Promise<T[]> {
+  const data = await parseJson<unknown>(response);
+  if (Array.isArray(data)) {
+    return data as T[];
+  }
+  if (key && data && typeof data === 'object') {
+    const value = (data as Record<string, unknown>)[key];
+    if (Array.isArray(value)) {
+      return value as T[];
+    }
+  }
+  return [];
+}
+
 async function ensureOk(response: Response): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
@@ -26,25 +40,25 @@ export const aiStudioService = {
   async fetchChannels(authFetch: AuthFetch): Promise<Channel[]> {
     const response = await authFetch('/api/channels');
     if (!response.ok) return [];
-    return (await parseJson<Channel[]>(response)) ?? [];
+    return await parseArray<Channel>(response);
   },
 
   async fetchRuns(authFetch: AuthFetch, channelId: string, limit = 20): Promise<Run[]> {
     const response = await authFetch(`/api/ai/runs?channelId=${channelId}&limit=${limit}`);
     if (!response.ok) return [];
-    return await parseJson<Run[]>(response);
+    return await parseArray<Run>(response, 'runs');
   },
 
   async fetchIdeaOptions(authFetch: AuthFetch, channelId: string): Promise<IdeaOption[]> {
     const response = await authFetch(`/api/ideas?channelId=${channelId}`);
     if (!response.ok) return [];
-    return await parseJson<IdeaOption[]>(response);
+    return await parseArray<IdeaOption>(response);
   },
 
   async fetchScriptOptions(authFetch: AuthFetch, channelId: string): Promise<ScriptOption[]> {
     const response = await authFetch(`/api/scripts?channelId=${channelId}`);
     if (!response.ok) return [];
-    return await parseJson<ScriptOption[]>(response);
+    return await parseArray<ScriptOption>(response);
   },
 
   async createRun(authFetch: AuthFetch, payload: Record<string, unknown>): Promise<{ runId: string; prompt: { system: string; user: string } }> {

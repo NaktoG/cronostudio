@@ -5,6 +5,7 @@ import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRoles } from '@/middleware/rbac';
 import { z } from 'zod';
 import { validateInput } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,7 +80,7 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         const result = await query(queryText, params);
         return withSecurityHeaders(NextResponse.json(result.rows));
     } catch (error) {
-        console.error('Error fetching SEO data:', error);
+        logger.error('seo.fetch.error', { error: String(error) });
         return withSecurityHeaders(NextResponse.json({ error: 'Error al obtener datos SEO' }, { status: 500 }));
     }
 });
@@ -103,7 +104,7 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
 
         return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
     } catch (error) {
-        console.error('Error creating SEO data:', error);
+        logger.error('seo.create.error', { error: String(error) });
         if (error instanceof z.ZodError || isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
@@ -154,7 +155,7 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
 
         return withSecurityHeaders(NextResponse.json(result.rows[0]));
     } catch (error) {
-        console.error('Error updating SEO data:', error);
+        logger.error('seo.update.error', { error: String(error) });
         if (isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
@@ -183,7 +184,7 @@ export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (r
 
         return withSecurityHeaders(NextResponse.json({ message: 'Datos SEO eliminados' }));
     } catch (error) {
-        console.error('Error deleting SEO data:', error);
+        logger.error('seo.delete.error', { error: String(error) });
         return withSecurityHeaders(NextResponse.json({ error: 'Error al eliminar datos SEO' }, { status: 500 }));
     }
 }));
