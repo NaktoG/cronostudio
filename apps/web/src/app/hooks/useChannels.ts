@@ -24,7 +24,7 @@ export function useChannels(options: { isAuthenticated: boolean; authFetch: Auth
         const data = (await response.json()) as Channel[];
         setChannels(Array.isArray(data) ? data : []);
       }
-    } catch (error) {
+    } catch {
       if (signal?.aborted) return;
       setChannels([]);
     } finally {

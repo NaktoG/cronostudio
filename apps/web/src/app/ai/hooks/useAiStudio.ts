@@ -32,6 +32,7 @@ export function useAiStudio({ isAuthenticated, authFetch, addToast, searchParams
   const [selectedRun, setSelectedRun] = useState<Run | null>(null);
   const [autoOutput, setAutoOutput] = useState<unknown | null>(null);
   const [autoApplied, setAutoApplied] = useState<Record<string, unknown> | null>(null);
+  const [autoOutputProfileKey, setAutoOutputProfileKey] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const queryInitializedRef = useRef(false);
 
@@ -39,13 +40,57 @@ export function useAiStudio({ isAuthenticated, authFetch, addToast, searchParams
 
   const [formInputs, setFormInputs] = useState<FormInputs>({
     topicSeed: '',
+    channelStage: '',
+    targetAudience: '',
+    primaryGoal: '',
+    resources: '',
+    constraints: '',
     ideaId: '',
     scriptId: '',
+    targetLengthSec: '',
+    depthLevel: '',
+    tone: '',
+    scriptSummary: '',
+    primaryEmotion: '',
     styleGuide: '',
   });
 
   const showIdeaPresets = activeProfile?.key === 'evergreen_ideas';
   const showScriptPresets = activeProfile?.key === 'script_architect';
+
+  const extractJsonFromText = (text: string): unknown | null => {
+    const trimmed = text.trim();
+    if (!trimmed) return null;
+
+    const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    const candidate = fencedMatch?.[1]?.trim() ?? trimmed;
+
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      const firstBrace = candidate.indexOf('{');
+      const lastBrace = candidate.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        const slice = candidate.slice(firstBrace, lastBrace + 1);
+        try {
+          return JSON.parse(slice);
+        } catch {
+          return null;
+        }
+      }
+      const firstBracket = candidate.indexOf('[');
+      const lastBracket = candidate.lastIndexOf(']');
+      if (firstBracket !== -1 && lastBracket > firstBracket) {
+        const slice = candidate.slice(firstBracket, lastBracket + 1);
+        try {
+          return JSON.parse(slice);
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    }
+  };
 
   const fetchProfiles = useCallback(async () => {
     try {
@@ -155,8 +200,18 @@ export function useAiStudio({ isAuthenticated, authFetch, addToast, searchParams
   const buildInputPayload = useCallback(() => {
     const inputPayload: Record<string, string> = {};
     if (formInputs.topicSeed.trim()) inputPayload.topicSeed = formInputs.topicSeed.trim();
+    if (formInputs.channelStage.trim()) inputPayload.channelStage = formInputs.channelStage.trim();
+    if (formInputs.targetAudience.trim()) inputPayload.targetAudience = formInputs.targetAudience.trim();
+    if (formInputs.primaryGoal.trim()) inputPayload.primaryGoal = formInputs.primaryGoal.trim();
+    if (formInputs.resources.trim()) inputPayload.resources = formInputs.resources.trim();
+    if (formInputs.constraints.trim()) inputPayload.constraints = formInputs.constraints.trim();
     if (formInputs.ideaId.trim()) inputPayload.ideaId = formInputs.ideaId.trim();
     if (formInputs.scriptId.trim()) inputPayload.scriptId = formInputs.scriptId.trim();
+    if (formInputs.targetLengthSec.trim()) inputPayload.targetLengthSec = formInputs.targetLengthSec.trim();
+    if (formInputs.depthLevel.trim()) inputPayload.depthLevel = formInputs.depthLevel.trim();
+    if (formInputs.tone.trim()) inputPayload.tone = formInputs.tone.trim();
+    if (formInputs.scriptSummary.trim()) inputPayload.scriptSummary = formInputs.scriptSummary.trim();
+    if (formInputs.primaryEmotion.trim()) inputPayload.primaryEmotion = formInputs.primaryEmotion.trim();
     if (formInputs.styleGuide.trim()) inputPayload.styleGuide = formInputs.styleGuide.trim();
     return inputPayload;
   }, [formInputs]);
@@ -228,6 +283,7 @@ export function useAiStudio({ isAuthenticated, authFetch, addToast, searchParams
       setCurrentStatus('completed');
       setAutoOutput(data.output ?? null);
       setAutoApplied(data.applied ?? null);
+      setAutoOutputProfileKey(activeProfile.key);
       setOutputText(JSON.stringify(data.output ?? {}, null, 2));
       addToast('Run ejecutado', 'success');
       fetchRuns(selectedChannel);
@@ -279,8 +335,12 @@ export function useAiStudio({ isAuthenticated, authFetch, addToast, searchParams
     try {
       parsed = JSON.parse(outputText);
     } catch {
-      addToast('JSON inválido. Revisa el formato.', 'error');
-      return;
+      const extracted = extractJsonFromText(outputText);
+      if (!extracted) {
+        addToast('No pude encontrar JSON valido en la respuesta.', 'error');
+        return;
+      }
+      parsed = extracted;
     }
 
     setSubmitting(true);
@@ -316,6 +376,7 @@ export function useAiStudio({ isAuthenticated, authFetch, addToast, searchParams
     setCurrentStatus(null);
     setAutoOutput(null);
     setAutoApplied(null);
+    setAutoOutputProfileKey(null);
     setOutputText('');
   }, []);
 
@@ -340,6 +401,7 @@ export function useAiStudio({ isAuthenticated, authFetch, addToast, searchParams
       outputText,
       autoOutput,
       autoApplied,
+      autoOutputProfileKey,
       activeFields,
       showIdeaPresets,
       showScriptPresets,

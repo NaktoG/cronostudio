@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type React
 import { motion, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter, Wand2, XCircle, Youtube, Zap } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { formatDate, formatDateTime, formatMonthYear, getIsoWeekInfo } from '@/lib/dates';
 import Header from './components/Header';
@@ -2670,7 +2671,13 @@ export function PublicLanding() {
                   ].map((item) => (
                     <div key={item.name} className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
                       <div className="flex items-center gap-3">
-                        <img src={item.photo} alt={item.name} className="h-10 w-10 rounded-full object-cover" />
+                        <Image
+                          src={item.photo}
+                          alt={item.name}
+                          width={40}
+                          height={40}
+                          className="h-10 w-10 rounded-full object-cover"
+                        />
                         <div>
                           <p className="text-sm font-semibold text-white">{item.name}</p>
                           <p className="text-xs text-slate-500">{item.role}</p>
@@ -2712,7 +2719,13 @@ export function PublicLanding() {
                       ]).map((item, index) => (
                         <div key={`${item.name}-${index}`} className="testimonial-card rounded-xl border border-gray-800 bg-gray-900/50 p-4">
                           <div className="flex items-center gap-3">
-                            <img src={item.photo} alt={item.name} className="h-10 w-10 rounded-full object-cover" />
+                            <Image
+                              src={item.photo}
+                              alt={item.name}
+                              width={40}
+                              height={40}
+                              className="h-10 w-10 rounded-full object-cover"
+                            />
                             <div>
                               <p className="text-sm font-semibold text-white">{item.name}</p>
                               <p className="text-xs text-slate-500">{item.role}</p>

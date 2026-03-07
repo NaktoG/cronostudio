@@ -42,6 +42,64 @@ function isRetryableOpenAiError(err: unknown) {
   return false;
 }
 
+async function enrichInputPayload(
+  profileKey: string,
+  input: Record<string, unknown>,
+  userId: string,
+  channelId: string
+) {
+  const payload = { ...input, channelId } as Record<string, unknown>;
+
+  if (profileKey === 'script_architect' || profileKey === 'titles_thumbs') {
+    const ideaId = payload.ideaId as string | undefined;
+    if (ideaId) {
+      const ideaResult = await query(
+        'SELECT id, title, description, channel_id FROM ideas WHERE id = $1 AND user_id = $2',
+        [ideaId, userId]
+      );
+      if (ideaResult.rows.length === 0) {
+        throw new Error('Idea no encontrada');
+      }
+      const idea = ideaResult.rows[0] as { title: string; description: string | null; channel_id: string | null };
+      if (idea.channel_id && idea.channel_id !== channelId) {
+        throw new Error('Idea channel mismatch');
+      }
+      payload.ideaTitle = idea.title;
+      if (idea.description) payload.ideaDescription = idea.description;
+    }
+  }
+
+  if (profileKey === 'retention_editor' || (profileKey === 'titles_thumbs' && payload.scriptId)) {
+    const scriptId = payload.scriptId as string | undefined;
+    if (scriptId) {
+      const scriptResult = await query(
+        `SELECT s.full_content, i.channel_id
+         FROM scripts s
+         LEFT JOIN ideas i ON s.idea_id = i.id
+         WHERE s.id = $1 AND s.user_id = $2`,
+        [scriptId, userId]
+      );
+      if (scriptResult.rows.length === 0) {
+        throw new Error('Script no encontrado');
+      }
+      const script = scriptResult.rows[0] as { full_content: string | null; channel_id: string | null };
+      if (script.channel_id && script.channel_id !== channelId) {
+        throw new Error('Script channel mismatch');
+      }
+      if (profileKey === 'retention_editor') {
+        if (!script.full_content || script.full_content.length < 50) {
+          throw new Error('Script vacio');
+        }
+        payload.originalScript = script.full_content ?? '';
+      } else {
+        payload.scriptContent = script.full_content ?? '';
+      }
+    }
+  }
+
+  return payload;
+}
+
 async function withRetries<T>(fn: () => Promise<T>): Promise<T> {
   let attempt = 0;
   // Total attempts = 1 + OPENAI_MAX_RETRIES
@@ -95,7 +153,7 @@ export const POST = requireRoles(['owner'])(
         return withSecurityHeaders(NextResponse.json({ error: 'Canal no encontrado' }, { status: 404 }));
       }
 
-      const inputPayload = { ...data.input, channelId: data.channelId } as Record<string, unknown>;
+      const inputPayload = await enrichInputPayload(data.profileKey, data.input ?? {}, userId, data.channelId);
       const inputResult = profile.inputSchema.safeParse(inputPayload);
       if (!inputResult.success) {
         return withSecurityHeaders(
@@ -232,6 +290,17 @@ export const POST = requireRoles(['owner'])(
         return withSecurityHeaders(
           NextResponse.json({ error: 'Datos inválidos', details: error.errors }, { status: 400 })
         );
+      }
+      if (error instanceof Error) {
+        if (error.message === 'Idea no encontrada' || error.message === 'Script no encontrado') {
+          return withSecurityHeaders(NextResponse.json({ error: error.message }, { status: 404 }));
+        }
+        if (error.message === 'Script vacio') {
+          return withSecurityHeaders(NextResponse.json({ error: error.message }, { status: 400 }));
+        }
+        if (error.message.endsWith('channel mismatch')) {
+          return withSecurityHeaders(NextResponse.json({ error: 'Canal no coincide' }, { status: 400 }));
+        }
       }
 
       // Si ya creamos runId, guardamos el error para debugging sin romper el repo

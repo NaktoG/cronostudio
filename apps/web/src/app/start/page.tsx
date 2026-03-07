@@ -95,7 +95,7 @@ export default function StartPage() {
           thumbnailsApproved: Array.isArray(thumbnails) ? thumbnails.length : 0,
           published: Array.isArray(published) ? published.length : 0,
         });
-      } catch (error) {
+      } catch {
         if (controller.signal.aborted) return;
       } finally {
         if (controller.signal.aborted) return;

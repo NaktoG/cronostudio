@@ -10,14 +10,6 @@ export type OAuthConfig = {
   scopes: string[];
 };
 
-function getRequiredEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing ${name}. Set it in apps/web/.env.local.`);
-  }
-  return value;
-}
-
 function getRequiredEnvFrom(primary: string, fallback: string): string {
   const value = process.env[primary] || process.env[fallback];
   if (!value) {

@@ -13,8 +13,10 @@ export type SeoData = {
   tags: string[];
   keywords: string[];
   suggestions?: {
-    titles?: string[];
+    titles?: Array<string | { title?: string }>;
+    thumbnails?: Array<string | { text?: string }>;
     thumbnailTexts?: string[];
+    topCombos?: Array<{ title?: string; thumbnailText?: string }>;
   } | null;
   score: number;
   video_title: string | null;
@@ -86,7 +88,7 @@ export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataO
         ? data.map((idea) => ({ id: (idea as { id: string }).id, title: (idea as { title: string }).title }))
         : [];
       setIdeaOptions(options);
-    } catch (err) {
+    } catch {
       if (signal?.aborted) return;
       setIdeaOptions([]);
     }
@@ -104,7 +106,7 @@ export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataO
         ? data.map((script) => ({ id: (script as { id: string }).id, title: (script as { title: string }).title }))
         : [];
       setScriptOptions(options);
-    } catch (err) {
+    } catch {
       if (signal?.aborted) return;
       setScriptOptions([]);
     }
