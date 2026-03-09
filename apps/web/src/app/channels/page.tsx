@@ -32,6 +32,8 @@ export default function ChannelsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingChannel, setEditingChannel] = useState<Channel | null>(null);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [showChannelGuide, setShowChannelGuide] = useState(false);
+    const [guideContext, setGuideContext] = useState<'created' | 'connected' | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         youtubeChannelId: '',
@@ -75,6 +77,15 @@ export default function ChannelsPage() {
         fetchChannels(controller.signal);
         return () => controller.abort();
     }, [fetchChannels]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const seen = window.localStorage.getItem('cronostudio.channelGuide.seen') === 'true';
+        if (seen) return;
+        if (channels.length > 0 && guideContext) {
+            setShowChannelGuide(true);
+        }
+    }, [channels.length, guideContext]);
 
     useEffect(() => {
         if (!showModal) return;
@@ -151,6 +162,7 @@ export default function ChannelsPage() {
                 if (data?.connected) {
                     stopConnecting();
                     addToast('YouTube conectado', 'success');
+                    setGuideContext('connected');
                     await fetchChannels();
                 }
             } catch {
@@ -186,6 +198,9 @@ export default function ChannelsPage() {
             setShowModal(false);
             setEditingChannel(null);
             setFormData({ name: '', youtubeChannelId: '' });
+            if (!editingChannel) {
+                setGuideContext('created');
+            }
             await fetchChannels();
         } catch (err) {
             addToast(err instanceof Error ? err.message : 'Error desconocido', 'error');
@@ -291,6 +306,52 @@ export default function ChannelsPage() {
                                 className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400"
                             >
                                 {error}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <AnimatePresence>
+                        {showChannelGuide && guideContext && (
+                            <motion.div
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5"
+                            >
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                    <div>
+                                        <p className="text-sm font-semibold text-emerald-200">
+                                            {guideContext === 'connected'
+                                                ? 'Canal conectado. Ya puedes empezar el flujo.'
+                                                : 'Canal creado. Siguiente paso: activar tu flujo.'}
+                                        </p>
+                                        <ol className="mt-2 space-y-1 text-xs text-emerald-200/90">
+                                            <li>1) Selecciona el canal activo.</li>
+                                            <li>2) Abre AI Studio y genera ideas evergreen.</li>
+                                            <li>3) Continua con guion y SEO.</li>
+                                        </ol>
+                                    </div>
+                                    <div className="flex flex-col gap-2 sm:flex-row">
+                                        <Link
+                                            href="/ai"
+                                            className="rounded-lg bg-emerald-400 px-4 py-2 text-xs font-semibold text-black"
+                                        >
+                                            Ir a AI Studio
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setShowChannelGuide(false);
+                                                if (typeof window !== 'undefined') {
+                                                    window.localStorage.setItem('cronostudio.channelGuide.seen', 'true');
+                                                }
+                                            }}
+                                            className="rounded-lg border border-emerald-500/30 px-4 py-2 text-xs font-semibold text-emerald-200"
+                                        >
+                                            Cerrar
+                                        </button>
+                                    </div>
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>

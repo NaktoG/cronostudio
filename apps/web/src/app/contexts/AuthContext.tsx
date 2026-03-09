@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import type { User as DomainUser } from '@/domain/entities/User';
 
 type UserRole = DomainUser['role'];
@@ -29,6 +29,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LAST_KNOWN_USER_KEY = 'cronostudio_user';
+const LOGOUT_MARKER_KEY = 'cronostudio_logout_marker';
 
 interface AuthProviderProps {
     children: ReactNode;
@@ -38,8 +39,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [status, setStatus] = useState<AuthStatus>('loading');
     const [error, setError] = useState<string | null>(null);
+    const logoutInProgressRef = useRef(false);
 
     const saveSession = useCallback((newUser: User) => {
+        logoutInProgressRef.current = false;
         const normalizedUser: User = {
             ...newUser,
             role: newUser.role ?? 'owner',
@@ -57,6 +60,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     useEffect(() => {
         const hydrateUser = async () => {
+            if (typeof window !== 'undefined') {
+                const marker = sessionStorage.getItem(LOGOUT_MARKER_KEY);
+                if (marker) {
+                    sessionStorage.removeItem(LOGOUT_MARKER_KEY);
+                    clearSession();
+                    setStatus('unauthenticated');
+                    return;
+                }
+            }
+            if (logoutInProgressRef.current) {
+                setStatus('unauthenticated');
+                return;
+            }
             try {
                 const meResponse = await fetch('/api/auth/me', {
                     credentials: 'include',
@@ -73,6 +89,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     credentials: 'include',
                     body: JSON.stringify({}),
                 });
+                if (logoutInProgressRef.current) {
+                    clearSession();
+                    return;
+                }
                 if (refreshResponse.ok) {
                     const data = await refreshResponse.json();
                     saveSession(data.user);
@@ -153,12 +173,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, []);
 
     const logout = useCallback(() => {
+        logoutInProgressRef.current = true;
+        if (typeof window !== 'undefined') {
+            sessionStorage.setItem(LOGOUT_MARKER_KEY, String(Date.now()));
+        }
         fetch('/api/auth/logout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
         }).finally(() => {
             clearSession();
+            if (typeof window !== 'undefined') {
+                window.location.assign('/');
+            }
         });
     }, [clearSession]);
 
@@ -210,10 +237,15 @@ export function useAuthFetch() {
             headers.set('Content-Type', 'application/json');
         }
 
-        return fetch(url, {
-            credentials: 'include',
-            ...baseOptions,
-            headers,
-        });
+        try {
+            const response = await fetch(url, {
+                credentials: 'include',
+                ...baseOptions,
+                headers,
+            });
+            return response;
+        } catch {
+            return new Response(null, { status: 0, statusText: 'network_error' });
+        }
     }, []);
 }

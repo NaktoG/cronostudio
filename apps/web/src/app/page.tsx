@@ -276,7 +276,7 @@ function OnboardingTour({
 }
 
 export function DashboardContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const authFetch = useAuthFetch();
   const { addToast } = useToast();
   const searchParams = useSearchParams();
@@ -291,6 +291,7 @@ export function DashboardContent() {
   const [weeklyStatus, setWeeklyStatus] = useState<WeeklyStatus | null>(null);
   const [disciplineWeekly, setDisciplineWeekly] = useState<DisciplineWeekly | null>(null);
   const [reconcileWeekly, setReconcileWeekly] = useState<YoutubeReconcileWeekly | null>(null);
+  const [reconcileError, setReconcileError] = useState<string | null>(null);
   const [weeklyActions, setWeeklyActions] = useState<PriorityAction[]>([]);
   const [weeklyGoal, setWeeklyGoal] = useState<WeeklyGoalResponse | null>(null);
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
@@ -327,6 +328,26 @@ export function DashboardContent() {
   const [tourOpen, setTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
   const [showStartCard, setShowStartCard] = useState(false);
+
+  const resolveReconcileError = useCallback((code: string | null) => {
+    if (!code) return null;
+    if (code === 'youtube_auth_invalid') {
+      return { message: 'YouTube necesita reautorizacion.', actionLabel: 'Reautorizar', actionHref: '/configuracion' };
+    }
+    if (code === 'youtube_refresh_missing') {
+      return { message: 'Falta refresh token. Reconecta YouTube.', actionLabel: 'Reconectar', actionHref: '/channels' };
+    }
+    if (code === 'youtube_rate_limited') {
+      return { message: 'YouTube esta limitando. Reintenta en unos minutos.', actionLabel: '', actionHref: '' };
+    }
+    if (code === 'youtube_unavailable') {
+      return { message: 'YouTube no responde ahora. Reintenta luego.', actionLabel: '', actionHref: '' };
+    }
+    if (code === 'youtube_channel_not_found') {
+      return { message: 'No se encontro canal en YouTube para esta cuenta.', actionLabel: 'Revisar canal', actionHref: '/channels' };
+    }
+    return { message: 'No se pudo verificar YouTube.', actionLabel: 'Revisar integracion', actionHref: '/channels' };
+  }, []);
 
   useDialogFocus(modalRef, showModal);
   useDialogFocus(publishRef, Boolean(publishTarget));
@@ -424,21 +445,26 @@ export function DashboardContent() {
             authFetch(`/api/weekly-status${query}`, { signal }),
             authFetch(`/api/weekly-goals${query}`, { signal }),
             authFetch(`/api/discipline/weekly${query}`, { signal }),
-            authFetch(`/api/integrations/youtube/reconcile/weekly${query}&channelId=${resolvedChannelId}`, { signal }),
           ]
         : [
             Promise.resolve(new Response(null, { status: 204 })),
             Promise.resolve(new Response(null, { status: 204 })),
             Promise.resolve(new Response(null, { status: 204 })),
-            Promise.resolve(new Response(null, { status: 204 })),
           ];
 
-      const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes, reconcileRes] = await Promise.all([
+      const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes] = await Promise.all([
         authFetch('/api/productions?stats=true', { signal }),
         authFetch('/api/ideas', { signal }),
         authFetch('/api/automation-runs', { signal }),
         ...weeklyRequests,
       ]);
+
+      const responses = [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes];
+      if (responses.some((res) => res.status === 401)) {
+        logout();
+        addToast('Sesion expirada. Inicia sesion nuevamente.', 'error');
+        return;
+      }
 
       if (productionsRes.ok) {
         const data = await productionsRes.json();
@@ -498,11 +524,38 @@ export function DashboardContent() {
         setDisciplineWeekly(null);
       }
 
-      if (reconcileRes.ok && reconcileRes.status !== 204) {
-        const reconcileData: YoutubeReconcileWeekly = await reconcileRes.json();
-        setReconcileWeekly(reconcileData);
-      } else {
-        setReconcileWeekly(null);
+      if (resolvedChannelId) {
+        authFetch(`/api/integrations/youtube/reconcile/weekly${query}`, { signal })
+          .then(async (reconcileRes) => {
+            if (signal?.aborted) return;
+            if (reconcileRes.ok && reconcileRes.status !== 204) {
+              const reconcileData: YoutubeReconcileWeekly = await reconcileRes.json();
+              setReconcileWeekly(reconcileData);
+              setReconcileError(null);
+              return;
+            }
+            setReconcileWeekly(null);
+            if (reconcileRes.status !== 204) {
+              const errorData = await reconcileRes.json().catch(() => null);
+              if (reconcileRes.status === 401 && errorData?.error === 'youtube_auth_invalid') {
+                setReconcileError(errorData.error);
+                return;
+              }
+              if (reconcileRes.status === 401) {
+                logout();
+                addToast('Sesion expirada. Inicia sesion nuevamente.', 'error');
+                return;
+              }
+              setReconcileError(errorData?.error || 'youtube_error');
+            } else {
+              setReconcileError(null);
+            }
+          })
+          .catch(() => {
+            if (signal?.aborted) return;
+            setReconcileWeekly(null);
+            setReconcileError('youtube_error');
+          });
       }
     } catch (e) {
       if (signal?.aborted) return;
@@ -723,6 +776,7 @@ export function DashboardContent() {
   const weeklyCompletion = weeklyTarget > 0
     ? Math.round((publishedCount / weeklyTarget) * 100)
     : 0;
+  const reconcileMessage = resolveReconcileError(reconcileError);
 
   const slotConfig = [
     { key: 'tue' as const, label: 'Mar' },
@@ -1173,6 +1227,19 @@ export function DashboardContent() {
                       >
                         Reintentar
                       </button>
+                    </div>
+                  )}
+                  {reconcileMessage && (
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-amber-300">
+                      <span>{reconcileMessage.message}</span>
+                      {reconcileMessage.actionLabel && reconcileMessage.actionHref && (
+                        <Link
+                          href={reconcileMessage.actionHref}
+                          className="text-yellow-300 hover:text-yellow-200 underline"
+                        >
+                          {reconcileMessage.actionLabel}
+                        </Link>
+                      )}
                     </div>
                   )}
                   {isDefaultChannel && channelName && (
@@ -2509,15 +2576,6 @@ export function DashboardContent() {
 }
 
 function HomeContent() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      router.replace('/dashboard');
-    }
-  }, [isAuthenticated, isLoading, router]);
-
   return <PublicLanding />;
 }
 

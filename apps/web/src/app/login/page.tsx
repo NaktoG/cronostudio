@@ -31,7 +31,11 @@ export default function LoginPage() {
 
         try {
             await login(email, password);
-            router.push('/dashboard');
+            if (typeof window !== 'undefined') {
+                window.location.assign('/dashboard');
+            } else {
+                router.push('/dashboard');
+            }
         } catch {
             // Error ya manejado en el context
         }

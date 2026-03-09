@@ -47,6 +47,29 @@ function isValidationError(error: unknown): boolean {
     return error instanceof Error && error.message.startsWith('Validation error:');
 }
 
+async function ensureIdeaReadyForApproval(
+    ideaRepository: PostgresIdeaRepository,
+    ideaId: string,
+    userId: string,
+    nextTitle?: string,
+    nextDescription?: string
+): Promise<NextResponse | null> {
+    const existing = await ideaRepository.findById(ideaId);
+    if (!existing || existing.userId !== userId) {
+        return withSecurityHeaders(NextResponse.json({ error: 'Idea no encontrada' }, { status: 404 }));
+    }
+    const title = nextTitle ?? existing.title;
+    const description = nextDescription ?? existing.description;
+    const readiness = evaluateIdeaReady(title, description);
+    if (!readiness.isReady) {
+        return withSecurityHeaders(NextResponse.json({
+            error: 'Idea no lista',
+            details: readiness.errors,
+        }, { status: 400 }));
+    }
+    return null;
+}
+
 /**
  * GET /api/ideas
  * List all ideas for authenticated user
@@ -141,18 +164,15 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         const ideaRepository = new PostgresIdeaRepository();
 
         if (data.status === 'approved') {
-            const existing = await ideaRepository.findById(ideaId);
-            if (!existing || existing.userId !== userId) {
-                return withSecurityHeaders(NextResponse.json({ error: 'Idea no encontrada' }, { status: 404 }));
-            }
-            const nextTitle = data.title ?? existing.title;
-            const nextDescription = data.description ?? existing.description;
-            const readiness = evaluateIdeaReady(nextTitle, nextDescription);
-            if (!readiness.isReady) {
-                return withSecurityHeaders(NextResponse.json({
-                    error: 'Idea no lista',
-                    details: readiness.errors,
-                }, { status: 400 }));
+            const approvalGuard = await ensureIdeaReadyForApproval(
+                ideaRepository,
+                ideaId,
+                userId,
+                data.title,
+                data.description
+            );
+            if (approvalGuard) {
+                return approvalGuard;
             }
         }
 

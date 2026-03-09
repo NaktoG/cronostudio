@@ -15,8 +15,9 @@ export type Idea = {
   status: IdeaStatus;
   priority: number;
   tags: string[];
-  channel_name: string | null;
-  created_at: string;
+  channelName?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type IdeaFormPayload = {

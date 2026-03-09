@@ -8,6 +8,8 @@
 ./scripts/local_up.sh
 ```
 
+Nota local: n8n es opcional por ahora. Si no vas a usarlo, puedes desactivar su check en health con `N8N_ENABLED=false` en `apps/web/.env.local`. El core funciona sin n8n; si lo activas de nuevo, el healthcheck vuelve a verificarlo.
+
 > **Nota:** En entornos de producción (Hetzner) todas las variables obligatorias (`JWT_SECRET`, `DATABASE_URL`, `POSTGRES_*`, `N8N_*`, `SMTP_*`, etc.) deben estar definidas manualmente. El runtime no aplicará valores de respaldo, así que valida el `.env` antes de desplegar.
 
 ### Levantar frontend

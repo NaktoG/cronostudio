@@ -36,35 +36,35 @@ const AUTH_ROUTES = new Set([
 const PAGE_TIPS: Record<string, { title: string; description: string }> = {
   '/ai': {
     title: 'AI Studio',
-    description: 'Elegis un perfil, completas el input y generas contenido aplicado en la base.',
+    description: 'Usa los perfiles para generar ideas, guiones, retencion y titulos con salida aplicada.',
   },
   '/ideas': {
     title: 'Ideas',
-    description: 'Pulí las ideas y marcá las listas para pasar a guion.',
+    description: 'Refina ideas, aprueba las viables y prepara el paso a guion.',
   },
   '/scripts': {
     title: 'Guiones',
-    description: 'Revisá hook, estructura y duracion. Ajustá el status cuando este listo.',
+    description: 'Verifica hook, estructura y duracion antes de marcar listo.',
   },
   '/seo': {
     title: 'SEO',
-    description: 'Definí titulo, descripcion y tags finales para publicar.',
+    description: 'Elige el titulo final y asegura descripcion + tags consistentes.',
   },
   '/thumbnails': {
     title: 'Miniaturas',
-    description: 'Definí texto y estado de diseño antes de publicar.',
+    description: 'Define texto, variante y estado antes de publicar.',
   },
   '/channels': {
     title: 'Canales',
-    description: 'Conectá tu canal y validá que todo quede asociado.',
+    description: 'Conecta YouTube y define el canal activo.',
   },
   '/': {
     title: 'Dashboard',
-    description: 'Desde aca mueves el contenido por el pipeline y publicas.',
+    description: 'Prioriza el flujo semanal y registra publicaciones.',
   },
   '/start': {
     title: 'Guia',
-    description: 'Tenes el flujo recomendado con atajos directos.',
+    description: 'Flujo recomendado con checkpoints y atajos.',
   },
 };
 
@@ -72,57 +72,57 @@ const PAGE_STEPS: Record<string, { title: string; items: string[] }> = {
   '/ai': {
     title: 'AI Studio paso a paso',
     items: [
-      'Elegí canal y perfil.',
-      'Completá el input requerido.',
-      'Usá “Generar y aplicar” y revisá el resultado.',
+      'Selecciona canal y perfil (Evergreen AI, Script Architect, Retention Editor, Titles & Thumbs).',
+      'Completa el brief con contexto real del canal.',
+      'Usa “Generar y aplicar” y valida el resultado.',
     ],
   },
   '/ideas': {
     title: 'Ideas paso a paso',
     items: [
-      'Revisá ideas draft y editá si hace falta.',
-      'Aprobá las ideas listas.',
-      'Pasá una idea a guion en AI Studio.',
+      'Revisa ideas draft y ajusta el angulo.',
+      'Aprueba las ideas con potencial evergreen.',
+      'Enviala a guion desde AI Studio.',
     ],
   },
   '/scripts': {
     title: 'Guiones paso a paso',
     items: [
-      'Abrí un guion y revisá hook + cuerpo.',
-      'Ajustá el status cuando este listo.',
-      'Continuá con SEO y miniaturas.',
+      'Revisa hook, promesa y ritmo.',
+      'Marca listo cuando el guion este pulido.',
+      'Continua con SEO y miniaturas.',
     ],
   },
   '/seo': {
     title: 'SEO paso a paso',
     items: [
-      'Elegí el mejor titulo.',
-      'Revisá descripcion y tags.',
-      'Marcá listo antes de publicar.',
+      'Elige el titulo final.',
+      'Asegura descripcion y tags.',
+      'Marca listo antes de publicar.',
     ],
   },
   '/thumbnails': {
     title: 'Miniaturas paso a paso',
     items: [
-      'Definí texto de miniatura.',
-      'Subí/pegá URL si la tenes.',
-      'Marcá como aprobada para publicar.',
+      'Define texto de miniatura.',
+      'Sube o pega la URL final.',
+      'Aprueba antes de publicar.',
     ],
   },
   '/channels': {
     title: 'Canales paso a paso',
     items: [
-      'Creá o conectá tu canal.',
-      'Verificá nombre y datos.',
-      'Volvé a AI Studio para generar ideas.',
+      'Crea o conecta el canal.',
+      'Verifica nombre y datos.',
+      'Vuelve a AI Studio para generar ideas.',
     ],
   },
   '/': {
     title: 'Dashboard paso a paso',
     items: [
-      'Elegí el canal activo.',
-      'Revisá pipeline y backlog.',
-      'Publicá cuando el video este listo.',
+      'Selecciona canal activo.',
+      'Revisa pipeline y backlog.',
+      'Publica cuando el video este listo.',
     ],
   },
   '/start': {
@@ -158,15 +158,24 @@ export default function GuidePanel() {
   const [tourSeen, setTourSeen] = useState(false);
   const [ideaChecklist, setIdeaChecklist] = useState<IdeaChecklist>({ total: 0, ready: 0, missing: [] });
   const stepsDialogRef = useRef<HTMLDivElement | null>(null);
+  const autoStepsRef = useRef<Record<string, boolean>>({});
+  const tip = PAGE_TIPS[pathname] ?? null;
+  const sectionSteps = PAGE_STEPS[pathname] ?? null;
 
   useEffect(() => {
+    if (!isAuthenticated || AUTH_ROUTES.has(pathname)) return;
     const stored = typeof window !== 'undefined'
       ? window.localStorage.getItem('cronostudio.guide.open')
       : null;
-    if (stored !== null) {
-      setIsOpen(stored === 'true');
+    if (stored === null) {
+      setIsOpen(true);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('cronostudio.guide.open', 'true');
+      }
+      return;
     }
-  }, []);
+    setIsOpen(stored === 'true');
+  }, [isAuthenticated, pathname]);
 
   useEffect(() => {
     const handleToggle = () => {
@@ -193,6 +202,15 @@ export default function GuidePanel() {
     const seen = window.localStorage.getItem(`cronostudio.guide.tour_seen.${pathname}`) === 'true';
     setTourSeen(seen);
   }, [pathname, showSteps]);
+
+  useEffect(() => {
+    if (!isAuthenticated || AUTH_ROUTES.has(pathname)) return;
+    if (!sectionSteps || tourSeen) return;
+    if (autoStepsRef.current[pathname]) return;
+    autoStepsRef.current[pathname] = true;
+    const timer = window.setTimeout(() => setShowSteps(true), 350);
+    return () => window.clearTimeout(timer);
+  }, [isAuthenticated, pathname, sectionSteps, tourSeen]);
 
   useEffect(() => {
     if (!showSteps) return;
@@ -374,8 +392,7 @@ export default function GuidePanel() {
     };
     return map[currentStep.key] ?? null;
   }, [currentStep.key]);
-  const tip = PAGE_TIPS[pathname] ?? null;
-  const sectionSteps = PAGE_STEPS[pathname] ?? null;
+  
 
   if (!isAuthenticated || AUTH_ROUTES.has(pathname)) return null;
   if (!isOpen) return null;

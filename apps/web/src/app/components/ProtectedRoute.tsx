@@ -19,7 +19,7 @@ export default function ProtectedRoute({ children, fallback }: ProtectedRoutePro
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
-            router.push('/login');
+            router.push('/');
         }
     }, [isAuthenticated, isLoading, router]);
 

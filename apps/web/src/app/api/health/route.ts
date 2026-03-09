@@ -34,7 +34,8 @@ export async function GET() {
         // Verificar n8n (opcional, con timeout configurable)
         let n8nHealthy = true;
         const n8nBaseUrl = config.automation.n8nBaseUrl;
-        if (n8nBaseUrl) {
+        const n8nEnabled = config.automation.n8nEnabled;
+        if (n8nEnabled && n8nBaseUrl) {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -80,7 +81,7 @@ export async function GET() {
                 services: {
                     config: 'ok',
                     database: dbHealthy ? 'up' : 'down',
-                    n8n: n8nHealthy ? 'up' : 'down',
+                    n8n: n8nEnabled ? (n8nHealthy ? 'up' : 'down') : 'disabled',
                     redis: redisHealthy === null ? 'skipped' : redisHealthy ? 'up' : 'down',
                 },
             };

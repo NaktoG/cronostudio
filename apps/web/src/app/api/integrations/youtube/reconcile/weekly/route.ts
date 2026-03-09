@@ -51,6 +51,29 @@ type SuggestedAction = {
   };
 };
 
+function buildErrorResponse(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const status = (error as { status?: number }).status;
+
+  if (message === 'Refresh token faltante') {
+    return { status: 409, error: 'youtube_refresh_missing' };
+  }
+  if (message === 'Failed to refresh YouTube token.') {
+    return { status: 401, error: 'youtube_auth_invalid' };
+  }
+  if (message === 'Failed to fetch YouTube uploads playlist.' || message === 'Failed to fetch YouTube playlist items.') {
+    if (status === 401 || status === 403) return { status: 401, error: 'youtube_auth_invalid' };
+    if (status === 429) return { status: 429, error: 'youtube_rate_limited' };
+    if (status && status >= 500) return { status: 502, error: 'youtube_unavailable' };
+    return { status: 502, error: 'youtube_error' };
+  }
+  if (message === 'No YouTube channel found for account.') {
+    return { status: 404, error: 'youtube_channel_not_found' };
+  }
+
+  return null;
+}
+
 function buildVideoUrl(videoId: string) {
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
@@ -227,6 +250,11 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
       suggestedActions,
     }));
   } catch (error) {
+    const mapped = buildErrorResponse(error);
+    if (mapped) {
+      logger.warn('[youtube.reconcile] handled error', { error: mapped.error });
+      return withSecurityHeaders(NextResponse.json({ error: mapped.error }, { status: mapped.status }));
+    }
     logger.error('[youtube.reconcile] Error', { message: error instanceof Error ? error.message : String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al reconciliar YouTube' }, { status: 500 }));
   }

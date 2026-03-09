@@ -306,8 +306,8 @@ function IdeasContent() {
                                     {idea.description && (
                                         <p className="text-gray-400 text-sm mb-3 line-clamp-3 sm:line-clamp-2">{idea.description}</p>
                                     )}
-                                    {idea.channel_name && (
-                                        <p className="text-xs text-slate-400">{IDEAS_COPY.channelPrefix} {idea.channel_name}</p>
+                                    {idea.channelName && (
+                                        <p className="text-xs text-slate-400">{IDEAS_COPY.channelPrefix} {idea.channelName}</p>
                                     )}
                                     {idea.tags?.length > 0 && (
                                         <div className="flex flex-wrap gap-2 mt-3">
