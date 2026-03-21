@@ -8,6 +8,11 @@ const DEFAULT_ALLOWED_ORIGINS = [
 
 function getAllowedOrigins(): string[] {
   const raw = process.env.CORS_ALLOWED_ORIGINS;
+  if (process.env.NODE_ENV === 'production') {
+    if (!raw || raw.trim().length === 0) {
+      throw new Error('CORS_ALLOWED_ORIGINS must be set in production.');
+    }
+  }
   if (!raw) return DEFAULT_ALLOWED_ORIGINS;
   return raw
     .split(',')
@@ -96,6 +101,7 @@ function withCspHeaders(response: NextResponse) {
 export function middleware(request: NextRequest) {
   const origin = request.headers.get('origin');
   const pathname = request.nextUrl.pathname;
+  const isProduction = process.env.NODE_ENV === 'production';
 
   if (pathname.startsWith('/api') && request.method === 'OPTIONS') {
     if (isOriginAllowed(origin)) {
@@ -112,7 +118,10 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  return withCspHeaders(response);
+  if (isProduction) {
+    return withCspHeaders(response);
+  }
+  return response;
 }
 
 export const config = {

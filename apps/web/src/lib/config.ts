@@ -118,7 +118,7 @@ function buildConfig() {
 
     automation: {
       n8nBaseUrl: env.N8N_BASE_URL || 'http://localhost:5678',
-      n8nEnabled: (env.N8N_ENABLED || 'true') === 'true',
+      n8nEnabled: (env.N8N_ENABLED || 'false') === 'true',
     },
 
     cors: {

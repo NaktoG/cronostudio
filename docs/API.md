@@ -19,6 +19,142 @@ Authorization: Bearer <token>
 
 ## 📡 Endpoints
 
+### Automation Internal (Go)
+
+Base interna (no publica): `http://automation-go:8081`
+
+#### POST `/internal/jobs`
+
+Headers requeridos:
+
+```
+Authorization: Bearer <jwt_ed25519>
+X-Request-Id: <uuid>
+Idempotency-Key: <key>
+```
+
+Notas de validacion:
+- `X-Request-Id` debe ser UUID.
+- `tenantUserId` debe ser UUID.
+- `scope` del JWT debe incluir `automation:enqueue`.
+- El JWT debe incluir `tenantUserId` o `tenantIds` y debe autorizar el `tenantUserId` del body.
+
+Request:
+
+```json
+{
+  "jobType": "youtube.sync.videos",
+  "tenantUserId": "uuid",
+  "payload": { "channelId": "UC123" },
+  "priority": 100,
+  "runAt": "2026-03-20T10:00:00Z"
+}
+```
+
+Responses:
+- `202 Accepted`: job encolado.
+- `200 OK`: replay idempotente (`replayed=true`).
+- `401 Unauthorized`: JWT invalido/expirado.
+- `403 Forbidden`: scope insuficiente.
+- `409 Conflict`: `Idempotency-Key` reutilizada con payload distinto.
+- `429 Too Many Requests`: limite por IP o tenant/workflow.
+- `400 Bad Request`: headers requeridos faltantes o mal formados.
+
+Para persistencia y deduplicacion durable en staging/prod, `automation-go` debe correr con `AUTOMATION_DB_URL`.
+
+Job types iniciales:
+- `youtube.sync.channels` (PR5, handler real en worker via endpoint interno BFF).
+- `youtube.sync.videos` (PR6, handler real en worker via endpoint interno BFF).
+- `youtube.analytics.ingest.daily` (PR7, handler real en worker via endpoint interno BFF).
+
+Modo shadow PR5:
+- El endpoint legado `/integrations/youtube/sync/channels` puede encolar jobs shadow si `AUTOMATION_SHADOW_CHANNELS_ENABLED=true`.
+- El endpoint legado `/integrations/youtube/sync/videos` puede encolar jobs shadow si `AUTOMATION_SHADOW_VIDEOS_ENABLED=true`.
+
+Modo cutover PR9:
+- Si `AUTOMATION_CUTOVER_ENABLED=true` y el tenant cae en el porcentaje configurado, endpoints legacy pueden responder `202` con `{ accepted: true, mode: "automation-go", queuedJobId }`.
+- `AUTOMATION_CUTOVER_KILL_SWITCH=true` fuerza retorno a `legacy_sync` sin cola.
+- En 10/50 inicial se recomienda mantener `AUTOMATION_CUTOVER_INCLUDE_USER_REQUESTS=false` y cutover solo para trafico de servicio.
+- El trafico de servicio se identifica por autenticacion de servicio o por `x-cronostudio-webhook-secret` valido.
+
+#### POST `/internal/automation/youtube/sync/channels` (BFF interno)
+
+Uso interno desde `automation-go`.
+
+Headers requeridos:
+
+```
+x-cronostudio-webhook-secret: <shared_secret>
+```
+
+Requisitos:
+- `CRONOSTUDIO_WEBHOOK_SECRET` debe estar configurado en el BFF (si falta, responde `503`).
+
+Request:
+
+```json
+{
+  "tenantUserId": "uuid",
+  "youtubeChannelId": "UC123"
+}
+```
+
+Response:
+- `200 OK`: `{ "results": [...] }`
+- `400`: payload invalido
+- `401`: secreto invalido
+
+#### POST `/internal/automation/youtube/sync/videos` (BFF interno)
+
+Uso interno desde `automation-go`.
+
+Headers requeridos:
+
+```
+x-cronostudio-webhook-secret: <shared_secret>
+```
+
+Request:
+
+```json
+{
+  "tenantUserId": "uuid",
+  "channelId": "uuid",
+  "limit": 20
+}
+```
+
+Response:
+- `200 OK`: `{ "results": [...] }`
+- `400`: payload invalido
+- `401`: secreto invalido
+
+#### POST `/internal/automation/youtube/analytics/ingest-daily` (BFF interno)
+
+Uso interno desde `automation-go`.
+
+Headers requeridos:
+
+```
+x-cronostudio-webhook-secret: <shared_secret>
+```
+
+Request:
+
+```json
+{
+  "tenantUserId": "uuid",
+  "date": "2026-03-20"
+}
+```
+
+Response:
+- `200 OK`: `{ "processedVideos": number, "upsertedRows": number, "skippedVideos": number }`
+- `400`: payload invalido
+- `401`: secreto invalido
+
+---
+
 ### Auth
 
 #### POST `/auth/register`

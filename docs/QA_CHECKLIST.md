@@ -105,7 +105,7 @@ Guía para validar la app de extremo a extremo después de cada release.
 ## 16. Checklist final
 - [ ] No errores en consola del navegador.
 - [ ] No errores en logs de Next.js (`docker logs cronostudio_web`).
-- [ ] n8n workflows en estado “Success”.
+- [ ] Jobs de automatizacion (`automation-go`) en estado esperado y sin crecimiento anomalo de DLQ.
 - [ ] Backups recientes en `/home/deploy/backups`.
 - [ ] Runbook actualizado si cambió algún flujo.
 

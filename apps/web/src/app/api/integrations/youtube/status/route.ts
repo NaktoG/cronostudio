@@ -75,6 +75,4 @@ const handler = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   }
 });
 
-export const GET = process.env.NODE_ENV === 'production'
-  ? withAuth(handler)
-  : handler;
+export const GET = withAuth(handler);

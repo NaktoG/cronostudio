@@ -1,6 +1,8 @@
 # Workflows n8n (CronoStudio)
 
-## Requisitos
+> Estado: legacy/rollback. La operacion normal de CronoStudio usa workers internos en Go.
+
+## Requisitos (solo rollback)
 - n8n corriendo en Docker (`http://localhost:5678`).
 - API de CronoStudio levantada en `http://localhost:3000`.
 - YouTube OAuth conectado desde CronoStudio.

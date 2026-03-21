@@ -12,6 +12,12 @@
 - [ARCHITECTURE](ARCHITECTURE.md)
 - [ADR 0001](decisions/0001-stack-base.md)
 - [ADR 0002](decisions/0002-architecture-governance.md)
+- [ADR 0003](decisions/0003-go-backend-migration.md)
+
+## Automation Go (canónico)
+- [Automation Data Model](automation/DATA_MODEL.md)
+- [Queue, Retries y DLQ](automation/QUEUE_RETRIES_DLQ.md)
+- [Runbook 03 - Cutover n8n a Go](runbooks/03-go-backend-cutover.md)
 
 ## Seguridad
 - [SECURITY](SECURITY.md)
@@ -30,8 +36,11 @@
 
 ## Integraciones
 - [INTEGRATIONS_YOUTUBE](INTEGRATIONS_YOUTUBE.md)
-- [n8n SECURITY](n8n/SECURITY.md)
-- [n8n WORKFLOWS_AUDIT](n8n/WORKFLOWS_AUDIT.md)
+- [n8n SECURITY (legacy)](n8n/SECURITY.md)
+- [n8n WORKFLOWS_AUDIT (legacy)](n8n/WORKFLOWS_AUDIT.md)
 
 ## Roadmap
 - [ROADMAP](ROADMAP.md)
+
+## Migracion Go
+- [Checklist PR migracion Go](checklists/pr-go-migration-review.md)

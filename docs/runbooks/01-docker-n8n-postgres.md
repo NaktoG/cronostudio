@@ -1,4 +1,6 @@
-# Runbook: n8n + Postgres con Docker Compose (local)
+# Runbook: n8n legacy + Postgres con Docker Compose (local)
+
+> Este runbook aplica solo para rollback/soporte legacy. La operacion normal usa workers Go sin n8n.
 
 ## Requisitos
 - Docker Desktop encendido
@@ -12,13 +14,13 @@
 
 ```bash
 cd /Volumes/SSD-QVO/cronostudio
-docker compose -f infra/docker/docker-compose.yml up -d
+docker compose --profile legacy-n8n -f infra/docker/docker-compose.yml up -d
 docker ps
 ```
 
 **Esperado:**
 - Container `cronostudio-postgres` en puerto 5432
-- Container `cronostudio-n8n` en puerto 5678
+- Container `cronostudio-n8n` en puerto 5678 (solo profile `legacy-n8n`)
 
 ## Acceso a servicios
 
@@ -74,7 +76,7 @@ docker exec -i cronostudio-postgres psql -U postgres cronostudio < backup_202501
 | Puerto 5432 ocupado | `lsof -i :5432` y matar proceso |
 | Puerto 5678 ocupado | `lsof -i :5678` y matar proceso |
 | Docker daemon apagado | Abrir Docker Desktop |
-| n8n no conecta a Postgres | Verificar `.env` en `infra/docker/` |
+| n8n legacy no conecta a Postgres | Verificar `.env` en `infra/docker/` |
 | Volúmenes con datos old | Usar `docker compose ... down -v` |
 | Container "unhealthy" | Revisar: `docker logs cronostudio-postgres` |
 

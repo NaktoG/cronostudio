@@ -8,9 +8,9 @@
 ./scripts/local_up.sh
 ```
 
-Nota local: n8n es opcional por ahora. Si no vas a usarlo, puedes desactivar su check en health con `N8N_ENABLED=false` en `apps/web/.env.local`. El core funciona sin n8n; si lo activas de nuevo, el healthcheck vuelve a verificarlo.
+Nota local: n8n es legacy y viene desactivado por defecto. Solo activarlo para rollback con `ENABLE_LEGACY_N8N=true`.
 
-> **Nota:** En entornos de producción (Hetzner) todas las variables obligatorias (`JWT_SECRET`, `DATABASE_URL`, `POSTGRES_*`, `N8N_*`, `SMTP_*`, etc.) deben estar definidas manualmente. El runtime no aplicará valores de respaldo, así que valida el `.env` antes de desplegar.
+> **Nota:** En entornos de producción (Hetzner) todas las variables obligatorias (`JWT_SECRET`, `DATABASE_URL`, `POSTGRES_*`, `SMTP_*`, etc.) deben estar definidas manualmente. El runtime no aplicará valores de respaldo, así que valida el `.env` antes de desplegar.
 
 ### Levantar frontend
 
@@ -22,8 +22,8 @@ npm run dev
 ```
 
 Acceso:
-- **n8n**: http://localhost:5678
 - **Dashboard**: http://localhost:3000
+- **n8n legacy (opcional)**: http://localhost:5678 (solo con profile `legacy-n8n`)
 
 ### Migraciones (cuando hay cambios de schema)
 
@@ -42,7 +42,7 @@ Nota: Los datos en volúmenes persisten. Los containers van a estado `Exited`.
 ## Ver Logs en Tiempo Real
 
 ```bash
-# n8n
+# n8n legacy (opcional)
 docker logs -f cronostudio-n8n
 
 # Postgres
@@ -50,6 +50,9 @@ docker logs -f cronostudio-postgres
 
 # Ambos
 docker compose -f infra/docker/docker-compose.yml logs -f
+
+# automation-go (si esta habilitado)
+docker logs -f cronostudio-automation-go
 ```
 
 ## Backup de Base de Datos
@@ -72,7 +75,7 @@ docker exec -i cronostudio-postgres psql -U postgres cronostudio < backup_202501
 
 ## Resetear Todo (⚠️ DESTRUCTIVO)
 
-Si quieres "empezar de cero" (borra todos los datos de n8n y Postgres):
+Si quieres "empezar de cero" (borra todos los datos de Postgres y servicios locales):
 
 ```bash
 ./scripts/local_reset.sh --i-know
@@ -95,7 +98,7 @@ kill -9 <PID>
 # Editar línea: ports: ["5433:5432"]
 ```
 
-### Puerto 5678 ya está en uso
+### Puerto 5678 ya está en uso (solo n8n legacy)
 
 ```bash
 lsof -i :5678
@@ -111,9 +114,9 @@ kill -9 <PID>
 2. Esperar a que inicie completamente
 3. Reintentar `docker compose up -d`
 
-### n8n no conecta a Postgres
+### n8n legacy no conecta a Postgres
 
-**Síntoma:** Logs de n8n muestran `connection refused` a localhost:5432
+**Síntoma:** Logs de n8n legacy muestran `connection refused` a localhost:5432
 
 **Verificar:**
 1. ¿Postgres está corriendo? `docker ps | grep postgres`
@@ -161,7 +164,8 @@ Esperado:
 ```
 NAME                    STATUS
 cronostudio-postgres    Up 2 hours
-cronostudio-n8n         Up 2 hours
+cronostudio-redis       Up 2 hours
+cronostudio-automation-go Up 2 hours
 ```
 
 ### Recursos consumidos
@@ -170,7 +174,7 @@ cronostudio-n8n         Up 2 hours
 docker stats --no-stream
 ```
 
-Postgres y n8n no deberían consumir > 1GB RAM en desarrollo.
+Postgres y Redis no deberían consumir > 1GB RAM en desarrollo.
 
 ### Conectarse a Postgres directo
 
@@ -187,14 +191,16 @@ SELECT COUNT(*) FROM information_schema.tables;
 
 ## Actualizar Stack
 
-### Actualizar n8n a versión más nueva
+### Actualizar n8n legacy a versión más nueva
+
+> Solo para contingencia/rollback. No forma parte de la operación estándar.
 
 1. Editar `infra/docker/docker-compose.yml`
 2. Cambiar `n8nio/n8n:latest` → `n8nio/n8n:1.45.0` (versión específica)
 3. Recrear container:
    ```bash
-   docker compose -f infra/docker/docker-compose.yml pull
-   docker compose -f infra/docker/docker-compose.yml up -d --force-recreate
+   docker compose --profile legacy-n8n -f infra/docker/docker-compose.yml pull
+   docker compose --profile legacy-n8n -f infra/docker/docker-compose.yml up -d --force-recreate
    ```
 
 ### Actualizar Postgres
@@ -218,7 +224,7 @@ docker ps
 # ¿Postgres responde?
 docker exec cronostudio-postgres psql -U postgres -c "SELECT 1;"
 
-# ¿n8n accesible?
+# ¿n8n legacy accesible? (opcional)
 curl http://localhost:5678/api/v1/health
 
 # ¿Desarrollo Next.js OK?
@@ -259,7 +265,9 @@ docker exec cronostudio-postgres pg_dump -U postgres cronostudio > backup_end_of
 ## Referencias Rápidas
 
 - Documentación Setup: [SETUP.md](SETUP.md)
-- Docker Runbook detallado: [runbooks/01-docker-n8n-postgres.md](runbooks/01-docker-n8n-postgres.md)
+- Docker Runbook detallado (legacy): [runbooks/01-docker-n8n-postgres.md](runbooks/01-docker-n8n-postgres.md)
+- Cutover n8n -> Go: [runbooks/03-go-backend-cutover.md](runbooks/03-go-backend-cutover.md)
 - Decisiones de arquitectura: [decisions/0001-stack-base.md](decisions/0001-stack-base.md)
-- n8n Docs: https://docs.n8n.io/
+- Decisión migración Go: [decisions/0003-go-backend-migration.md](decisions/0003-go-backend-migration.md)
+- n8n Docs (legacy rollback): https://docs.n8n.io/
 - PostgreSQL Docs: https://www.postgresql.org/docs/16/

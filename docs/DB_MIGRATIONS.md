@@ -47,4 +47,14 @@ Ambos scripts son idempotentes y solo ejecutan archivos pendientes:
 - **Migraciones manuales en producción**: si necesitas revertir, usa el backup tomado en el paso 1 (`pg_restore`).
 - **Nuevas columnas requeridas por la app**: coordina deploy atómico (migrar + reiniciar Next.js) para evitar errores `column does not exist`.
 
+## Notas de migracion Go (automation)
+
+- Las tablas base de automatizacion se crean en `202603200000__automation_jobs_core.sql`.
+- La idempotencia queda aislada por `scope + tenant_user_id + idempotency_key`.
+- Antes de habilitar workers Go en staging o produccion, ejecutar:
+  1. backup (`pg_dump -Fc`),
+  2. migraciones,
+  3. smoke SQL basico (`automation_job_queue`, `automation_job_idempotency`, `automation_job_dlq`),
+  4. restore drill controlado.
+
 Mantén este documento actualizado cada vez que agregues flujos especiales (seeders, scripts de datos, etc.).

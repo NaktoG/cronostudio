@@ -561,7 +561,6 @@ export function DashboardContent() {
       if (signal?.aborted) return;
       console.error('Error:', e);
     } finally {
-      if (signal?.aborted) return;
       setLoading(false);
     }
   }, [authFetch, selectedChannelId, channels, fallbackIso.isoYear, fallbackIso.isoWeek]);

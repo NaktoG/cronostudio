@@ -42,7 +42,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const logoutInProgressRef = useRef(false);
 
     const saveSession = useCallback((newUser: User) => {
-        logoutInProgressRef.current = false;
+        if (logoutInProgressRef.current) {
+            return;
+        }
         const normalizedUser: User = {
             ...newUser,
             role: newUser.role ?? 'owner',
@@ -61,9 +63,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     useEffect(() => {
         const hydrateUser = async () => {
             if (typeof window !== 'undefined') {
-                const marker = sessionStorage.getItem(LOGOUT_MARKER_KEY);
+                const marker = localStorage.getItem(LOGOUT_MARKER_KEY);
                 if (marker) {
-                    sessionStorage.removeItem(LOGOUT_MARKER_KEY);
+                    localStorage.removeItem(LOGOUT_MARKER_KEY);
                     clearSession();
                     setStatus('unauthenticated');
                     return;
@@ -108,6 +110,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         hydrateUser();
     }, [saveSession, clearSession]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key !== LOGOUT_MARKER_KEY) return;
+            clearSession();
+            setStatus('unauthenticated');
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, [clearSession]);
 
     const login = useCallback(async (email: string, password: string) => {
         setStatus('loading');
@@ -175,7 +188,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const logout = useCallback(() => {
         logoutInProgressRef.current = true;
         if (typeof window !== 'undefined') {
-            sessionStorage.setItem(LOGOUT_MARKER_KEY, String(Date.now()));
+            localStorage.setItem(LOGOUT_MARKER_KEY, String(Date.now()));
         }
         fetch('/api/auth/logout', {
             method: 'POST',

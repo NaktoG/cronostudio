@@ -82,6 +82,35 @@ export function rateLimit(config: RateLimitConfig) {
   };
 }
 
+export async function enforceRateLimit(
+  identifier: string,
+  rateLimitConfig: RateLimitConfig,
+  path: string
+): Promise<NextResponse | null> {
+  if (!shouldEnforceRateLimit()) {
+    return null;
+  }
+
+  const retryAfter = await checkRateLimit(identifier, rateLimitConfig);
+  if (retryAfter > 0) {
+    emitMetric({ name: 'rate_limit.block', value: 1, tags: { path } });
+    return NextResponse.json(
+      {
+        error: 'Too Many Requests',
+        message: 'Rate limit exceeded. Try again later.',
+      },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(retryAfter),
+        },
+      }
+    );
+  }
+
+  return null;
+}
+
 function readNumberEnv(value: string | undefined, fallback: number): number {
   if (!value) return fallback;
   const parsed = Number(value);

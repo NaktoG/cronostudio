@@ -3,7 +3,7 @@
   <img src="https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript" alt="TypeScript 5">
   <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL 16">
   <img src="https://img.shields.io/badge/Clean_Architecture-Enabled-success?style=for-the-badge&logo=structure" alt="Clean Architecture">
-  <img src="https://img.shields.io/badge/n8n-Automation-EA4B71?style=for-the-badge&logo=n8n" alt="n8n">
+  <img src="https://img.shields.io/badge/Automation-Go%20Workers-0f766e?style=for-the-badge" alt="Go workers">
 </p>
 
 <h1 align="center">Atonix • CronoStudio</h1>
@@ -39,7 +39,7 @@
 
 ## 🎯 Sobre el Proyecto
 
-**CronoStudio** es el producto de Atonix para creadores de YouTube. Ofrece un dashboard unificado para gestionar el flujo completo de producción (idea → guion → edición → publicación), con automatización integrada vía n8n y analíticas en tiempo real.
+**CronoStudio** es el producto de Atonix para creadores de YouTube. Ofrece un dashboard unificado para gestionar el flujo completo de producción (idea → guion → edición → publicación), con automatización interna en workers Go y analíticas en tiempo real.
 
 ### ¿Por qué este proyecto?
 
@@ -59,7 +59,7 @@
 | 📝 **Producción** | Pipeline completo (guion → edición) | ✅ Ready |
 | 📺 **Canales** | Gestión multi-canal y métricas | ✅ Ready |
 | 🔐 **Seguridad** | JWT, rate limiting, validación Zod | ✅ Ready |
-| 🤖 **Automatización** | Workflows n8n integrados | ✅ Ready |
+| 🤖 **Automatización** | Workers internos Go + colas | ✅ Ready |
 
 ---
 
@@ -80,7 +80,7 @@
 
 ### Infraestructura
 - **Docker Compose**
-- **n8n** (Workflow Automation)
+- **Go Workers** (internal automation)
 - **Vitest** (Unit Testing)
 
 ---
@@ -171,7 +171,11 @@ Ver [SECURITY.md](docs/SECURITY.md).
 - [Setup](docs/SETUP.md)
 - [Runbook](docs/RUNBOOK.md)
 - [Arquitectura](docs/ARCHITECTURE.md)
+- [Automation Data Model](docs/automation/DATA_MODEL.md)
+- [Queue + Retries + DLQ](docs/automation/QUEUE_RETRIES_DLQ.md)
 - [Seguridad](docs/SECURITY.md)
+- [Observabilidad](docs/OBSERVABILITY.md)
+- [Deploy y Cutover](docs/DEPLOY_AUTOMATION.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Contributing](CONTRIBUTING.md)
 
@@ -219,7 +223,7 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md).
 - Full production pipeline
 - Multi‑channel management
 - OAuth YouTube + analytics sync
-- n8n automation workflows
+- internal automation workers
 
 ---
 
@@ -229,7 +233,7 @@ Ver [CONTRIBUTING.md](CONTRIBUTING.md).
 - TypeScript (strict)
 - Tailwind CSS
 - PostgreSQL 16
-- n8n automation
+- internal automation
 
 ---
 

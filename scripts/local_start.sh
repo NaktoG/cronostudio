@@ -17,7 +17,11 @@ if [[ ! -f "$web_env" ]]; then
 fi
 
 echo "==> Levantando infraestructura"
-docker compose --env-file "$infra_env" -f "$compose_file" up -d
+if [[ "${ENABLE_LEGACY_N8N:-false}" == "true" ]]; then
+  docker compose --profile legacy-n8n --env-file "$infra_env" -f "$compose_file" up -d
+else
+  docker compose --env-file "$infra_env" -f "$compose_file" up -d
+fi
 
 echo "==> Ejecutando migraciones"
 "$repo_root/scripts/migrate.sh"

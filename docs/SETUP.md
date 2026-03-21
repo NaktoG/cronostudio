@@ -2,7 +2,7 @@
 
 ## ¿Qué es CronoStudio?
 
-CronoStudio es un sistema local para la producción de contenido YouTube, que integra un dashboard web (Next.js), automatización de workflows (n8n), base de datos (PostgreSQL) y almacenamiento de activos en SSD. Es 100% local, reproducible y documentado, sin necesidad de VPS.
+CronoStudio es un sistema local para la producción de contenido YouTube, que integra un dashboard web (Next.js), workers internos de automatización (Go), base de datos (PostgreSQL) y almacenamiento de activos en SSD. Es 100% local, reproducible y documentado, sin necesidad de VPS.
 
 ## Requisitos Previos
 
@@ -92,7 +92,7 @@ QA recomendado:
 **⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` ni `apps/web/.env.local` si contienen credenciales reales y recuerda que en producción no existen valores de respaldo: cada variable crítica debe establecerse explícitamente.
 **⚠️ IMPORTANTE:** No usar `docker compose down -v` en local salvo reset intencional; borra usuarios y datos.
 
-### 3. Levantar infraestructura (n8n + Postgres)
+### 3. Levantar infraestructura (Postgres + Redis)
 
 ```bash
 cd infra/docker
@@ -100,10 +100,9 @@ docker compose up -d
 docker ps
 ```
 
-Verificar que ambos containers están en estado `Up`:
+Verificar que los containers están en estado `Up`:
 - `cronostudio-postgres`
-- `cronostudio-n8n`
- - `cronostudio-redis` (rate limit)
+- `cronostudio-redis` (rate limit)
 
 Opcional (SMTP local):
 - `cronostudio-mailpit` (UI en http://localhost:8025, SMTP en 127.0.0.1:1025)
@@ -137,10 +136,14 @@ docker exec cronostudio-postgres psql -U postgres -c "SELECT 1;"
 ```
 Resultado esperado: `1` (confirma conexión OK).
 
-#### n8n está disponible:
-Abrir navegador: **http://localhost:5678**
+#### n8n (legacy rollback, opcional)
+Si necesitas validar rollback n8n:
 
-Deberías ver la interfaz web de n8n.
+```bash
+ENABLE_LEGACY_N8N=true ./scripts/local_up.sh
+```
+
+Luego abrir: **http://localhost:5678**
 
 #### Frontend Next.js está corriendo:
 ```bash
@@ -168,10 +171,10 @@ cronostudio/
 │   ├── package.json       # Dependencias
 │   └── tsconfig.json      # Config TypeScript
 ├── infra/docker/          # Infraestructura
-│   ├── docker-compose.yml # Definición n8n + Postgres
+│   ├── docker-compose.yml # Definición base (Postgres/Redis/Adminer) + profile legacy n8n
 │   └── .env              # Variables (NO commitear)
 ├── n8n/
-│   └── workflows/        # Workflows automáticos
+│   └── workflows/        # Assets legacy para rollback
 ├── docs/                 # Documentación
 │   ├── SETUP.md         # Este archivo
 │   ├── RUNBOOK.md       # Operación diaria
@@ -216,6 +219,8 @@ Backups:
 ./scripts/local_backup_n8n.sh
 ```
 
+`local_backup_n8n.sh` es solo para rollback legacy.
+
 Restore DB:
 
 ```bash
@@ -237,7 +242,7 @@ Restore DB:
 ### Reset local (borra datos)
 
 ```bash
-./scripts/local_reset.sh --yes
+./scripts/local_reset.sh --i-know
 ```
 
 ### Iniciar día de desarrollo
@@ -251,7 +256,7 @@ cd apps/web && npm run dev
 
 # Acceder a:
 # - Dashboard Next.js: http://localhost:3000
-# - n8n workflows: http://localhost:5678
+# - n8n legacy (opcional): ENABLE_LEGACY_N8N=true ./scripts/local_up.sh
 ```
 
 ### Crear nueva rama de feature
@@ -308,7 +313,7 @@ docker compose -f infra/docker/docker-compose.yml up -d
 | Puerto 3000 ocupado | `lsof -i :3000` para encontrar PID y `kill -9 <PID>` |
 | `npm install` tarda mucho | Usar `npm ci` en lugar de `npm install` (más rápido en CI) |
 | Postgres no inicia | Ver logs: `docker logs cronostudio-postgres` |
-| n8n no conecta a Postgres | Verificar credenciales en `infra/docker/.env` |
+| n8n legacy no conecta a Postgres | Verificar credenciales en `infra/docker/.env` y profile `legacy-n8n` |
 
 ## Siguiente Paso
 
@@ -316,4 +321,4 @@ Una vez que todo esté funcionando localmente, leer:
 - [RUNBOOK.md](RUNBOOK.md) — operación diaria y mantenimiento
 - [LOCAL_HEALTH_CHECKLIST.md](LOCAL_HEALTH_CHECKLIST.md) — checklist rápido local
 - [docs/decisions/0001-stack-base.md](decisions/0001-stack-base.md) — por qué este stack
-- [docs/runbooks/01-docker-n8n-postgres.md](runbooks/01-docker-n8n-postgres.md) — guía Docker detallada
+- [docs/runbooks/01-docker-n8n-postgres.md](runbooks/01-docker-n8n-postgres.md) — guía Docker legacy (rollback)

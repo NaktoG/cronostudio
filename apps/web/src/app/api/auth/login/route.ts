@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, LoginSchema } from '@/lib/validation';
 import { withSecurityHeaders } from '@/middleware/auth';
-import { rateLimit, LOGIN_RATE_LIMIT } from '@/middleware/rateLimit';
+import { rateLimit, LOGIN_RATE_LIMIT, enforceRateLimit } from '@/middleware/rateLimit';
 import { logger } from '@/lib/logger';
 import { setAccessCookie, setRefreshCookie } from '@/lib/authCookies';
 
@@ -26,6 +26,15 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     try {
         const body = await request.json();
         const validatedData = validateInput(LoginSchema, body);
+        const normalizedEmail = validatedData.email.trim().toLowerCase();
+        const emailLimit = await enforceRateLimit(
+            `${request.nextUrl.pathname}:email:${normalizedEmail}`,
+            LOGIN_RATE_LIMIT,
+            request.nextUrl.pathname
+        );
+        if (emailLimit) {
+            return emailLimit;
+        }
 
         // Use AuthService for login
         const result = await authService.login(validatedData.email, validatedData.password);
@@ -49,15 +58,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     } catch (error) {
         // Handle AuthError
         if (error instanceof AuthError) {
-            if (error.code === 'EMAIL_NOT_VERIFIED') {
-                return withSecurityHeaders(NextResponse.json({
-                    error: 'Email no verificado. Revisá tu correo o reenviá la verificación.',
-                    code: 'EMAIL_NOT_VERIFIED',
-                }, { status: 403 }));
-            }
-            if (error.code === 'INVALID_CREDENTIALS') {
-                return withSecurityHeaders(NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 }));
-            }
+            return withSecurityHeaders(NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 }));
         }
 
         // Handle validation errors
