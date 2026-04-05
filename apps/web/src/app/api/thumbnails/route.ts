@@ -32,6 +32,8 @@ const UpdateThumbnailSchema = z.object({
     status: z.enum(['pending', 'designing', 'designed', 'approved']).optional(),
 });
 
+const ThumbnailStatusFilterSchema = z.enum(['pending', 'designing', 'designed', 'approved']);
+
 function isValidationError(error: unknown): boolean {
     return error instanceof Error && error.message.startsWith('Validation error:');
 }
@@ -52,13 +54,18 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         }
 
         const { searchParams } = new URL(request.url);
-        const status = searchParams.get('status');
+        const statusParam = searchParams.get('status');
         const channelId = searchParams.get('channelId');
+        const statusParse = statusParam ? ThumbnailStatusFilterSchema.safeParse(statusParam) : null;
+
+        if (statusParse && !statusParse.success) {
+            return withSecurityHeaders(NextResponse.json({ error: 'Status inválido' }, { status: 400 }));
+        }
 
         const items = await listThumbnailsUseCase.execute({
             userId,
             filters: {
-                status: status || undefined,
+                status: statusParse?.success ? statusParse.data : undefined,
                 channelId: channelId || undefined,
             },
         });

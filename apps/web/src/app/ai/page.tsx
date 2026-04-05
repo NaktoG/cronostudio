@@ -22,6 +22,11 @@ function isObject(value: unknown): value is JsonObject {
   return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
+function toText(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null;
+  return String(value);
+}
+
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
@@ -58,7 +63,7 @@ function renderEvergreenOutput(output: JsonObject) {
     : Array.isArray(output.ideas)
       ? output.ideas
       : [];
-  const actionPlan = output.actionPlan;
+  const actionPlanContent = renderActionPlan(output.actionPlan);
 
   return (
     <div className="space-y-4">
@@ -189,19 +194,23 @@ function renderEvergreenOutput(output: JsonObject) {
           </ul>
         </Section>
       )}
-      {actionPlan && <Section title="Plan de accion">{renderActionPlan(actionPlan)}</Section>}
+      {actionPlanContent && <Section title="Plan de accion">{actionPlanContent}</Section>}
     </div>
   );
 }
 
 function renderScriptOutput(output: JsonObject) {
   const development = Array.isArray(output.development) ? output.development : [];
-  const legacyScript = output.fullScript ? String(output.fullScript) : null;
-  const actionPlan = output.actionPlan;
+  const hook = toText(output.hook);
+  const promise = toText(output.promise);
+  const turningPoint = toText(output.turningPoint);
+  const closing = toText(output.closing);
+  const legacyScript = toText(output.fullScript);
+  const actionPlanContent = renderActionPlan(output.actionPlan);
   return (
     <div className="space-y-4">
-      {output.hook && <Section title="Hook">{String(output.hook)}</Section>}
-      {output.promise && <Section title="Promesa">{String(output.promise)}</Section>}
+      {hook && <Section title="Hook">{hook}</Section>}
+      {promise && <Section title="Promesa">{promise}</Section>}
       {development.length > 0 && (
         <Section title="Desarrollo">
           <div className="space-y-2">
@@ -211,8 +220,8 @@ function renderScriptOutput(output: JsonObject) {
           </div>
         </Section>
       )}
-      {output.turningPoint && <Section title="Punto de inflexion">{String(output.turningPoint)}</Section>}
-      {output.closing && <Section title="Cierre">{String(output.closing)}</Section>}
+      {turningPoint && <Section title="Punto de inflexion">{turningPoint}</Section>}
+      {closing && <Section title="Cierre">{closing}</Section>}
       {legacyScript && !development.length && (
         <Section title="Guion">
           <div className="whitespace-pre-wrap text-sm text-slate-100">{legacyScript}</div>
@@ -227,7 +236,7 @@ function renderScriptOutput(output: JsonObject) {
           </ul>
         </Section>
       )}
-      {actionPlan && <Section title="Plan de accion">{renderActionPlan(actionPlan)}</Section>}
+      {actionPlanContent && <Section title="Plan de accion">{actionPlanContent}</Section>}
     </div>
   );
 }
@@ -235,13 +244,14 @@ function renderScriptOutput(output: JsonObject) {
 function renderRetentionOutput(output: JsonObject) {
   const changes = Array.isArray(output.changes) ? output.changes : [];
   const boosts = Array.isArray(output.retentionBoosts) ? output.retentionBoosts : [];
-  const actionPlan = output.actionPlan;
-  const legacyScript = output.revisedScript ? String(output.revisedScript) : null;
+  const actionPlanContent = renderActionPlan(output.actionPlan);
+  const scriptV2 = toText(output.scriptV2);
+  const legacyScript = toText(output.revisedScript);
   return (
     <div className="space-y-4">
-      {(output.scriptV2 || legacyScript) && (
+      {(scriptV2 || legacyScript) && (
         <Section title="Guion optimizado">
-          <div className="whitespace-pre-wrap text-sm text-slate-100">{String(output.scriptV2 ?? legacyScript)}</div>
+          <div className="whitespace-pre-wrap text-sm text-slate-100">{scriptV2 ?? legacyScript}</div>
         </Section>
       )}
       {output.reductionPercent !== undefined && (
@@ -265,7 +275,7 @@ function renderRetentionOutput(output: JsonObject) {
           </ul>
         </Section>
       )}
-      {actionPlan && <Section title="Plan de accion">{renderActionPlan(actionPlan)}</Section>}
+      {actionPlanContent && <Section title="Plan de accion">{actionPlanContent}</Section>}
     </div>
   );
 }
@@ -278,7 +288,7 @@ function renderTitlesOutput(output: JsonObject) {
       ? output.thumbnailTexts.map((text) => ({ text }))
       : [];
   const combos = Array.isArray(output.topCombos) ? output.topCombos : [];
-  const actionPlan = output.actionPlan;
+  const actionPlanContent = renderActionPlan(output.actionPlan);
   return (
     <div className="space-y-4">
       {titles.length > 0 && (
@@ -331,7 +341,7 @@ function renderTitlesOutput(output: JsonObject) {
           </div>
         </Section>
       )}
-      {actionPlan && <Section title="Plan de accion">{renderActionPlan(actionPlan)}</Section>}
+      {actionPlanContent && <Section title="Plan de accion">{actionPlanContent}</Section>}
     </div>
   );
 }

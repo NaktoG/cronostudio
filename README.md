@@ -20,6 +20,8 @@
   <a href="#-roadmap">Roadmap</a>
 </p>
 
+> Estado operativo y handoff IA: ver `docs/OPENCLAW_HANDOFF.md`.
+
 ---
 
 ## 📋 Tabla de Contenidos (ES)
@@ -167,6 +169,7 @@ Ver [SECURITY.md](docs/SECURITY.md).
 
 ## 📚 Documentación
 
+- [OpenClaw Handoff (estado actual)](docs/OPENCLAW_HANDOFF.md)
 - [Índice de docs](docs/INDEX.md)
 - [Setup](docs/SETUP.md)
 - [Runbook](docs/RUNBOOK.md)

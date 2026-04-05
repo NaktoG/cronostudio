@@ -16,6 +16,10 @@ import { useChannels } from '@/app/hooks/useChannels';
 import { useSeoData } from '@/app/seo/hooks/useSeoData';
 import { copyToClipboard } from '@/lib/clipboard';
 
+function isNonEmptyString(value: unknown): value is string {
+    return typeof value === 'string' && value.length > 0;
+}
+
 export default function SeoPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
@@ -49,13 +53,13 @@ export default function SeoPage() {
 
     const normalizeTitles = (titles?: Array<string | { title?: string }>) =>
         Array.isArray(titles)
-            ? titles.map((item) => (typeof item === 'string' ? item : item.title)).filter(Boolean)
+            ? titles.map((item) => (typeof item === 'string' ? item : item.title)).filter(isNonEmptyString)
             : [];
 
     const normalizeThumbs = (thumbs?: Array<string | { text?: string }>, fallback?: string[]) => {
-        if (Array.isArray(fallback) && fallback.length > 0) return fallback;
+        if (Array.isArray(fallback) && fallback.length > 0) return fallback.filter(isNonEmptyString);
         return Array.isArray(thumbs)
-            ? thumbs.map((item) => (typeof item === 'string' ? item : item.text)).filter(Boolean)
+            ? thumbs.map((item) => (typeof item === 'string' ? item : item.text)).filter(isNonEmptyString)
             : [];
     };
 
