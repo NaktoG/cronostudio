@@ -1,19 +1,21 @@
 # Runbook: n8n legacy + Postgres con Docker Compose (local)
 
-> Este runbook aplica solo para rollback/soporte legacy. La operacion normal usa workers Go sin n8n.
+> Este runbook aplica solo para rollback/soporte legacy. La operación normal usa workers Go sin n8n.
 
 ## Requisitos
+
 - Docker Desktop encendido
 - Docker Compose disponible (`docker-compose --version`)
 
 ## Archivos
+
 - `infra/docker/docker-compose.yml` — definición de servicios
 - `infra/docker/.env` — variables de entorno (NO commitear si tiene credenciales reales)
 
 ## Levantar servicios
 
 ```bash
-cd /Volumes/SSD-QVO/cronostudio
+cd /Volumes/SSD-QVO/projects/cronostudio
 docker compose --profile legacy-n8n -f infra/docker/docker-compose.yml up -d
 docker ps
 ```
