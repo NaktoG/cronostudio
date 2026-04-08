@@ -128,5 +128,31 @@ describe('Auth API', () => {
             expect(response.status).toBe(201);
             expect(emitMetricMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'auth.register.failure' }));
         });
+
+        it('should return 201 when duplicate email happens during insert race', async () => {
+            vi.mocked(query)
+                .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+                .mockRejectedValueOnce({
+                    code: '23505',
+                    constraint: 'app_users_email_key',
+                    message: 'duplicate key value violates unique constraint "app_users_email_key"',
+                });
+
+            const { POST } = await import('@/app/api/auth/register/route');
+
+            const request = new NextRequest('http://localhost:3000/api/auth/register', {
+                method: 'POST',
+                body: JSON.stringify({
+                    email: 'race@example.com',
+                    password: 'Password123',
+                    name: 'Race User',
+                }),
+            });
+
+            const response = await POST(request);
+            const data = await response.json();
+            expect(response.status).toBe(201);
+            expect(data.message).toBe('Si el email es válido, recibirás un correo para verificar tu cuenta.');
+        });
     });
 });
