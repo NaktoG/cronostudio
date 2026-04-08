@@ -257,7 +257,11 @@ export function useAuthFetch() {
                 headers,
             });
             return response;
-        } catch {
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                return new Response(null, { status: 204 });
+            }
+
             return new Response(
                 JSON.stringify({ error: 'network_error', message: 'No se pudo conectar con el servidor' }),
                 {
