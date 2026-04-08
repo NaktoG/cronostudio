@@ -325,6 +325,7 @@ export function DashboardContent() {
   const modalRef = useRef<HTMLDivElement>(null);
   const publishRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const autoFetchKeyRef = useRef<string>('');
   const fallbackIso = useMemo(() => getIsoWeekInfo(new Date()), []);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSlot, setDrawerSlot] = useState<'tue' | 'fri' | null>(null);
@@ -566,14 +567,22 @@ export function DashboardContent() {
 
   useEffect(() => {
     if (!isAuthenticated) {
+      autoFetchKeyRef.current = '';
       setLoading(false);
       return;
     }
+
+    const autoFetchKey = `${selectedChannelId || 'none'}:${fallbackIso.isoYear}:${fallbackIso.isoWeek}`;
+    if (autoFetchKeyRef.current === autoFetchKey) {
+      return;
+    }
+    autoFetchKeyRef.current = autoFetchKey;
+
     const controller = new AbortController();
     fetchChannels(controller.signal);
     fetchData(controller.signal);
     return () => controller.abort();
-  }, [isAuthenticated, fetchChannels, fetchData]);
+  }, [isAuthenticated, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, fetchChannels, fetchData]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
