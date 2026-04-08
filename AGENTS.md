@@ -85,6 +85,11 @@ No inventes otro stack ni asumas tecnologías no documentadas.
   - cuándo corresponde `n8n/workflows`
 - Para cambios de infraestructura, seguridad o despliegue, incluir validación y rollback.
 - Para cambios relevantes de arquitectura, documentar la decisión si aplica.
+- Los modos Plan y Build se cambian manualmente por el usuario.
+- En Plan Mode, priorizar auditoría, análisis, troubleshooting, diseño técnico y plan de ejecución.
+- En Build Mode, ejecutar cambios reales, validar resultados y reportar archivos tocados.
+- No asumir cambio automático entre modos.
+- Si el usuario pasa de Plan a Build después de un análisis suficiente, continuar con la ejecución sin repetir innecesariamente el plan.
 
 ## Prioridad de reglas
 
