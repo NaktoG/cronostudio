@@ -20,6 +20,9 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-${{ github.event_name == 'push' && 'production' || inputs.environment }}
+      cancel-in-progress: false
     environment: ${{ github.event_name == 'push' && 'production' || inputs.environment }}
 
     steps:
