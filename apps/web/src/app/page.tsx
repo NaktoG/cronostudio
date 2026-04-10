@@ -280,6 +280,10 @@ export function DashboardContent() {
   const authFetch = useAuthFetch();
   const { addToast } = useToast();
   const searchParams = useSearchParams();
+  const searchParamsKey = searchParams?.toString() ?? '';
+  const channelIdParam = searchParams?.get('channelId') ?? '';
+  const productionIdParam = searchParams?.get('productionId') ?? '';
+  const shouldOpenNewModal = searchParams?.get('new') === '1';
   const router = useRouter();
   const reduceMotion = useReducedMotion();
   const [productions, setProductions] = useState<Production[]>([]);
@@ -321,6 +325,7 @@ export function DashboardContent() {
   const modalRef = useRef<HTMLDivElement>(null);
   const publishRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const autoFetchKeyRef = useRef<string>('');
   const fallbackIso = useMemo(() => getIsoWeekInfo(new Date()), []);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSlot, setDrawerSlot] = useState<'tue' | 'fri' | null>(null);
@@ -354,22 +359,20 @@ export function DashboardContent() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    const paramChannel = searchParams?.get('channelId');
     const storedChannel = typeof window !== 'undefined' ? window.localStorage.getItem('cronostudio.channelId') : null;
-    const initial = paramChannel || storedChannel || '';
+    const initial = channelIdParam || storedChannel || '';
     if (initial) {
       setSelectedChannelId(initial);
     }
-  }, [isAuthenticated, searchParams]);
+  }, [isAuthenticated, channelIdParam, searchParamsKey]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    const productionId = searchParams?.get('productionId');
-    if (productionId) {
-      setFocusedProductionId(productionId);
+    if (productionIdParam) {
+      setFocusedProductionId(productionIdParam);
       setFocusOpen(true);
     }
-  }, [isAuthenticated, searchParams]);
+  }, [isAuthenticated, productionIdParam, searchParamsKey]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -410,7 +413,7 @@ export function DashboardContent() {
           if (typeof window !== 'undefined') {
             window.localStorage.setItem('cronostudio.channelId', defaultId);
           }
-          const params = new URLSearchParams(searchParams?.toString() ?? '');
+          const params = new URLSearchParams(searchParamsKey);
           params.set('channelId', defaultId);
           const query = params.toString();
           router.replace(query ? `/?${query}` : '/');
@@ -420,16 +423,13 @@ export function DashboardContent() {
       if (signal?.aborted) return;
       setChannels([]);
     }
-  }, [isAuthenticated, authFetch, router, searchParams, selectedChannelId]);
+  }, [isAuthenticated, authFetch, router, searchParamsKey, selectedChannelId]);
 
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     try {
       const isoYear = fallbackIso.isoYear;
       const isoWeek = fallbackIso.isoWeek;
-      const resolvedChannelId = selectedChannelId
-        && channels.some((channel: { id: string }) => channel.id === selectedChannelId)
-        ? selectedChannelId
-        : '';
+      const resolvedChannelId = selectedChannelId || '';
 
       const params = new URLSearchParams({
         isoYear: String(isoYear),
@@ -563,18 +563,26 @@ export function DashboardContent() {
     } finally {
       setLoading(false);
     }
-  }, [authFetch, selectedChannelId, channels, fallbackIso.isoYear, fallbackIso.isoWeek]);
+  }, [authFetch, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, addToast, logout]);
 
   useEffect(() => {
     if (!isAuthenticated) {
+      autoFetchKeyRef.current = '';
       setLoading(false);
       return;
     }
+
+    const autoFetchKey = `${selectedChannelId || 'none'}:${fallbackIso.isoYear}:${fallbackIso.isoWeek}`;
+    if (autoFetchKeyRef.current === autoFetchKey) {
+      return;
+    }
+    autoFetchKeyRef.current = autoFetchKey;
+
     const controller = new AbortController();
     fetchChannels(controller.signal);
     fetchData(controller.signal);
     return () => controller.abort();
-  }, [isAuthenticated, fetchChannels, fetchData]);
+  }, [isAuthenticated, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, fetchChannels, fetchData]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -585,10 +593,10 @@ export function DashboardContent() {
   }, [isAuthenticated, channels.length, ideas.length]);
 
   useEffect(() => {
-    if (searchParams?.get('new') === '1') {
+    if (shouldOpenNewModal) {
       setShowModal(true);
     }
-  }, [searchParams]);
+  }, [shouldOpenNewModal, searchParamsKey]);
 
   useEffect(() => {
     if (!showModal && !publishTarget) return;

@@ -161,6 +161,9 @@ Response:
 
 Register a new user.
 
+Este endpoint registra una cuenta y dispara verificación por email.
+No inicia sesión automáticamente ni devuelve token/cookies de sesión.
+
 **Request:**
 ```json
 {
@@ -175,14 +178,39 @@ Register a new user.
 - `password`: 8+ chars, 1 uppercase, 1 number
 - `name`: 2-100 chars
 
-**Response:** `201 Created`
+**Response (new account):** `201 Created`
 ```json
 {
   "message": "Usuario registrado exitosamente",
-  "user": { "id": "uuid", "email": "user@example.com", "name": "John Doe" },
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+  "user": {
+    "id": "uuid",
+    "email": "user@example.com",
+    "name": "John Doe",
+    "createdAt": "2026-01-25T09:00:00.000Z"
+  }
 }
 ```
+
+**Response (duplicate/anti-enumeration):** `201 Created`
+```json
+{
+  "message": "Si el email es válido, recibirás un correo para verificar tu cuenta."
+}
+```
+
+Si `ALLOW_DEBUG_LINKS=true` y no es producción, la respuesta puede incluir:
+
+```json
+{
+  "enlaceVerificacion": "http://localhost:3000/verify-email?token=..."
+}
+```
+
+Errores posibles:
+- `400`: datos inválidos
+- `403`: registro público deshabilitado (`ALLOW_PUBLIC_SIGNUP=false` en producción)
+- `429`: rate limit excedido
+- `500`: error interno
 
 ---
 
@@ -568,6 +596,9 @@ Cache-Control: no-store
 |----------|-------|
 | API general | 100 req / 15 min |
 | Login/Register | 5 req / 15 min |
+
+Nota para `POST /auth/register`:
+- se aplica limitación por IP y por email normalizado.
 
 ---
 

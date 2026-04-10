@@ -257,8 +257,18 @@ export function useAuthFetch() {
                 headers,
             });
             return response;
-        } catch {
-            return new Response(null, { status: 0, statusText: 'network_error' });
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                return new Response(null, { status: 204 });
+            }
+
+            return new Response(
+                JSON.stringify({ error: 'network_error', message: 'No se pudo conectar con el servidor' }),
+                {
+                    status: 503,
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
         }
     }, []);
 }

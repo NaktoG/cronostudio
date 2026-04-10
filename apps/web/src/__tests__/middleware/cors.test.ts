@@ -8,7 +8,7 @@ describe('CORS middleware', () => {
   });
 
   it('permite preflight desde origen permitido', async () => {
-    const { middleware } = await import('../../../middleware');
+    const { middleware } = await import('../../middleware');
     const request = new NextRequest('http://localhost/api/channels', {
       method: 'OPTIONS',
       headers: {
@@ -22,7 +22,7 @@ describe('CORS middleware', () => {
   });
 
   it('bloquea preflight desde origen no permitido', async () => {
-    const { middleware } = await import('../../../middleware');
+    const { middleware } = await import('../../middleware');
     const request = new NextRequest('http://localhost/api/channels', {
       method: 'OPTIONS',
       headers: {
@@ -35,7 +35,7 @@ describe('CORS middleware', () => {
   });
 
   it('agrega headers CORS en requests normales con origen permitido', async () => {
-    const { middleware } = await import('../../../middleware');
+    const { middleware } = await import('../../middleware');
     const request = new NextRequest('http://localhost/api/channels', {
       headers: {
         origin: 'http://allowed.test',

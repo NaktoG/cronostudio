@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, RegisterSchema } from '@/lib/validation';
 import { withSecurityHeaders } from '@/middleware/auth';
-import { rateLimit, LOGIN_RATE_LIMIT } from '@/middleware/rateLimit';
+import { rateLimit, LOGIN_RATE_LIMIT, enforceRateLimit } from '@/middleware/rateLimit';
 import { logger } from '@/lib/logger';
 import { generateToken, hashToken } from '@/lib/token';
 import { sendEmail } from '@/lib/email';
@@ -20,6 +20,20 @@ import { PostgresSessionRepository } from '@/infrastructure/repositories/Postgre
 const userRepository = new PostgresUserRepository();
 const sessionRepository = new PostgresSessionRepository();
 const authService = new AuthService(userRepository, sessionRepository);
+const DUPLICATE_EMAIL_MESSAGE = 'Si el email es válido, recibirás un correo para verificar tu cuenta.';
+
+function isDuplicateEmailViolation(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    const maybePgError = error as { code?: string; constraint?: string; detail?: string; message?: string };
+    if (maybePgError.code !== '23505') return false;
+
+    const context = [maybePgError.constraint, maybePgError.detail, maybePgError.message]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+    return context.includes('email');
+}
 
 /**
  * POST /api/auth/register
@@ -29,6 +43,16 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     try {
         const body = await request.json();
         const validatedData = validateInput(RegisterSchema, body);
+        const normalizedEmail = validatedData.email.trim().toLowerCase();
+
+        const emailLimit = await enforceRateLimit(
+            `${request.nextUrl.pathname}:email:${normalizedEmail}`,
+            LOGIN_RATE_LIMIT,
+            request.nextUrl.pathname
+        );
+        if (emailLimit) {
+            return emailLimit;
+        }
 
         const allowPublicSignup = process.env.ALLOW_PUBLIC_SIGNUP !== 'false';
         if (config.isProduction && !allowPublicSignup) {
@@ -84,8 +108,13 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
         // Handle AuthError
         if (error instanceof AuthError) {
             if (error.code === 'EMAIL_EXISTS') {
-                return withSecurityHeaders(NextResponse.json({ message: 'Si el email es válido, recibirás un correo para verificar tu cuenta.' }, { status: 201 }));
+                return withSecurityHeaders(NextResponse.json({ message: DUPLICATE_EMAIL_MESSAGE }, { status: 201 }));
             }
+        }
+
+        if (isDuplicateEmailViolation(error)) {
+            logger.warn('Register duplicate email race handled', { error: String(error) });
+            return withSecurityHeaders(NextResponse.json({ message: DUPLICATE_EMAIL_MESSAGE }, { status: 201 }));
         }
 
         // Handle validation errors
