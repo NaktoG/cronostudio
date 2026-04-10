@@ -65,6 +65,16 @@ Importante:
 1. Sincroniza el repo con `rsync` (excluye `.env`, `node_modules`, `.next`, etc.).
 2. Ejecuta `docker compose build` + `docker compose up -d` en el VPS.
 
+### Nota para staging en Hetzner
+
+Si staging usa `systemd --user` para el servicio web, define `DEPLOY_CMD` para incluir:
+
+- `docker compose up -d postgres redis`
+- build de `apps/web` (`npm ci && npm run build`)
+- `systemctl --user restart cronostudio-staging-web.service`
+
+Referencia completa: `docs/runbooks/04-staging-https-deploy.md`.
+
 ## Migracion de automatizaciones a Go (online)
 
 Operacion actual (por defecto):
