@@ -11,7 +11,7 @@ jobs:
     name: Secret Scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Run gitleaks
@@ -25,6 +25,6 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.repository.dependency_graph_enabled == true
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Dependency review
         uses: actions/dependency-review-action@v4

@@ -31,7 +31,15 @@ for pattern in "${RSYNC_EXCLUDES[@]}"; do
   RSYNC_ARGS+=(--exclude "$pattern")
 done
 
-SSH_CMD=(ssh -p "$DEPLOY_PORT" -i "$DEPLOY_KEY" -o IdentitiesOnly=yes)
+SSH_CMD=(
+  ssh
+  -p "$DEPLOY_PORT"
+  -i "$DEPLOY_KEY"
+  -o IdentitiesOnly=yes
+  -o ServerAliveInterval=30
+  -o ServerAliveCountMax=60
+  -o TCPKeepAlive=yes
+)
 
 echo "==> Sync repo to $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH"
 rsync "${RSYNC_ARGS[@]}" -e "${SSH_CMD[*]}" "$ROOT_DIR/" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
