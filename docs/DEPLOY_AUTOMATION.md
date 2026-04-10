@@ -69,6 +69,7 @@ Importante:
 
 Si staging usa `systemd --user` para el servicio web, define `DEPLOY_CMD` para incluir:
 
+- restaurar `.env` y `.env.local` desde una carpeta persistente (`runtime/`) antes del build
 - `docker compose up -d postgres redis`
 - build de `apps/web` (`npm ci && npm run build`)
 - `systemctl --user restart cronostudio-staging-web.service`

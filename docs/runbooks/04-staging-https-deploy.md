@@ -14,6 +14,9 @@ Ruta recomendada:
 
 ```text
 /home/nakto/agentos/projects/cronostudio-staging/
+  runtime/
+    infra.env
+    web.env.local
   repo/
 ```
 
@@ -21,6 +24,8 @@ Contenido clave en `repo/`:
 
 - `infra/docker/.env` (credenciales de infra y auth)
 - `apps/web/.env.local` (config web de staging)
+
+`runtime/` se usa para preservar envs porque `rsync` excluye `.env*` durante deploy.
 
 ## 3. Seguridad base aplicada
 
@@ -65,6 +70,10 @@ Valores usados para staging en este setup:
 
 ```bash
 export PATH="/home/nakto/.nvm/versions/node/v22.22.2/bin:$PATH" && \
+cp "/home/nakto/agentos/projects/cronostudio-staging/runtime/infra.env" \
+  "/home/nakto/agentos/projects/cronostudio-staging/repo/infra/docker/.env" && \
+cp "/home/nakto/agentos/projects/cronostudio-staging/runtime/web.env.local" \
+  "/home/nakto/agentos/projects/cronostudio-staging/repo/apps/web/.env.local" && \
 cd "/home/nakto/agentos/projects/cronostudio-staging/repo/infra/docker" && \
 docker compose up -d postgres redis && \
 docker compose stop adminer mailpit >/dev/null 2>&1 || true && \
