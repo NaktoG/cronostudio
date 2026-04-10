@@ -60,7 +60,7 @@ jobs:
         working-directory: apps/web
 
       - name: Run TypeScript check
-        run: npx tsc --noEmit
+        run: npx tsc --noEmit -p tsconfig.typecheck.json
         working-directory: apps/web
 
   test:
