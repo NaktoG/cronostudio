@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   title: "CronoStudio - YouTube Analytics Dashboard",
   description: "Gestiona y automatiza tus canales de YouTube",
   icons: {
-    icon: "/favicon_Crono_01.png",
+    icon: "/favicon.svg",
   },
 };
 

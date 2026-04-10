@@ -4,31 +4,26 @@ Fecha: 2026-02-23
 
 ## Resumen
 - n8n esta operativo (healthz OK).
-- Workflows de YouTube requieren credenciales que no estan definidas en `infra/docker/.env`.
+- Workflows de YouTube usan OAuth via CronoStudio (sin API keys en n8n).
 - Workflows demo funcionan sin YouTube (solo requieren credenciales de CronoStudio).
 
 ## Variables faltantes en local
 Archivo: `infra/docker/.env`
-- `YOUTUBE_API_KEY`
-- `YOUTUBE_ANALYTICS_ACCESS_TOKEN`
-- `YOUTUBE_CHANNEL_IDS`
+- Ninguna (OAuth se gestiona en CronoStudio).
 
 ## Estado por workflow
 
 ### CronoStudio - Sync YouTube Channels
-- Requisitos: `CRONOSTUDIO_*`, `YOUTUBE_API_KEY`, `YOUTUBE_CHANNEL_IDS`.
-- Usa mapeo de canales y evita duplicados.
-- Si `YOUTUBE_*` esta vacio, falla en el request a YouTube.
+- Requisitos: `CRONOSTUDIO_*` y YouTube conectado en CronoStudio.
+- Dispara el sync via backend OAuth.
 
 ### CronoStudio - Sync YouTube Videos
-- Requisitos: `CRONOSTUDIO_*`, `YOUTUBE_API_KEY`.
+- Requisitos: `CRONOSTUDIO_*` y YouTube conectado en CronoStudio.
 - Necesita canales existentes en CronoStudio.
-- Si `YOUTUBE_API_KEY` esta vacio, falla el request.
 
 ### CronoStudio - Ingest Analytics Daily
-- Requisitos: `CRONOSTUDIO_*`, `YOUTUBE_ANALYTICS_ACCESS_TOKEN`.
-- Usa `ids=channel==MINE` y filtra por `video`.
-- Si falta el token, falla la llamada a YouTube Analytics.
+- Requisitos: `CRONOSTUDIO_*` y YouTube conectado en CronoStudio.
+- Usa OAuth desde CronoStudio para analytics.
 
 ### Demo: My first AI Agent in n8n
 - Requiere nodos LangChain (community) y credenciales de proveedor LLM.
@@ -47,7 +42,6 @@ Archivo: `infra/docker/.env`
 - Genera analytics demo para los primeros videos.
 
 ## Acciones recomendadas
-1) Definir las variables `YOUTUBE_*` en `infra/docker/.env`.
-2) Reiniciar n8n:
-   `docker compose --env-file infra/docker/.env -f infra/docker/docker-compose.yml up -d --force-recreate n8n`
+1) Conectar YouTube desde CronoStudio (OAuth).
+2) Reiniciar n8n si cambiaste `infra/docker/.env`.
 3) Importar workflows desde `n8n/workflows/` y ejecutar en modo manual.

@@ -56,7 +56,12 @@ describe('AI Runs API', () => {
       body: JSON.stringify({
         profileKey: 'evergreen_ideas',
         channelId: '11111111-1111-1111-1111-111111111111',
-        input: { topicSeed: 'IA' },
+        input: {
+          topicSeed: 'IA',
+          channelStage: 'nuevo',
+          targetAudience: 'creadores en LATAM',
+          primaryGoal: 'monetizar con afiliados',
+        },
       }),
     });
 
@@ -71,7 +76,7 @@ describe('AI Runs API', () => {
   it('rejects invalid output on submit', async () => {
     vi.mocked(getAuthUser).mockReturnValue(ownerUser);
     vi.mocked(query).mockResolvedValueOnce({
-      rows: [{ id: 'run-1', profile_key: 'evergreen_ideas', profile_version: 1, status: 'awaiting_input' }],
+      rows: [{ id: 'run-1', profile_key: 'evergreen_ideas', profile_version: 2, status: 'awaiting_input' }],
       rowCount: 1,
     });
 
@@ -90,21 +95,92 @@ describe('AI Runs API', () => {
     vi.mocked(getAuthUser).mockReturnValue(ownerUser);
     vi.mocked(query)
       .mockResolvedValueOnce({
-        rows: [{ id: 'run-1', profile_key: 'evergreen_ideas', profile_version: 1, status: 'awaiting_input' }],
+      rows: [{ id: 'run-1', profile_key: 'evergreen_ideas', profile_version: 2, status: 'awaiting_input' }],
         rowCount: 1,
       })
       .mockResolvedValueOnce({ rows: [], rowCount: 1 });
 
     const { POST } = await import('@/app/api/ai/runs/[id]/submit/route');
-    const ideas = Array.from({ length: 10 }).map((_, index) => ({
-      title: `Idea ${index + 1}`,
-      angle: 'Angle',
-      hook: 'Hook',
-      targetLengthSec: 300,
-    }));
+    const outputJson = {
+      nicheRanking: [
+        {
+          niche: 'Productividad',
+          score: 82,
+          reasons: ['Demanda estable', 'Buen CPM'],
+          risk: 'Competencia media',
+          monetizationPotential: 'Afiliados y cursos',
+        },
+        {
+          niche: 'IA aplicada',
+          score: 78,
+          reasons: ['Interes creciente', 'Empresas invierten'],
+          risk: 'Cambia rapido',
+          monetizationPotential: 'SaaS y consultoria',
+        },
+        {
+          niche: 'Finanzas personales',
+          score: 76,
+          reasons: ['Evergreen', 'Alto valor percibido'],
+          risk: 'Regulaciones',
+          monetizationPotential: 'Afiliados y ebooks',
+        },
+      ],
+      channelClusters: [
+        {
+          name: 'Bases',
+          rationale: 'Construye confianza y contexto',
+          topics: ['Conceptos clave', 'Errores comunes', 'Primeros pasos'],
+        },
+        {
+          name: 'Aplicacion',
+          rationale: 'Demuestra casos reales y accionables',
+          topics: ['Casos reales', 'Herramientas', 'Checklist'],
+        },
+        {
+          name: 'Escala',
+          rationale: 'Escala con procesos y sistemas',
+          topics: ['Automatizacion', 'Delegacion', 'Metrica'],
+        },
+      ],
+      roadmap: [
+        {
+          phase: '0-30 dias',
+          focus: 'Validacion y base',
+          goals: ['Publicar 6 videos', 'Medir CTR', 'Definir estilo'],
+        },
+        {
+          phase: '30-60 dias',
+          focus: 'Optimizar retencion',
+          goals: ['Mejorar hooks', 'Duplicar formatos top', 'Iterar thumbnails'],
+        },
+        {
+          phase: '60-90 dias',
+          focus: 'Monetizacion inicial',
+          goals: ['Afiliados', 'Lead magnet', 'Primer partnership'],
+        },
+      ],
+      automationPlan: {
+        tools: ['Notion', 'ElevenLabs'],
+        workflow: ['Brief', 'Guion', 'Voz', 'Edicion', 'Publicacion'],
+        risks: ['Dependencia de un proveedor'],
+      },
+      complianceChecks: ['Sin promesas absolutas', 'Respetar copyright'],
+      contentIdeas: Array.from({ length: 8 }).map((_, index) => ({
+        title: `Idea ${index + 1}`,
+        angle: 'Angle',
+        hook: 'Hook',
+        targetLengthSec: 300,
+      })),
+      actionPlan: [
+        { step: 'Definir nicho final', outcome: 'Decision tomada' },
+        { step: 'Preparar 3 briefs', outcome: 'Pipeline listo' },
+        { step: 'Producir 2 videos', outcome: 'Primeros datos' },
+        { step: 'Revisar performance', outcome: 'Iteracion base' },
+      ],
+    };
     const request = new NextRequest('http://localhost:3000/api/ai/runs/run-1/submit', {
       method: 'POST',
-      body: JSON.stringify({ outputJson: { ideas } }),
+      body: JSON.stringify({ outputJson }),
     });
 
     const response = await POST(request, { params: Promise.resolve({ id: 'run-1' }) });

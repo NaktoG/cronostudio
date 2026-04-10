@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, FormEvent, useRef } from 'react';
+import { Suspense, useState, useEffect, useCallback, FormEvent, useRef } from 'react';
 import { Image as ImageIcon, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
@@ -53,7 +53,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     approved: { label: THUMBNAIL_STATUS_LABELS.approved, color: THUMBNAIL_STATUS_BADGES.approved },
 };
 
-export default function ThumbnailsPage() {
+function ThumbnailsContent() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
@@ -88,7 +88,8 @@ export default function ThumbnailsPage() {
             const query = selectedChannel ? `?channelId=${selectedChannel}` : '';
             const response = await authFetch(`/api/thumbnails${query}`, { signal });
             if (response.ok) {
-                setThumbnails(await response.json());
+                const data = await response.json();
+                setThumbnails(Array.isArray(data) ? data : []);
                 setListError(null);
             } else {
                 const data = await response.json().catch(() => null);
@@ -119,7 +120,8 @@ export default function ThumbnailsPage() {
             }
             const response = await authFetch('/api/channels', { signal });
             if (response.ok) {
-                setChannels(await response.json());
+                const data = await response.json();
+                setChannels(Array.isArray(data) ? data : []);
             }
         } catch (err) {
             if (signal?.aborted) return;
@@ -494,7 +496,9 @@ export default function ThumbnailsPage() {
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        const params = new URLSearchParams({ productionId: thumb.production_id });
+                                                        const productionId = thumb.production_id;
+                                                        if (!productionId) return;
+                                                        const params = new URLSearchParams({ productionId });
                                                         if (thumb.channel_id) {
                                                             params.set('channelId', thumb.channel_id);
                                                         }
@@ -644,5 +648,13 @@ export default function ThumbnailsPage() {
                 </AnimatePresence>
             </div>
         </ProtectedRoute>
+    );
+}
+
+export default function ThumbnailsPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex flex-col" />}>
+            <ThumbnailsContent />
+        </Suspense>
     );
 }

@@ -16,6 +16,7 @@ vi.mock('@/middleware/auth', () => ({
     };
     return handler(request, ...args);
   },
+  withSecurityHeaders: (response: Response) => response,
 }));
 
 describe('requireRoles middleware', () => {

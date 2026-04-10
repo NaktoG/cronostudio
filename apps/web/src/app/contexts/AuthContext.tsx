@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import type { User as DomainUser } from '@/domain/entities/User';
 
 type UserRole = DomainUser['role'];
@@ -20,7 +20,7 @@ interface AuthContextType {
     isLoading: boolean;
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string, name: string) => Promise<void>;
+    register: (email: string, password: string, name: string) => Promise<{ message?: string; verificationUrl?: string }>;
     logout: () => void;
     error: string | null;
     clearError: () => void;
@@ -29,6 +29,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LAST_KNOWN_USER_KEY = 'cronostudio_user';
+const LOGOUT_MARKER_KEY = 'cronostudio_logout_marker';
 
 interface AuthProviderProps {
     children: ReactNode;
@@ -38,8 +39,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const [user, setUser] = useState<User | null>(null);
     const [status, setStatus] = useState<AuthStatus>('loading');
     const [error, setError] = useState<string | null>(null);
+    const logoutInProgressRef = useRef(false);
 
     const saveSession = useCallback((newUser: User) => {
+        if (logoutInProgressRef.current) {
+            return;
+        }
         const normalizedUser: User = {
             ...newUser,
             role: newUser.role ?? 'owner',
@@ -57,6 +62,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     useEffect(() => {
         const hydrateUser = async () => {
+            if (typeof window !== 'undefined') {
+                const marker = localStorage.getItem(LOGOUT_MARKER_KEY);
+                if (marker) {
+                    localStorage.removeItem(LOGOUT_MARKER_KEY);
+                    clearSession();
+                    setStatus('unauthenticated');
+                    return;
+                }
+            }
+            if (logoutInProgressRef.current) {
+                setStatus('unauthenticated');
+                return;
+            }
             try {
                 const meResponse = await fetch('/api/auth/me', {
                     credentials: 'include',
@@ -73,6 +91,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     credentials: 'include',
                     body: JSON.stringify({}),
                 });
+                if (logoutInProgressRef.current) {
+                    clearSession();
+                    return;
+                }
                 if (refreshResponse.ok) {
                     const data = await refreshResponse.json();
                     saveSession(data.user);
@@ -88,6 +110,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         hydrateUser();
     }, [saveSession, clearSession]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key !== LOGOUT_MARKER_KEY) return;
+            clearSession();
+            setStatus('unauthenticated');
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, [clearSession]);
 
     const login = useCallback(async (email: string, password: string) => {
         setStatus('loading');
@@ -140,6 +173,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             // Registro requiere verificación, no iniciamos sesión
             setStatus('unauthenticated');
+            return {
+                message: data.message,
+                verificationUrl: data.enlaceVerificacion,
+            };
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Error desconocido';
             setError(message);
@@ -149,12 +186,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }, []);
 
     const logout = useCallback(() => {
+        logoutInProgressRef.current = true;
+        if (typeof window !== 'undefined') {
+            localStorage.setItem(LOGOUT_MARKER_KEY, String(Date.now()));
+        }
         fetch('/api/auth/logout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
         }).finally(() => {
             clearSession();
+            if (typeof window !== 'undefined') {
+                window.location.assign('/');
+            }
         });
     }, [clearSession]);
 
@@ -187,16 +231,44 @@ export function useAuth() {
 
 // Hook para hacer fetch autenticado
 export function useAuthFetch() {
-    return useCallback(async (url: string, options: RequestInit = {}) => {
-        const headers = new Headers(options.headers);
-        if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
+    return useCallback(async (input: RequestInfo, options: RequestInit = {}) => {
+        let url = input;
+        let baseOptions = options;
+
+        if (input instanceof Request) {
+            url = input.url;
+            baseOptions = {
+                method: input.method,
+                headers: input.headers,
+                body: input.body,
+                ...options,
+            };
+        }
+
+        const headers = new Headers(baseOptions.headers);
+        if (!headers.has('Content-Type') && baseOptions.body && !(baseOptions.body instanceof FormData)) {
             headers.set('Content-Type', 'application/json');
         }
 
-        return fetch(url, {
-            credentials: 'include',
-            ...options,
-            headers,
-        });
+        try {
+            const response = await fetch(url, {
+                credentials: 'include',
+                ...baseOptions,
+                headers,
+            });
+            return response;
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                return new Response(null, { status: 204 });
+            }
+
+            return new Response(
+                JSON.stringify({ error: 'network_error', message: 'No se pudo conectar con el servidor' }),
+                {
+                    status: 503,
+                    headers: { 'Content-Type': 'application/json' },
+                }
+            );
+        }
     }, []);
 }

@@ -1,6 +1,7 @@
 import { Pool, QueryResult } from 'pg';
 import { validateConfig } from '@/lib/config';
 import { emitMetric, emitAlert } from '@/lib/observability';
+import { logger } from '@/lib/logger';
 
 
 
@@ -55,7 +56,9 @@ function getPool(): Pool {
 
   // Manejar errores del pool
   pool.on('error', (err) => {
-    console.error('Unexpected error on idle client', err);
+    logger.error('db.pool.error', {
+      error: err instanceof Error ? err.message : String(err),
+    });
     emitAlert(
       {
         title: 'DB pool error',
@@ -65,7 +68,7 @@ function getPool(): Pool {
       },
       { dedupeKey: 'db.pool_error', cooldownMs: 300000 }
     );
-    process.exit(-1);
+    pool = null;
   });
 
   return pool;
@@ -111,7 +114,7 @@ export async function query(
 
     // Log solo en desarrollo
     if (process.env.NODE_ENV === 'development') {
-      console.log('[DB Query]', {
+      logger.debug('db.query', {
         text: text.substring(0, 100),
         duration: `${duration}ms`,
         rows: res.rowCount
@@ -120,7 +123,7 @@ export async function query(
 
     return res;
   } catch (error) {
-    console.error('[DB Error]', {
+    logger.error('db.query.error', {
       text: text.substring(0, 100),
       error: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -156,7 +159,9 @@ export async function testConnection(): Promise<boolean> {
     const result = await query('SELECT NOW()');
     return result.rows.length > 0;
   } catch (error) {
-    console.error('[DB Connection Test] Failed:', error);
+    logger.error('db.connection.error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     emitMetric({ name: 'db.connection_error', value: 1 });
     emitAlert(
       {

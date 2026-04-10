@@ -21,7 +21,7 @@
 | **Logs seguros** | ⚠️ Expone datos | ✅ Sanitizado | 🟢 Seguro |
 | **PostgreSQL auth** | ❌ MD5 | ✅ SCRAM-SHA-256 | 🟢 Seguro |
 | **Política seguridad** | ❌ Ninguna | ✅ Documentada | 🟢 Completa |
-| **Documentación** | ❌ Sin audit | ✅ SECURITY_AUDIT.md | 🟢 Completa |
+| **Documentación** | ❌ Sin audit | ✅ historical/SECURITY_AUDIT_2026-01-23.md | 🟢 Completa |
 
 ---
 
@@ -89,7 +89,7 @@
 
 | Archivo | Contenido | Estado |
 |---------|-----------|--------|
-| `docs/SECURITY_AUDIT.md` | Auditoría de hallazgos | ✅ Completo |
+| `docs/historical/SECURITY_AUDIT_2026-01-23.md` | Auditoría de hallazgos | ✅ Completo |
 | `docs/SECURITY_POLICY.md` | Políticas de seguridad | ✅ Completo |
 | `apps/web/src/lib/validation.ts` | Validación con Zod | ✅ Listo |
 | `apps/web/src/middleware/auth.ts` | JWT middleware | ✅ En uso |

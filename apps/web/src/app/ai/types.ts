@@ -40,7 +40,17 @@ export type PromptPayload = {
 
 export type FormInputs = {
   topicSeed: string;
+  channelStage: string;
+  targetAudience: string;
+  primaryGoal: string;
+  resources: string;
+  constraints: string;
   ideaId: string;
   scriptId: string;
+  targetLengthSec: string;
+  depthLevel: string;
+  tone: string;
+  scriptSummary: string;
+  primaryEmotion: string;
   styleGuide: string;
 };

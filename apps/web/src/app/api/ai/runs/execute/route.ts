@@ -20,14 +20,100 @@ const ExecuteRunSchema = z.object({
   input: z.record(z.unknown()).optional().default({}),
 });
 
+const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS ?? 45000);
+const OPENAI_MAX_RETRIES = Number(process.env.OPENAI_MAX_RETRIES ?? 2);
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  timeout: Number.isFinite(OPENAI_TIMEOUT_MS) && OPENAI_TIMEOUT_MS > 0 ? OPENAI_TIMEOUT_MS : 45000,
 });
 
 function safeStringifyError(err: unknown) {
   return JSON.stringify({
     message: err instanceof Error ? err.message : String(err),
   });
+}
+
+function isRetryableOpenAiError(err: unknown) {
+  if (err && typeof err === 'object') {
+    const status = (err as { status?: number }).status;
+    return status === 429 || (status && status >= 500);
+  }
+  return false;
+}
+
+async function enrichInputPayload(
+  profileKey: string,
+  input: Record<string, unknown>,
+  userId: string,
+  channelId: string
+) {
+  const payload = { ...input, channelId } as Record<string, unknown>;
+
+  if (profileKey === 'script_architect' || profileKey === 'titles_thumbs') {
+    const ideaId = payload.ideaId as string | undefined;
+    if (ideaId) {
+      const ideaResult = await query(
+        'SELECT id, title, description, channel_id FROM ideas WHERE id = $1 AND user_id = $2',
+        [ideaId, userId]
+      );
+      if (ideaResult.rows.length === 0) {
+        throw new Error('Idea no encontrada');
+      }
+      const idea = ideaResult.rows[0] as { title: string; description: string | null; channel_id: string | null };
+      if (idea.channel_id && idea.channel_id !== channelId) {
+        throw new Error('Idea channel mismatch');
+      }
+      payload.ideaTitle = idea.title;
+      if (idea.description) payload.ideaDescription = idea.description;
+    }
+  }
+
+  if (profileKey === 'retention_editor' || (profileKey === 'titles_thumbs' && payload.scriptId)) {
+    const scriptId = payload.scriptId as string | undefined;
+    if (scriptId) {
+      const scriptResult = await query(
+        `SELECT s.full_content, i.channel_id
+         FROM scripts s
+         LEFT JOIN ideas i ON s.idea_id = i.id
+         WHERE s.id = $1 AND s.user_id = $2`,
+        [scriptId, userId]
+      );
+      if (scriptResult.rows.length === 0) {
+        throw new Error('Script no encontrado');
+      }
+      const script = scriptResult.rows[0] as { full_content: string | null; channel_id: string | null };
+      if (script.channel_id && script.channel_id !== channelId) {
+        throw new Error('Script channel mismatch');
+      }
+      if (profileKey === 'retention_editor') {
+        if (!script.full_content || script.full_content.length < 50) {
+          throw new Error('Script vacio');
+        }
+        payload.originalScript = script.full_content ?? '';
+      } else {
+        payload.scriptContent = script.full_content ?? '';
+      }
+    }
+  }
+
+  return payload;
+}
+
+async function withRetries<T>(fn: () => Promise<T>): Promise<T> {
+  let attempt = 0;
+  // Total attempts = 1 + OPENAI_MAX_RETRIES
+  while (true) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt >= OPENAI_MAX_RETRIES || !isRetryableOpenAiError(err)) {
+        throw err;
+      }
+      attempt += 1;
+      await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+    }
+  }
 }
 
 export const POST = requireRoles(['owner'])(
@@ -67,7 +153,7 @@ export const POST = requireRoles(['owner'])(
         return withSecurityHeaders(NextResponse.json({ error: 'Canal no encontrado' }, { status: 404 }));
       }
 
-      const inputPayload = { ...data.input, channelId: data.channelId } as Record<string, unknown>;
+      const inputPayload = await enrichInputPayload(data.profileKey, data.input ?? {}, userId, data.channelId);
       const inputResult = profile.inputSchema.safeParse(inputPayload);
       if (!inputResult.success) {
         return withSecurityHeaders(
@@ -110,28 +196,27 @@ export const POST = requireRoles(['owner'])(
 
       try {
         const outputSchema = profile.outputSchema as z.ZodTypeAny;
-        const completion = await openai.chat.completions.parse({
+        const completion = await withRetries(() => openai.chat.completions.parse({
           model,
           messages,
           temperature: 0.4,
           max_tokens: maxTokens,
           response_format: zodResponseFormat(outputSchema, `${profile.key}_v${profile.version}`),
-        });
+        }));
 
-        // @ts-expect-error openai SDK attaches .parsed when using .parse()
         outputParsed = completion.choices?.[0]?.message?.parsed;
         tokenUsage = completion.usage ?? null;
       } catch (err) {
         // Fallback: JSON mode + validación local
         logger.warn('ai_runs.execute.openai.parse_fallback', { runId, error: String(err) });
 
-        const completion = await openai.chat.completions.create({
+        const completion = await withRetries(() => openai.chat.completions.create({
           model,
           messages,
           temperature: 0.4,
           max_tokens: maxTokens,
           response_format: { type: 'json_object' },
-        });
+        }));
 
         const text = completion.choices?.[0]?.message?.content ?? '';
         if (!text) throw new Error('empty_openai_output');
@@ -206,6 +291,17 @@ export const POST = requireRoles(['owner'])(
           NextResponse.json({ error: 'Datos inválidos', details: error.errors }, { status: 400 })
         );
       }
+      if (error instanceof Error) {
+        if (error.message === 'Idea no encontrada' || error.message === 'Script no encontrado') {
+          return withSecurityHeaders(NextResponse.json({ error: error.message }, { status: 404 }));
+        }
+        if (error.message === 'Script vacio') {
+          return withSecurityHeaders(NextResponse.json({ error: error.message }, { status: 400 }));
+        }
+        if (error.message.endsWith('channel mismatch')) {
+          return withSecurityHeaders(NextResponse.json({ error: 'Canal no coincide' }, { status: 400 }));
+        }
+      }
 
       // Si ya creamos runId, guardamos el error para debugging sin romper el repo
       if (runId) {
@@ -221,6 +317,19 @@ export const POST = requireRoles(['owner'])(
         }
       }
 
+      const status = (error as { status?: number }).status;
+      if (status === 401 || status === 403) {
+        logger.error('ai_runs.execute.openai_auth_error', { error: String(error), runId });
+        return withSecurityHeaders(
+          NextResponse.json({ error: 'openai_auth_error', runId }, { status: 502 })
+        );
+      }
+      if (status === 429) {
+        logger.warn('ai_runs.execute.rate_limited', { error: String(error), runId });
+        return withSecurityHeaders(
+          NextResponse.json({ error: 'openai_rate_limited', runId }, { status: 429 })
+        );
+      }
       logger.error('ai_runs.execute.error', { error: String(error), runId });
       return withSecurityHeaders(
         NextResponse.json({ error: 'Error al ejecutar run', runId }, { status: 500 })

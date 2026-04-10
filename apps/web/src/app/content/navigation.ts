@@ -20,7 +20,7 @@ export const NAV_LABELS = {
 } as const;
 
 export const NAV_ITEMS = [
-  { href: '/', label: NAV_LABELS.dashboard, icon: LayoutDashboard },
+  { href: '/dashboard', label: NAV_LABELS.dashboard, icon: LayoutDashboard },
   { href: '/ideas', label: NAV_LABELS.ideas, icon: Lightbulb },
   { href: '/scripts', label: NAV_LABELS.scripts, icon: FileText },
   { href: '/thumbnails', label: NAV_LABELS.thumbnails, icon: ImageIcon },
@@ -31,7 +31,7 @@ export const NAV_ITEMS = [
 ];
 
 export const QUICK_LINKS = [
-  { href: '/', label: NAV_LABELS.dashboard, icon: LayoutDashboard },
+  { href: '/dashboard', label: NAV_LABELS.dashboard, icon: LayoutDashboard },
   { href: '/ideas', label: NAV_LABELS.ideas, icon: Lightbulb },
   { href: '/scripts', label: NAV_LABELS.scripts, icon: FileText },
   { href: '/thumbnails', label: NAV_LABELS.thumbnails, icon: ImageIcon },

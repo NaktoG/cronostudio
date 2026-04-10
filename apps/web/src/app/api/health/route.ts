@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { testConnection } from '@/lib/db';
 import { validateConfig, config } from '@/lib/config';
 import { emitMetric, emitAlert } from '@/lib/observability';
+import { getRedisClient } from '@/lib/redis';
+import { logger } from '@/lib/logger';
 
 /**
  * GET /api/health
@@ -13,10 +15,27 @@ export async function GET() {
         // Verificar PostgreSQL
         const dbHealthy = await testConnection();
 
+        // Verificar Redis (opcional)
+        let redisHealthy: boolean | null = null;
+        if (process.env.REDIS_URL) {
+            try {
+                const redis = getRedisClient();
+                if (!redis) {
+                    redisHealthy = false;
+                } else {
+                    const pong = await redis.ping();
+                    redisHealthy = pong === 'PONG';
+                }
+            } catch {
+                redisHealthy = false;
+            }
+        }
+
         // Verificar n8n (opcional, con timeout configurable)
         let n8nHealthy = true;
         const n8nBaseUrl = config.automation.n8nBaseUrl;
-        if (n8nBaseUrl) {
+        const n8nEnabled = config.automation.n8nEnabled;
+        if (n8nEnabled && n8nBaseUrl) {
             try {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 3000);
@@ -32,7 +51,8 @@ export async function GET() {
             }
         }
 
-        const allHealthy = dbHealthy && n8nHealthy;
+        const redisOk = redisHealthy === null ? true : redisHealthy;
+        const allHealthy = dbHealthy && n8nHealthy && redisOk;
         const status = allHealthy ? 'healthy' : dbHealthy ? 'degraded' : 'unhealthy';
 
         emitMetric({ name: `health.${status}`, value: 1 });
@@ -41,30 +61,38 @@ export async function GET() {
             const degradedServices = [];
             if (!dbHealthy) degradedServices.push('database');
             if (!n8nHealthy) degradedServices.push('n8n');
+            if (redisHealthy === false) degradedServices.push('redis');
             emitAlert(
                 {
                     title: 'Health check degraded',
                     message: `Servicios con problemas: ${degradedServices.join(', ') || 'desconocido'}`,
                     severity: dbHealthy ? 'warning' : 'critical',
                     tags: { component: 'healthcheck' },
-                    context: { database: dbHealthy, n8n: n8nHealthy },
+                    context: { database: dbHealthy, n8n: n8nHealthy, redis: redisHealthy },
                 },
                 { dedupeKey: `health:${status}`, cooldownMs: 300000 }
             );
         }
-        return NextResponse.json({
-            status,
-            timestamp: new Date().toISOString(),
-            services: {
-                config: 'ok',
-                database: dbHealthy ? 'up' : 'down',
-                n8n: n8nHealthy ? 'up' : 'down',
-            },
-        }, {
+        const responseBody = config.isProduction
+            ? { status, timestamp: new Date().toISOString() }
+            : {
+                status,
+                timestamp: new Date().toISOString(),
+                services: {
+                    config: 'ok',
+                    database: dbHealthy ? 'up' : 'down',
+                    n8n: n8nEnabled ? (n8nHealthy ? 'up' : 'down') : 'disabled',
+                    redis: redisHealthy === null ? 'skipped' : redisHealthy ? 'up' : 'down',
+                },
+            };
+
+        return NextResponse.json(responseBody, {
             status: allHealthy ? 200 : 503,
         });
     } catch (error) {
-        console.error('[GET /api/health] Error:', error);
+        logger.error('[GET /api/health] Error', {
+            error: error instanceof Error ? error.message : String(error),
+        });
         emitMetric({ name: 'health.error', value: 1 });
         emitAlert(
             {

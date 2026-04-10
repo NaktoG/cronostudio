@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRoles } from '@/middleware/rbac';
 import { z } from 'zod';
 import { validateInput } from '@/lib/validation';
+import { logger } from '@/lib/logger';
+import { PostgresScriptRepository } from '@/infrastructure/repositories/PostgresScriptRepository';
+import { ScriptMetricsService } from '@/application/services/ScriptMetricsService';
+import { ListScriptsUseCase } from '@/application/usecases/script/ListScriptsUseCase';
+import { CreateScriptUseCase } from '@/application/usecases/script/CreateScriptUseCase';
+import { UpdateScriptUseCase } from '@/application/usecases/script/UpdateScriptUseCase';
+import { DeleteScriptUseCase } from '@/application/usecases/script/DeleteScriptUseCase';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,12 +44,12 @@ function isValidationError(error: unknown): boolean {
     return error instanceof Error && error.message.startsWith('Validation error:');
 }
 
-function calculateMetrics(intro?: string, body?: string, cta?: string, outro?: string) {
-    const fullContent = [intro, body, cta, outro].filter(Boolean).join('\n\n');
-    const wordCount = fullContent.split(/\s+/).filter(Boolean).length;
-    const estimatedDuration = Math.ceil((wordCount / 150) * 60);
-    return { fullContent, wordCount, estimatedDuration };
-}
+const scriptRepository = new PostgresScriptRepository();
+const metricsService = new ScriptMetricsService();
+const listScriptsUseCase = new ListScriptsUseCase(scriptRepository);
+const createScriptUseCase = new CreateScriptUseCase(scriptRepository, metricsService);
+const updateScriptUseCase = new UpdateScriptUseCase(scriptRepository, metricsService);
+const deleteScriptUseCase = new DeleteScriptUseCase(scriptRepository);
 
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     try {
@@ -61,19 +67,18 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         });
         const { status, ideaId, channelId } = queryParams;
 
-        let queryText = `SELECT s.*, i.title as idea_title FROM scripts s LEFT JOIN ideas i ON s.idea_id = i.id WHERE s.user_id = $1`;
-        const params: (string | null)[] = [userId];
-        let paramIndex = 2;
+        const scripts = await listScriptsUseCase.execute({
+            userId,
+            filters: {
+                status,
+                ideaId,
+                channelId,
+            },
+        });
 
-        if (status) { queryText += ` AND s.status = $${paramIndex++}`; params.push(status); }
-        if (ideaId) { queryText += ` AND s.idea_id = $${paramIndex}`; params.push(ideaId); }
-        if (channelId) { queryText += ` AND i.channel_id = $${paramIndex++}`; params.push(channelId); }
-        queryText += ' ORDER BY s.created_at DESC';
-
-        const result = await query(queryText, params);
-        return withSecurityHeaders(NextResponse.json(result.rows));
+        return withSecurityHeaders(NextResponse.json(scripts));
     } catch (error) {
-        console.error('Error fetching scripts:', error);
+        logger.error('scripts.fetch.error', { error: String(error) });
         if (error instanceof z.ZodError || isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
@@ -91,17 +96,19 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
 
         const body = await request.json();
         const data = validateInput(CreateScriptSchema, body);
-        const { fullContent, wordCount, estimatedDuration } = calculateMetrics(data.intro, data.body, data.cta, data.outro);
+        const script = await createScriptUseCase.execute({
+            userId,
+            title: data.title,
+            ideaId: data.ideaId,
+            intro: data.intro,
+            body: data.body,
+            cta: data.cta,
+            outro: data.outro,
+        });
 
-        const result = await query(
-            `INSERT INTO scripts (user_id, idea_id, title, intro, body, cta, outro, full_content, word_count, estimated_duration_seconds)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-            [userId, data.ideaId || null, data.title, data.intro || null, data.body || null, data.cta || null, data.outro || null, fullContent, wordCount, estimatedDuration]
-        );
-
-        return withSecurityHeaders(NextResponse.json(result.rows[0], { status: 201 }));
+        return withSecurityHeaders(NextResponse.json(script, { status: 201 }));
     } catch (error) {
-        console.error('Error creating script:', error);
+        logger.error('scripts.create.error', { error: String(error) });
         if (error instanceof z.ZodError || isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
@@ -126,36 +133,24 @@ export const PUT = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
         const body = await request.json();
         const data = validateInput(UpdateScriptSchema, body);
 
-        const current = await query('SELECT intro, body, cta, outro FROM scripts WHERE id = $1 AND user_id = $2', [scriptId, userId]);
-        if (current.rows.length === 0) {
+        const updated = await updateScriptUseCase.execute({
+            userId,
+            scriptId,
+            title: data.title,
+            intro: data.intro,
+            body: data.body,
+            cta: data.cta,
+            outro: data.outro,
+            status: data.status,
+        });
+
+        if (!updated) {
             return withSecurityHeaders(NextResponse.json({ error: 'Guion no encontrado' }, { status: 404 }));
         }
 
-        const merged = {
-            intro: data.intro ?? current.rows[0].intro,
-            body: data.body ?? current.rows[0].body,
-            cta: data.cta ?? current.rows[0].cta,
-            outro: data.outro ?? current.rows[0].outro,
-        };
-        const { fullContent, wordCount, estimatedDuration } = calculateMetrics(merged.intro, merged.body, merged.cta, merged.outro);
-
-        const updates: string[] = ['full_content = $1', 'word_count = $2', 'estimated_duration_seconds = $3'];
-        const params: (string | number | null)[] = [fullContent, wordCount, estimatedDuration];
-        let paramIndex = 4;
-
-        if (data.title !== undefined) { updates.push(`title = $${paramIndex++}`); params.push(data.title); }
-        if (data.intro !== undefined) { updates.push(`intro = $${paramIndex++}`); params.push(data.intro); }
-        if (data.body !== undefined) { updates.push(`body = $${paramIndex++}`); params.push(data.body); }
-        if (data.cta !== undefined) { updates.push(`cta = $${paramIndex++}`); params.push(data.cta); }
-        if (data.outro !== undefined) { updates.push(`outro = $${paramIndex++}`); params.push(data.outro); }
-        if (data.status !== undefined) { updates.push(`status = $${paramIndex++}`); params.push(data.status); }
-
-        params.push(scriptId, userId);
-        const result = await query(`UPDATE scripts SET ${updates.join(', ')} WHERE id = $${paramIndex++} AND user_id = $${paramIndex} RETURNING *`, params);
-
-        return withSecurityHeaders(NextResponse.json(result.rows[0]));
+        return withSecurityHeaders(NextResponse.json(updated));
     } catch (error) {
-        console.error('Error updating script:', error);
+        logger.error('scripts.update.error', { error: String(error) });
         if (isValidationError(error)) {
             return withSecurityHeaders(NextResponse.json({ error: 'Datos inválidos' }, { status: 400 }));
         }
@@ -177,14 +172,14 @@ export const DELETE = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (r
             return withSecurityHeaders(NextResponse.json({ error: 'ID requerido' }, { status: 400 }));
         }
 
-        const result = await query('DELETE FROM scripts WHERE id = $1 AND user_id = $2 RETURNING id', [scriptId, userId]);
-        if (result.rows.length === 0) {
+        const deleted = await deleteScriptUseCase.execute({ userId, scriptId });
+        if (!deleted) {
             return withSecurityHeaders(NextResponse.json({ error: 'Guion no encontrado' }, { status: 404 }));
         }
 
         return withSecurityHeaders(NextResponse.json({ message: 'Guion eliminado' }));
     } catch (error) {
-        console.error('Error deleting script:', error);
+        logger.error('scripts.delete.error', { error: String(error) });
         return withSecurityHeaders(NextResponse.json({ error: 'Error al eliminar guion' }, { status: 500 }));
     }
 }));

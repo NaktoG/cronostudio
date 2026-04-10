@@ -103,6 +103,22 @@ Publica ese proxy y apúntalo desde `OBS_ENDPOINT`. De este modo podrás crear a
 | `db.query_error` | Incrementa cuando falla un query en PostgreSQL. |
 | `db.connection_error` | Incrementa cuando el pool no puede conectarse. |
 | `rate_limit.block` | Cada vez que el middleware corta una IP (solo producción). |
+| `automation.job.enqueued` | Job aceptado por `automation-go`. |
+| `automation.job.succeeded` | Job completado exitosamente por worker interno. |
+| `automation.job.failed` | Job fallido en intento actual. |
+| `automation.job.retry` | Reintento programado por error transitorio. |
+| `automation.job.dlq` | Job movido a DLQ por fallo terminal o intentos agotados. |
+| `automation.queue.depth` | Profundidad de cola pendiente. |
+| `automation.dlq.depth` | Profundidad de DLQ pendiente de replay o analisis. |
+| `automation.worker.claimed` | Cantidad de jobs reclamados por polling del worker. |
+| `automation.worker.poll_error` | Error al reclamar lote en worker. |
+| `automation.worker.heartbeat_error` | Falla en renovacion de lease. |
+| `automation.job.finalize_error` | Falla al persistir estado final (`success/retry/dead`). |
+| `automation.job.finalize_stale` | Worker perdio ownership al finalizar job. |
+| `automation.scheduler.enqueued` | Job diario encolado por scheduler. |
+| `automation.scheduler.enqueue_error` | Error al encolar job diario por scheduler. |
+| `automation.scheduler.tick_error` | Error general en ciclo del scheduler. |
+| `automation.scheduler.no_tenants` | Tick diario sin tenants elegibles. |
 
 Además incorporamos `emitAlert` para disparar notificaciones críticas. Ejemplo:
 
@@ -127,5 +143,22 @@ Si defines `OBS_ALERT_WEBHOOK`, el backend enviará el JSON completo a tu webhoo
 - **Disponibilidad API:** alerta si `sum(rate(health.error[5m])) > 0` o no llega ningún `health.healthy` en 5 minutos. El endpoint `/api/health` ya dispara `emitAlert` cuando detecta caída de n8n o PostgreSQL.
 - **Automatizaciones:** emite métricas/alertas desde los workflows n8n cuando fallan y crea una notificación en Slack/Email usando `emitAlert`.
 - **Base de datos:** `lib/db.ts` ahora dispara `emitAlert` en fallos de conexión/queries. Compleméntalo con paneles basados en `db.query_error`.
+
+## Migracion de automatizaciones a Go
+
+Durante la coexistencia n8n+Go (ver ADR-0003), habilitar al menos estas alertas:
+
+> Nota: las metricas de workers (`automation.job.*`, `automation.*.depth`) se activan en fase PR4+.
+
+- `automation.job.dlq > 0` sostenido por 10 minutos.
+- `rate(automation.job.failed[5m])` por encima de umbral del workflow migrado.
+- `automation.queue.depth` creciendo sin drenaje durante la ventana de cutover.
+- `rate(automation.worker.poll_error[5m]) > 0` por 10 minutos.
+- `rate(automation.worker.heartbeat_error[5m])` anormalmente alta.
+- `rate(automation.scheduler.enqueue_error[15m]) > 0` durante ventana diaria.
+
+Toda alerta de cutover debe incluir `workflow`, `requestId` y `traceId` para facilitar rollback rapido.
+
+Para `automation-go`, los emits de metricas usan buffer concurrente acotado; si hay saturacion se dropean eventos y se registra warning periodico en logs.
 
 Con este pipeline puedes arrancar con un endpoint local, y luego moverlo a Datadog, Prometheus o el servicio que prefieras sin volver a tocar el backend.

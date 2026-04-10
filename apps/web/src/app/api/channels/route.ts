@@ -72,10 +72,10 @@ export const POST = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
 
         // Insertar en base de datos vinculado al usuario autenticado
         const result = await query(
-            `INSERT INTO channels (user_id, name, youtube_channel_id, refresh_token) 
-       VALUES ($1, $2, $3, $4) 
+            `INSERT INTO channels (user_id, name, youtube_channel_id)
+       VALUES ($1, $2, $3)
        RETURNING id, name, youtube_channel_id, subscribers, created_at, updated_at`,
-            [userId, validatedData.name, validatedData.youtubeChannelId, validatedData.refreshToken]
+            [userId, validatedData.name, validatedData.youtubeChannelId]
         );
 
         // Log seguro (sin refresh_token)

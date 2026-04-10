@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { BookOpen, CheckCircle2, ChevronRight, Sparkles, Target } from 'lucide-react';
+import { BookOpen, CheckCircle2, ChevronRight, Sparkles, Target, Wand2, Youtube, Zap } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
@@ -76,6 +76,8 @@ export default function StartPage() {
         const thumbnails = thumbnailsRes.ok ? await thumbnailsRes.json() : [];
         const published = publishedRes.ok ? await publishedRes.json() : [];
 
+        if (controller.signal.aborted) return;
+
         const ideasApproved = Array.isArray(ideas)
           ? ideas.filter((idea) => idea.status === 'approved').length
           : 0;
@@ -93,7 +95,10 @@ export default function StartPage() {
           thumbnailsApproved: Array.isArray(thumbnails) ? thumbnails.length : 0,
           published: Array.isArray(published) ? published.length : 0,
         });
+      } catch {
+        if (controller.signal.aborted) return;
       } finally {
+        if (controller.signal.aborted) return;
         setLoading(false);
       }
     };
@@ -116,27 +121,32 @@ export default function StartPage() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute -top-24 -left-24 h-64 w-64 rounded-full bg-yellow-400/10 blur-3xl" />
+          <div className="absolute top-1/3 -right-32 h-72 w-72 rounded-full bg-amber-500/10 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-orange-500/10 blur-3xl" />
+        </div>
         <Header />
-        <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 w-full">
+        <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 w-full relative">
           <motion.div
-            className="mb-8 sm:mb-10"
+            className="mb-10"
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-yellow-400/90 mb-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-yellow-300 mb-5">
               <Sparkles className="w-4 h-4" />
-              Primeros pasos
+              Onboarding creativo
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-white mb-3">
-              Guia para producir contenido
+              Guia viva para producir contenido sin perder el ritmo
             </h1>
             <p className="text-sm sm:text-base text-slate-300 max-w-2xl">
-              Segui este flujo recomendado para pasar de una idea a un video publicado sin perder el hilo.
+              Usa esta ruta para conectar tu canal, planificar entregables y automatizar la medicion semanal.
             </p>
           </motion.div>
 
-          <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] gap-6 items-start">
+          <section className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
             <div className="space-y-4">
               {steps.map((step, index) => (
                 <motion.div
@@ -203,17 +213,28 @@ export default function StartPage() {
                   </div>
                 )}
               </div>
-              <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+              <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5 space-y-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white">
                   <BookOpen className="h-5 w-5 text-yellow-300" />
-                  Tips rapidos
+                  Para que sirve
                 </div>
-                <ul className="mt-4 space-y-3 text-sm text-slate-300">
-                  <li>Usa siempre un canal activo antes de generar.</li>
-                  <li>Si una idea no esta lista, ajusta titulo/angulo.</li>
-                  <li>En guiones prioriza hook y claridad.</li>
-                  <li>SEO: elige un titulo que venda sin clickbait.</li>
-                </ul>
+                <div className="text-sm text-slate-400">
+                  CronoStudio organiza la produccion y automatiza el seguimiento para que puedas publicar con foco creativo.
+                </div>
+                <div className="grid gap-3">
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
+                    <Wand2 className="h-4 w-4 text-yellow-300 inline-block mr-2" />
+                    Claridad de pipeline y entregables por semana.
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
+                    <Youtube className="h-4 w-4 text-red-400 inline-block mr-2" />
+                    Conexiones y sincronizacion directa con YouTube.
+                  </div>
+                  <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
+                    <Zap className="h-4 w-4 text-yellow-300 inline-block mr-2" />
+                    Alertas de disciplina y metrica semanal.
+                  </div>
+                </div>
               </div>
               <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
                 <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Atajo</div>

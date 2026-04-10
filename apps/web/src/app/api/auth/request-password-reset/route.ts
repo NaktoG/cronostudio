@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateInput, PasswordResetRequestSchema } from '@/lib/validation';
 import { withSecurityHeaders } from '@/middleware/auth';
-import { rateLimit, LOGIN_RATE_LIMIT } from '@/middleware/rateLimit';
+import { rateLimit, LOGIN_RATE_LIMIT, enforceRateLimit } from '@/middleware/rateLimit';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { query } from '@/lib/db';
 import { generateToken, hashToken } from '@/lib/token';
@@ -15,6 +15,15 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
   try {
     const body = await request.json();
     const data = validateInput(PasswordResetRequestSchema, body);
+    const normalizedEmail = data.email.trim().toLowerCase();
+    const emailLimit = await enforceRateLimit(
+      `${request.nextUrl.pathname}:email:${normalizedEmail}`,
+      LOGIN_RATE_LIMIT,
+      request.nextUrl.pathname
+    );
+    if (emailLimit) {
+      return emailLimit;
+    }
 
     const user = await userRepository.findByEmail(data.email);
     if (!user) {
@@ -46,7 +55,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     });
 
     const payload: Record<string, unknown> = { message: 'Si el email existe, se enviará un link' };
-    if (!enviado) {
+    if (!enviado && config.auth.allowDebugLinks) {
       payload['enlaceManual'] = resetUrl;
     }
 

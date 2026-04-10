@@ -19,7 +19,9 @@ const envSchema = z
 
     APP_BASE_URL: z.string().optional(),
     N8N_BASE_URL: z.string().optional(),
+    N8N_ENABLED: z.string().optional(),
     CORS_ALLOWED_ORIGINS: z.string().optional(),
+    ALLOW_DEBUG_LINKS: z.string().optional(),
 
     OBS_ENABLED: z.string().optional(),
     OBS_ENDPOINT: z.string().optional(),
@@ -110,8 +112,13 @@ function buildConfig() {
       baseUrl,
     },
 
+    auth: {
+      allowDebugLinks: (env.ALLOW_DEBUG_LINKS || 'false') === 'true' && !isProduction,
+    },
+
     automation: {
       n8nBaseUrl: env.N8N_BASE_URL || 'http://localhost:5678',
+      n8nEnabled: (env.N8N_ENABLED || 'false') === 'true',
     },
 
     cors: {

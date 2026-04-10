@@ -1,55 +1,54 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Next.js-16.1.4-black?style=for-the-badge&logo=next.js" alt="Next.js 16.1.4">
+  <img src="https://img.shields.io/badge/Next.js-16.1.6-black?style=for-the-badge&logo=next.js" alt="Next.js 16.1.6">
   <img src="https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript" alt="TypeScript 5">
-  <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL">
+  <img src="https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL 16">
   <img src="https://img.shields.io/badge/Clean_Architecture-Enabled-success?style=for-the-badge&logo=structure" alt="Clean Architecture">
-  <img src="https://img.shields.io/badge/n8n-Automation-EA4B71?style=for-the-badge&logo=n8n" alt="n8n">
+  <img src="https://img.shields.io/badge/Automation-Go%20Workers-0f766e?style=for-the-badge" alt="Go workers">
 </p>
 
-<h1 align="center">🎬 CronoStudio</h1>
+<h1 align="center">Atonix • CronoStudio</h1>
 
 <p align="center">
-  <strong>Sistema de Gestión de Producción para Creadores de Contenido</strong><br>
+  <strong>Suite de producción para creadores de contenido</strong><br>
   Local-first SaaS • Dashboard • Automation • Analytics
 </p>
 
 <p align="center">
-  <a href="#-sobre-el-proyecto">Proyecto</a> •
-  <a href="#-características">Características</a> •
-  <a href="#-arquitectura">Arquitectura</a> •
-  <a href="#-instalación">Instalación</a> •
-  <a href="#-documentación">Docs</a>
+  <a href="#-sobre-el-proyecto">Proyecto (ES)</a> •
+  <a href="#-project-overview">Project (EN)</a> •
+  <a href="#-documentación">Docs</a> •
+  <a href="#-roadmap">Roadmap</a>
 </p>
+
+> Estado operativo y handoff IA: ver `docs/OPENCLAW_HANDOFF.md`.
 
 ---
 
-## 📋 Tabla de Contenidos
+## 📋 Tabla de Contenidos (ES)
 
 - [Sobre el Proyecto](#-sobre-el-proyecto)
 - [Características Principales](#-características-principales)
 - [Tecnologías Utilizadas](#-tecnologías-utilizadas)
 - [Arquitectura](#-arquitectura)
 - [Seguridad](#-seguridad)
-- [Requisitos Previos](#-requisitos-previos)
 - [Instalación](#-instalación)
 - [Documentación](#-documentación)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
 - [Mejores Prácticas](#-mejores-prácticas)
+- [Roadmap](#-roadmap)
 - [Contribuir](#-contribuir)
-- [Licencia](#-licencia)
 
 ---
 
 ## 🎯 Sobre el Proyecto
 
-**CronoStudio** es un sistema integral de gestión de producción diseñado específicamente para creadores de contenido en YouTube. Proporciona un dashboard unificado para rastrear el flujo de contenido desde la idea inicial hasta la publicación, con automatización integrada vía n8n.
+**CronoStudio** es el producto de Atonix para creadores de YouTube. Ofrece un dashboard unificado para gestionar el flujo completo de producción (idea → guion → edición → publicación), con automatización interna en workers Go y analíticas en tiempo real.
 
 ### ¿Por qué este proyecto?
 
-- **100% Local**: Sin dependencias de nube, tus datos permanecen en tu máquina.
-- **Pipeline Visual**: Seguimiento visual desde idea → guion → grabación → edición → publicación.
-- **Automatización**: Integración nativa con n8n para SEO, miniaturas y scheduling.
-- **Multi-Canal**: Gestión centralizada de múltiples canales de YouTube.
+- **Local-first real**: tus datos permanecen en tu entorno.
+- **Pipeline claro**: control del proceso completo sin improvisación.
+- **Automatización confiable**: flujos de sync y analytics listos.
+- **Multi-canal**: gestión centralizada de varios canales.
 
 ---
 
@@ -57,19 +56,19 @@
 
 | Módulo | Descripción | Estado |
 |--------|-------------|--------|
-| 🏠 **Dashboard** | Vista general del pipeline, acciones prioritarias | ✅ Ready |
-| 💡 **Ideas** | Banco de ideas con evaluación IA y categorización | ✅ Ready |
-| 📝 **Producción** | Pipeline completo (Scripting, Recording, Editing) | ✅ Ready |
+| 🏠 **Dashboard** | Vista general del pipeline y prioridades | ✅ Ready |
+| 💡 **Ideas** | Banco de ideas con evaluación IA | ✅ Ready |
+| 📝 **Producción** | Pipeline completo (guion → edición) | ✅ Ready |
 | 📺 **Canales** | Gestión multi-canal y métricas | ✅ Ready |
-| 🔐 **Seguridad** | Autenticación JWT, Rate Limiting, Validación Zod | ✅ Ready |
-| 🤖 **Automatización** | Workflows de n8n integrados | 🔄 In Progress |
+| 🔐 **Seguridad** | JWT, rate limiting, validación Zod | ✅ Ready |
+| 🤖 **Automatización** | Workers internos Go + colas | ✅ Ready |
 
 ---
 
 ## 🛠 Tecnologías Utilizadas
 
 ### Frontend
-- **Next.js 16.1.4** (App Router)
+- **Next.js 16.1.x** (App Router)
 - **TypeScript** (Strict Mode)
 - **Tailwind CSS** (Styling)
 - **Framer Motion** (Animations)
@@ -83,35 +82,35 @@
 
 ### Infraestructura
 - **Docker Compose**
-- **n8n** (Workflow Automation)
+- **Go Workers** (internal automation)
 - **Vitest** (Unit Testing)
 
 ---
 
 ## 🏗 Arquitectura
 
-El proyecto sigue una **Clean Architecture** estricta para garantizar mantenibilidad y escalabilidad.
+CronoStudio sigue una **Clean Architecture** estricta para garantizar mantenibilidad y escalabilidad.
 
 ```mermaid
 graph TD
-    subgraph "Infrastructure Layer (DB, External APIs)"
+    subgraph "Infrastructure Layer"
         DB[(PostgreSQL)]
         YouTube[YouTube API]
         RepoImpl[PostgresRepositories]
     end
 
-    subgraph "Application Layer (Business Rules)"
-        AuthService[AuthService]
-        UseCases[Use Cases<br/>(CreateIdea, ListProduction...)]
+    subgraph "Application Layer"
+        UseCases[Use Cases]
+        Services[Application Services]
     end
 
-    subgraph "Domain Layer (Enterprise Rules)"
-        Entities[Entities<br/>(User, Idea, Production)]
+    subgraph "Domain Layer"
+        Entities[Entities]
         Repos[Repository Interfaces]
         ValueObjects[Value Objects]
     end
 
-    subgraph "Presentation Layer (Web)"
+    subgraph "Presentation Layer"
         Pages[Next.js Pages]
         API[API Routes]
     end
@@ -123,129 +122,134 @@ graph TD
     RepoImpl --> DB
 ```
 
-Ver [ARCHITECTURE.md](docs/ARCHITECTURE.md) para más detalles.
+Ver [ARCHITECTURE.md](docs/ARCHITECTURE.md) para flujos críticos.
 
 ---
 
 ## 🔒 Seguridad
 
-- **Autenticación**: JWT con rotación y almacenamiento seguro.
-- **Validación**: Zod schemas para todos los inputs.
-- **Protección**: Rate Limiting (Redis/Memory), Headers de seguridad (Helmet).
-- **Base de Datos**: Queries parametrizadas para evitar SQL Injection.
+- **Auth**: JWT + refresh tokens.
+- **Validación**: Zod en rutas críticas.
+- **Rate Limiting**: Redis/memoria.
+- **Headers**: CSP report-only, CORS explícito.
+- **Tokens**: OAuth YouTube con refresh automático.
 
----
-
-## 📦 Requisitos Previos
-
-- [Docker Desktop](https://docker.com/products/docker-desktop) v24+
-- [Node.js](https://nodejs.org) v20+ (LTS)
-- [npm](https://npmjs.com) v10+
+Ver [SECURITY.md](docs/SECURITY.md).
 
 ---
 
 ## 🚀 Instalación
 
-1. **Clonar el repositorio**
+1. **Clonar**
    ```bash
    git clone https://github.com/NaktoG/cronostudio.git
    cd cronostudio
    ```
-
-2. **Iniciar infraestructura**
+2. **Infra (modo prod-like)**
    ```bash
-    docker compose -f infra/docker/docker-compose.yml up -d
+   ./scripts/local_up.sh
    ```
-
-3. **Configurar entorno (Docker)**
+3. **Entorno**
    ```bash
    cp infra/docker/.env.example infra/docker/.env
-   ```
-
-4. **Configurar entorno (Web)**
-   ```bash
    cp apps/web/.env.example apps/web/.env.local
    ```
-
-5. **Ejecutar migraciones**
+4. **Migraciones**
    ```bash
    ./scripts/migrate.sh
    ```
-
-6. **Instalar dependencias**
+5. **Dev**
    ```bash
    cd apps/web
    npm install
-   ```
-
-7. **Iniciar desarrollo**
-   ```bash
    npm run dev
    ```
 
 ---
 
-## 📁 Estructura del Proyecto
-
-```
-apps/web/src/
-├── app/                    # Next.js App Router
-│   ├── api/                # API Routes (Presentation Layer)
-│   └── (routes)/           # Pages & Layouts
-├── application/            # Application Layer
-│   ├── usecases/           # Casos de uso de negocio
-│   └── services/           # Servicios de aplicación (Auth)
-├── domain/                 # Domain Layer (Core)
-│   ├── entities/           # Definiciones de entidades
-│   ├── repositories/       # Interfaces de repositorios
-│   └── value-objects/      # Objetos de valor inmutables
-├── infrastructure/         # Infrastructure Layer
-│   └── repositories/       # Implementaciones PostgreSQL
-├── middleware/             # Middleware de Next.js (Auth, RateLimit)
-└── lib/                    # Utilidades compartidas
-```
-
----
-
 ## 📚 Documentación
 
+- [OpenClaw Handoff (estado actual)](docs/OPENCLAW_HANDOFF.md)
+- [Índice de docs](docs/INDEX.md)
 - [Setup](docs/SETUP.md)
 - [Runbook](docs/RUNBOOK.md)
 - [Arquitectura](docs/ARCHITECTURE.md)
-- [Política de ramas](docs/BRANCHING.md)
-- [Script de limpieza de ramas](scripts/branch_cleanup.sh)
-- [Runbook Hetzner VPS](docs/runbooks/02-hetzner-vps.md)
+- [Automation Data Model](docs/automation/DATA_MODEL.md)
+- [Queue + Retries + DLQ](docs/automation/QUEUE_RETRIES_DLQ.md)
+- [Seguridad](docs/SECURITY.md)
 - [Observabilidad](docs/OBSERVABILITY.md)
-- [Migraciones SQL](docs/DB_MIGRATIONS.md)
+- [Deploy y Cutover](docs/DEPLOY_AUTOMATION.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Contributing](CONTRIBUTING.md)
 
 ---
 
 ## ✅ Mejores Prácticas
 
-- **Clean Architecture**: Separación estricta de responsabilidades.
-- **FDD (Feature Driven Development)**: Desarrollo guiado por features y tests.
-- **SOLID**: Principios de diseño aplicados en el backend.
-- **Conventional Commits**: Historial de git estandarizado.
+- **Clean Architecture**: separación estricta de responsabilidades.
+- **SOLID** aplicado en backend.
+- **Validación Zod** en inputs críticos.
+- **Rate limiting** en endpoints sensibles.
+- **Observabilidad** lista para producción.
+
+---
+
+## 🗺 Roadmap
+
+Ver [ROADMAP.md](docs/ROADMAP.md) (Now / Next / Later).
 
 ---
 
 ## 🤝 Contribuir
 
-1. Fork el proyecto
-2. Crea tu rama (`git checkout -b feature/mi-feature`)
-3. Commit tus cambios (`git commit -m 'feat: descripcion corta'`)
-4. Push a la rama (`git push origin feature/mi-feature`)
-5. Abre un Pull Request
+Ver [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
-## 📄 Licencia
+## 🌍 Project Overview (EN)
 
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
+**CronoStudio** is Atonix's production suite for YouTube creators. It provides an end‑to‑end pipeline (idea → script → edit → publish) with automation and analytics built‑in.
+
+### Why this project?
+
+- **Local-first**: your data stays in your environment.
+- **Clear pipeline**: consistent production without improvisation.
+- **Automation**: ready-to-run sync + analytics workflows.
+- **Multi‑channel**: manage multiple channels from one place.
+
+---
+
+## 🚀 Key Features (EN)
+
+- Dashboard with priorities and weekly status
+- Ideas bank with AI evaluation
+- Full production pipeline
+- Multi‑channel management
+- OAuth YouTube + analytics sync
+- internal automation workers
+
+---
+
+## 🛠 Tech Stack (EN)
+
+- Next.js 16 (App Router)
+- TypeScript (strict)
+- Tailwind CSS
+- PostgreSQL 16
+- internal automation
+
+---
+
+## 📚 Docs (EN)
+
+- [Docs Index](docs/INDEX.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security](docs/SECURITY.md)
+- [Roadmap](docs/ROADMAP.md)
 
 ---
 
 <p align="center">
-  Made with ❤️ for Creators<br>
-  <strong>CronoStudio</strong> © 2025
+  Made with ❤️ by <strong>Atonix</strong><br>
+  CronoStudio © 2026
 </p>

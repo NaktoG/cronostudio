@@ -1,9 +1,11 @@
 # Workflows n8n (CronoStudio)
 
-## Requisitos
+> Estado: legacy/rollback. La operacion normal de CronoStudio usa workers internos en Go.
+
+## Requisitos (solo rollback)
 - n8n corriendo en Docker (`http://localhost:5678`).
 - API de CronoStudio levantada en `http://localhost:3000`.
-- YouTube Data API v3 key (para datos publicos).
+- YouTube OAuth conectado desde CronoStudio.
 
 ## Variables de entorno (contenedor n8n)
 Configurar en `infra/docker/.env` y reiniciar n8n:
@@ -12,30 +14,23 @@ Configurar en `infra/docker/.env` y reiniciar n8n:
 - `CRONOSTUDIO_EMAIL`
 - `CRONOSTUDIO_PASSWORD`
 - `CRONOSTUDIO_WEBHOOK_SECRET` (opcional, recomendado)
-- `YOUTUBE_API_KEY`
-- `YOUTUBE_ANALYTICS_ACCESS_TOKEN` (Bearer token OAuth2)
-- `YOUTUBE_CHANNEL_IDS` (IDs separados por coma)
+No se requieren keys de YouTube en n8n. CronoStudio maneja OAuth y tokens.
 
 Notas:
 - Si `CRONOSTUDIO_EMAIL`/`CRONOSTUDIO_PASSWORD` estan vacios, los workflows de CronoStudio fallan en el login.
-- Si falta `YOUTUBE_API_KEY`, los workflows de sync de canales/videos fallan en la llamada a YouTube.
-- Si falta `YOUTUBE_ANALYTICS_ACCESS_TOKEN`, el workflow de analytics fallara.
+Si YouTube no esta conectado en CronoStudio, los workflows de sync fallaran.
 
 > Seguridad y hardening: ver `docs/n8n/SECURITY.md`.
 
 ## Workflows incluidos
 1) `cronostudio-sync-channels.json`
-   - Importa canales por IDs (YouTube Data API) y los crea en CronoStudio.
-   - Evita duplicados comparando `youtube_channel_id` existentes.
+   - Dispara el sync de canales via CronoStudio (OAuth).
 
 2) `cronostudio-sync-videos.json`
-   - Toma canales de CronoStudio y crea videos recientes desde YouTube.
-   - Evita duplicados comparando `youtube_video_id` existentes.
+   - Dispara el sync de videos via CronoStudio (OAuth).
 
 3) `cronostudio-ingest-analytics-daily.json`
-   - Registra vistas diarias (views) por video.
-   - Usa YouTube Analytics API para `watchTimeMinutes` y `avgViewDurationSeconds`.
-   - Procesa en lotes para reducir fallas.
+   - Registra vistas diarias (views) por video via CronoStudio (OAuth).
 
 4) `demo-my-first-ai-agent-in-n8n.json`
     - Workflow de ejemplo (plantilla oficial de n8n) usando LangChain/OpenAI.
@@ -109,6 +104,6 @@ node ./scripts/n8n/demo_seed.mjs
 ```
 
 ## Notas
-- `YOUTUBE_CHANNEL_IDS` requiere IDs de canal, no URLs.
+- Los canales se obtienen via OAuth desde CronoStudio.
 - Si no se resuelve `host.docker.internal`, usar la IP local del host.
 - Para workflows diarios, asegúrate de que el cron interno de n8n (`Daily Trigger`) esté en timezone correcto (`TZ`).

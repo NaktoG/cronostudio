@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { requireRoles } from '@/middleware/rbac';
-import { getClient } from '@/lib/db';
+import { PostgresProductionPublish } from '@/infrastructure/repositories/PostgresProductionPublish';
+import { ProductionPublishService } from '@/application/services/ProductionPublishService';
+import { PublishProductionUseCase } from '@/application/usecases/production/PublishProductionUseCase';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,56 +29,25 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
   }
   const data = parsed.data;
 
-  const client = await getClient();
+  const repository = new PostgresProductionPublish();
+  const service = new ProductionPublishService(repository);
+  const useCase = new PublishProductionUseCase(service);
+
   try {
-    await client.query('BEGIN');
+    const result = await useCase.execute({
+      userId,
+      productionId: data.productionId,
+      publishedUrl: data.publishedUrl,
+      platformId: data.platformId,
+      platform: data.platform,
+    });
 
-    const updateResult = await client.query(
-      `UPDATE productions
-       SET status = 'published',
-           published_at = NOW(),
-           published_url = $1,
-           platform_id = $2,
-           updated_at = NOW()
-       WHERE id = $3 AND user_id = $4
-       RETURNING id, channel_id, title, published_at, published_url, platform_id`,
-      [data.publishedUrl ?? null, data.platformId ?? null, data.productionId, userId]
-    );
-
-    if (updateResult.rows.length === 0) {
-      await client.query('ROLLBACK');
+    if (!result) {
       return withSecurityHeaders(NextResponse.json({ error: 'Producción no encontrada' }, { status: 404 }));
     }
 
-    const production = updateResult.rows[0];
-
-    await client.query(
-      `INSERT INTO publish_events (production_id, user_id, channel_id, platform, platform_id, published_url, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        production.id,
-        userId,
-        production.channel_id,
-        data.platform ?? 'youtube',
-        data.platformId ?? null,
-        data.publishedUrl ?? null,
-        production.published_at,
-      ]
-    );
-
-    await client.query('COMMIT');
-
-    return withSecurityHeaders(NextResponse.json({
-      productionId: production.id,
-      title: production.title,
-      publishedAt: production.published_at,
-      publishedUrl: production.published_url,
-      platformId: production.platform_id,
-    }));
+    return withSecurityHeaders(NextResponse.json(result));
   } catch {
-    await client.query('ROLLBACK');
     return withSecurityHeaders(NextResponse.json({ error: 'Error al marcar como publicado' }, { status: 500 }));
-  } finally {
-    client.release();
   }
 }));

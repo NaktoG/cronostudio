@@ -26,7 +26,7 @@ interface Channel {
     name: string;
 }
 
-function AnalyticsContent() {
+function AnalyticsView() {
     const searchParams = useSearchParams();
     const initialChannelId = searchParams.get('channelId') || '';
     const { isAuthenticated } = useAuth();
@@ -68,7 +68,7 @@ function AnalyticsContent() {
             const response = await authFetch('/api/channels', { signal });
             if (response.ok) {
                 const data = await response.json();
-                setChannels(data);
+                setChannels(Array.isArray(data) ? data : []);
             }
         } catch (err) {
             if (signal?.aborted) return;
@@ -396,7 +396,7 @@ function AnalyticsContent() {
     );
 }
 
-export default function AnalyticsPage() {
+function AnalyticsShell() {
     return (
         <ProtectedRoute>
             <div className="min-h-screen flex flex-col">
@@ -406,10 +406,14 @@ export default function AnalyticsPage() {
                         <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
                     </div>
                 }>
-                    <AnalyticsContent />
+                    <AnalyticsView />
                 </Suspense>
                 <Footer />
             </div>
         </ProtectedRoute>
     );
+}
+
+export default function AnalyticsPage() {
+    return <AnalyticsShell />;
 }

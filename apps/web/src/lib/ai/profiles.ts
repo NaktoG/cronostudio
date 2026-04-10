@@ -34,57 +34,156 @@ export type AiProfile<Input, Output> = {
   apply: (output: Output, context: ApplyContext) => Promise<ApplyResult>;
 };
 
+const optionalInt = (min: number, max: number) =>
+  z.preprocess(
+    (value) => (value === undefined || value === null || value === '' ? undefined : Number(value)),
+    z.number().int().min(min).max(max)
+  ).optional();
+
 const EvergreenIdeasInputSchema = z.object({
   channelId: z.string().uuid(),
   topicSeed: z.string().max(200).optional(),
+  channelStage: z.string().min(2).max(80),
+  targetAudience: z.string().min(2).max(160),
+  primaryGoal: z.string().min(2).max(160),
+  resources: z.string().max(500).optional(),
+  constraints: z.string().max(500).optional(),
   styleGuide: z.string().max(200).optional(),
 });
 
 const EvergreenIdeasOutputSchema = z.object({
-  ideas: z.array(
+  nicheRanking: z.array(
+    z.object({
+      niche: z.string().min(1).max(120),
+      score: z.number().min(1).max(100),
+      reasons: z.array(z.string().min(1).max(160)).min(2).max(6),
+      risk: z.string().min(1).max(120),
+      monetizationPotential: z.string().min(1).max(120),
+    })
+  ).min(3).max(7),
+  channelClusters: z.array(
+    z.object({
+      name: z.string().min(1).max(120),
+      rationale: z.string().min(1).max(200),
+      topics: z.array(z.string().min(1).max(120)).min(3).max(8),
+    })
+  ).min(3).max(6),
+  roadmap: z.array(
+    z.object({
+      phase: z.string().min(1).max(80),
+      focus: z.string().min(1).max(200),
+      goals: z.array(z.string().min(1).max(160)).min(2).max(6),
+    })
+  ).min(3).max(5),
+  automationPlan: z.object({
+    tools: z.array(z.string().min(1).max(120)).min(2).max(6),
+    workflow: z.array(z.string().min(1).max(200)).min(3).max(8),
+    risks: z.array(z.string().min(1).max(160)).min(1).max(5),
+  }),
+  complianceChecks: z.array(z.string().min(1).max(160)).min(2).max(6),
+  contentIdeas: z.array(
     z.object({
       title: z.string().min(1).max(200),
       angle: z.string().min(1).max(200),
       hook: z.string().min(1).max(200),
-      targetLengthSec: z.number().int().min(15).max(3600).optional(),
+      targetLengthSec: z.number().int().min(30).max(3600).optional(),
     })
-  ).length(10),
+  ).min(8).max(12),
+  actionPlan: z.array(
+    z.object({
+      step: z.string().min(1).max(200),
+      outcome: z.string().min(1).max(200),
+    })
+  ).min(4).max(8),
 });
 
 const ScriptArchitectInputSchema = z.object({
   channelId: z.string().uuid(),
   ideaId: z.string().uuid(),
+  ideaTitle: z.string().min(1).max(200),
+  ideaDescription: z.string().max(2000).optional(),
+  targetLengthSec: optionalInt(60, 3600),
+  tone: z.string().max(120).optional(),
+  depthLevel: z.string().max(80).optional(),
   styleGuide: z.string().max(200).optional(),
 });
 
 const ScriptArchitectOutputSchema = z.object({
-  outline: z.array(z.string().min(1)).min(3),
-  fullScript: z.string().min(1),
   hook: z.string().min(1),
-  broll: z.array(z.string().min(1)).default([]),
+  promise: z.string().min(1),
+  development: z.array(z.string().min(1)).min(3),
+  turningPoint: z.string().min(1),
+  closing: z.string().min(1),
+  pacingNotes: z.array(z.string().min(1)).min(2).max(8).optional(),
+  actionPlan: z.array(
+    z.object({
+      step: z.string().min(1).max(200),
+      outcome: z.string().min(1).max(200),
+    })
+  ).min(3).max(6),
 });
 
 const RetentionEditorInputSchema = z.object({
   channelId: z.string().uuid(),
   scriptId: z.string().uuid(),
+  originalScript: z.string().min(50).max(50000),
+  targetLengthSec: optionalInt(60, 3600),
+  tone: z.string().max(120).optional(),
 });
 
 const RetentionEditorOutputSchema = z.object({
-  revisedScript: z.string().min(1),
-  changes: z.array(z.string().min(1)).min(1),
+  scriptV2: z.string().min(1),
+  changes: z.array(z.string().min(1)).min(3),
+  reductionPercent: z.number().min(0).max(40),
+  retentionBoosts: z.array(z.string().min(1)).min(2).max(8),
+  actionPlan: z.array(
+    z.object({
+      step: z.string().min(1).max(200),
+      outcome: z.string().min(1).max(200),
+    })
+  ).min(3).max(6),
 });
 
 const TitlesThumbsInputSchema = z.object({
   channelId: z.string().uuid(),
   ideaId: z.string().uuid(),
+  ideaTitle: z.string().min(1).max(200),
+  ideaDescription: z.string().max(2000).optional(),
   scriptId: z.string().uuid().optional(),
+  scriptContent: z.string().max(50000).optional(),
+  scriptSummary: z.string().max(1000).optional(),
+  primaryEmotion: z.string().min(1).max(80),
 });
 
 const TitlesThumbsOutputSchema = z.object({
-  titles: z.array(z.string().min(1).max(120)).length(10),
-  thumbnailTexts: z.array(z.string().min(1).max(60)).length(5),
-  description: z.string().min(1),
-  tags: z.array(z.string().min(1)).min(3),
+  titles: z.array(
+    z.object({
+      title: z.string().min(1).max(120),
+      emotion: z.string().min(1).max(80),
+      curiosityType: z.string().min(1).max(80),
+    })
+  ).min(5).max(10),
+  thumbnails: z.array(
+    z.object({
+      text: z.string().min(1).max(60),
+      angle: z.string().min(1).max(120),
+    })
+  ).min(4).max(6),
+  topCombos: z.array(
+    z.object({
+      title: z.string().min(1).max(120),
+      thumbnailText: z.string().min(1).max(60),
+      rationale: z.string().min(1).max(160),
+    })
+  ).min(2).max(3),
+  description: z.string().min(1).max(1500),
+  tags: z.array(z.string().min(1).max(40)).min(3).max(12),
+  actionPlan: z.array(
+    z.object({
+      step: z.string().min(1).max(200),
+      outcome: z.string().min(1).max(200),
+    })
+  ).min(3).max(6),
 });
 
 function buildPromptHeader(channel: ChannelContext): string {
@@ -129,30 +228,62 @@ async function withTransaction<T>(
 export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
   {
     key: 'evergreen_ideas',
-    version: 1,
-    name: 'Evergreen Ideas',
-    description: 'Genera 10 ideas evergreen con angulo, hook y largo sugerido.',
+    version: 2,
+    name: 'YouTube Evergreen AI',
+    description: 'Define nichos, clusters y plan evergreen con ideas iniciales accionables.',
     inputSchema: EvergreenIdeasInputSchema,
     outputSchema: EvergreenIdeasOutputSchema,
     buildPrompt: (input, channel) => {
       const data = EvergreenIdeasInputSchema.parse(input);
       const schemaHint = JSON.stringify({
-        ideas: [
-          { title: '...', angle: '...', hook: '...', targetLengthSec: 300 },
+        nicheRanking: [
+          {
+            niche: '...',
+            score: 86,
+            reasons: ['...', '...'],
+            risk: '...',
+            monetizationPotential: '...'
+          }
         ],
+        channelClusters: [
+          { name: '...', rationale: '...', topics: ['...', '...'] }
+        ],
+        roadmap: [
+          { phase: '...', focus: '...', goals: ['...', '...'] }
+        ],
+        automationPlan: {
+          tools: ['...', '...'],
+          workflow: ['...', '...'],
+          risks: ['...']
+        },
+        complianceChecks: ['...'],
+        contentIdeas: [
+          { title: '...', angle: '...', hook: '...', targetLengthSec: 420 }
+        ],
+        actionPlan: [
+          { step: '...', outcome: '...' }
+        ]
       }, null, 2);
 
       return {
         system: [
-          'Eres un estratega de contenido para YouTube.',
-          'Genera ideas evergreen con potencial de busqueda sostenida.',
+          'Eres un estratega senior en canales evergreen para YouTube.',
+          'Priorizas viabilidad a largo plazo, retencion, SEO y monetizacion realista.',
+          'No valides ideas sin analisis; evita promesas absolutas o clickbait engañoso.',
+          'Entrega un plan por fases, clusters y un ranking de nichos con puntaje.',
           buildJsonInstruction(schemaHint),
         ].join('\n'),
         user: [
           buildPromptHeader(channel),
-          data.topicSeed ? `Tema base: ${data.topicSeed}` : 'Tema base: libre',
+          data.topicSeed ? `Tema base: ${data.topicSeed}` : 'Tema base: libre (proponer nichos)',
+          `Etapa del canal: ${data.channelStage}`,
+          `Publico objetivo: ${data.targetAudience}`,
+          `Objetivo principal: ${data.primaryGoal}`,
+          data.resources ? `Recursos: ${data.resources}` : null,
+          data.constraints ? `Limitaciones: ${data.constraints}` : null,
           data.styleGuide ? `Estilo: ${data.styleGuide}` : null,
-          'Entrega exactamente 10 ideas.',
+          'Si no hay nicho, entrega ranking de nichos con score, riesgos y monetizacion.',
+          'Incluye ideas iniciales accionables y plan de accion.',
         ].filter(Boolean).join('\n'),
       };
     },
@@ -161,7 +292,7 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
       EvergreenIdeasInputSchema.parse(context.input);
       return withTransaction(async (client) => {
         const createdIds: string[] = [];
-        for (const idea of data.ideas) {
+        for (const idea of data.contentIdeas) {
           const description = [
             `Angle: ${idea.angle}`,
             `Hook: ${idea.hook}`,
@@ -181,30 +312,41 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
   },
   {
     key: 'script_architect',
-    version: 1,
-    name: 'Script Architect',
-    description: 'Crea un guion completo con outline, hook y sugerencias de b-roll.',
+    version: 2,
+    name: 'Evergreen Script Architect',
+    description: 'Crea guiones evergreen con enfoque en retencion y ritmo narrativo.',
     inputSchema: ScriptArchitectInputSchema,
     outputSchema: ScriptArchitectOutputSchema,
     buildPrompt: (input, channel) => {
       const data = ScriptArchitectInputSchema.parse(input);
       const schemaHint = JSON.stringify({
-        outline: ['Intro', 'Punto 1', 'Punto 2'],
-        fullScript: '...',
         hook: '...',
-        broll: ['...'],
+        promise: '...',
+        development: ['...', '...'],
+        turningPoint: '...',
+        closing: '...',
+        pacingNotes: ['...'],
+        actionPlan: [{ step: '...', outcome: '...' }],
       }, null, 2);
 
       return {
         system: [
-          'Eres un guionista experto en YouTube con enfoque en claridad y retencion.',
+          'Eres un guionista evergreen senior para YouTube, obsesionado con retencion minuto a minuto, claridad y watch time sostenido.',
+          'Escribe para voz en off sin rostro con hook inmediato, promesa concreta y progresion de valor sin relleno.',
+          'Cada 20-30 segundos introduce un micro-gancho o giro narrativo (pregunta, contraste, dato, historia o revelacion).',
+          'No uses saludos, metacomentarios, disculpas ni llamadas a la accion o cierres comerciales.',
+          'No actives Plan Mode ni read-only mode; entrega contenido final listo para produccion, no instrucciones de proceso.',
           buildJsonInstruction(schemaHint),
         ].join('\n'),
         user: [
           buildPromptHeader(channel),
-          `Idea ID: ${data.ideaId}`,
-          data.styleGuide ? `Estilo: ${data.styleGuide}` : null,
-          'Entrega un guion completo listo para grabar.',
+          `Idea: ${data.ideaTitle}`,
+          data.ideaDescription ? `Contexto: ${data.ideaDescription}` : null,
+          data.targetLengthSec ? `Duracion objetivo: ${data.targetLengthSec}s` : null,
+          data.tone ? `Tono: ${data.tone}` : null,
+          data.depthLevel ? `Profundidad: ${data.depthLevel}` : null,
+          data.styleGuide ? `Guia de estilo: ${data.styleGuide}` : null,
+          'Guion apto para voz en off sin rostro.',
         ].filter(Boolean).join('\n'),
       };
     },
@@ -224,17 +366,21 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
           throw new Error('Idea channel mismatch');
         }
 
-        const brollSection = data.broll.length > 0
-          ? `\n\nB-ROLL IDEAS:\n- ${data.broll.join('\n- ')}`
-          : '';
-        const fullContent = `${data.hook}\n\n${data.fullScript}${brollSection}`.trim();
+        const developmentBody = data.development.join('\n\n');
+        const fullContent = [
+          data.hook,
+          data.promise,
+          developmentBody,
+          data.turningPoint,
+          data.closing,
+        ].filter(Boolean).join('\n\n').trim();
         const metrics = calculateMetrics(fullContent);
 
         const scriptResult = await client.query(
           `INSERT INTO scripts (user_id, idea_id, title, intro, body, full_content, word_count, estimated_duration_seconds)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
            RETURNING id`,
-          [context.userId, input.ideaId, idea.title, data.hook, data.fullScript, fullContent, metrics.wordCount, metrics.estimatedDuration]
+          [context.userId, input.ideaId, idea.title, data.hook, developmentBody, fullContent, metrics.wordCount, metrics.estimatedDuration]
         );
 
         const productionResult = await client.query(
@@ -272,28 +418,35 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
   },
   {
     key: 'retention_editor',
-    version: 1,
-    name: 'Retention Editor',
-    description: 'Optimiza un guion para mejorar retencion con cambios explicitos.',
+    version: 2,
+    name: 'YouTube Retention Editor',
+    description: 'Optimiza un guion existente para maximizar retencion y watch time.',
     inputSchema: RetentionEditorInputSchema,
     outputSchema: RetentionEditorOutputSchema,
     buildPrompt: (input, channel) => {
       const data = RetentionEditorInputSchema.parse(input);
       const schemaHint = JSON.stringify({
-        revisedScript: '...',
+        scriptV2: '...',
         changes: ['...'],
+        reductionPercent: 15,
+        retentionBoosts: ['...'],
+        actionPlan: [{ step: '...', outcome: '...' }],
       }, null, 2);
 
       return {
         system: [
-          'Eres un editor de retencion para YouTube.',
-          'Mantienes el tono original pero mejoras ritmo, claridad y retencion.',
+          'Eres un editor senior de retencion para YouTube.',
+          'No reescribes desde cero ni agregas informacion nueva.',
+          'Reduce entre 10% y 20% cuando sea posible.',
+          'Mantienes el tono original y mejoras ritmo, claridad y retencion.',
           buildJsonInstruction(schemaHint),
         ].join('\n'),
         user: [
           buildPromptHeader(channel),
-          `Script ID: ${data.scriptId}`,
-          'Devuelve el guion revisado completo y un listado de cambios.',
+          data.targetLengthSec ? `Duracion objetivo: ${data.targetLengthSec}s` : null,
+          data.tone ? `Tono: ${data.tone}` : null,
+          'Guion original:',
+          data.originalScript,
         ].join('\n'),
       };
     },
@@ -319,14 +472,14 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
         const intro = script.intro as string | null;
         const cta = script.cta as string | null;
         const outro = script.outro as string | null;
-        const fullContent = [intro, data.revisedScript, cta, outro].filter(Boolean).join('\n\n');
+        const fullContent = [intro, data.scriptV2, cta, outro].filter(Boolean).join('\n\n');
         const metrics = calculateMetrics(fullContent);
 
         await client.query(
           `UPDATE scripts
            SET body = $1, full_content = $2, word_count = $3, estimated_duration_seconds = $4
            WHERE id = $5 AND user_id = $6`,
-          [data.revisedScript, fullContent, metrics.wordCount, metrics.estimatedDuration, input.scriptId, context.userId]
+           [data.scriptV2, fullContent, metrics.wordCount, metrics.estimatedDuration, input.scriptId, context.userId]
         );
 
         return { applied: { scriptId: input.scriptId, changes: data.changes } };
@@ -335,30 +488,42 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
   },
   {
     key: 'titles_thumbs',
-    version: 1,
-    name: 'Titles + Thumbs',
-    description: 'Genera titulos, textos de miniatura y SEO base.',
+    version: 2,
+    name: 'Titles & Thumbnails Strategist',
+    description: 'Optimiza titulos y miniaturas para CTR con enfoque emocional.',
     inputSchema: TitlesThumbsInputSchema,
     outputSchema: TitlesThumbsOutputSchema,
     buildPrompt: (input, channel) => {
       const data = TitlesThumbsInputSchema.parse(input);
       const schemaHint = JSON.stringify({
-        titles: ['...'],
-        thumbnailTexts: ['...'],
+        titles: [
+          { title: '...', emotion: '...', curiosityType: '...' }
+        ],
+        thumbnails: [
+          { text: '...', angle: '...' }
+        ],
+        topCombos: [
+          { title: '...', thumbnailText: '...', rationale: '...' }
+        ],
         description: '...',
         tags: ['tag1', 'tag2'],
+        actionPlan: [{ step: '...', outcome: '...' }],
       }, null, 2);
 
       return {
         system: [
-          'Eres un estratega de titulos y thumbnails para YouTube.',
-          'Optimiza para CTR sin clickbait engañoso.',
+          'Eres un estratega de CTR para YouTube.',
+          'No uses clickbait engañoso ni promesas absolutas.',
+          'Evita formulas genericas y alinea titulo con miniatura.',
           buildJsonInstruction(schemaHint),
         ].join('\n'),
         user: [
           buildPromptHeader(channel),
-          `Idea ID: ${data.ideaId}`,
-          data.scriptId ? `Script ID: ${data.scriptId}` : 'Script ID: n/a',
+          `Idea: ${data.ideaTitle}`,
+          data.ideaDescription ? `Contexto: ${data.ideaDescription}` : null,
+          data.scriptContent ? `Guion: ${data.scriptContent}` : null,
+          data.scriptSummary ? `Resumen: ${data.scriptSummary}` : null,
+          `Emocion principal: ${data.primaryEmotion}`,
         ].join('\n'),
       };
     },
@@ -390,17 +555,17 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
             `UPDATE seo_data
              SET optimized_title = $1, description = $2, tags = $3, keywords = $4, suggestions = $5
              WHERE id = $6 AND user_id = $7`,
-            [data.titles[0], data.description, data.tags, data.tags, JSON.stringify({ titles: data.titles, thumbnailTexts: data.thumbnailTexts }), seoId, context.userId]
-          );
-        } else {
-          const insertResult = await client.query(
-            `INSERT INTO seo_data (user_id, video_id, optimized_title, description, tags, keywords, suggestions)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             RETURNING id`,
-            [context.userId, null, data.titles[0], data.description, data.tags, data.tags, JSON.stringify({ titles: data.titles, thumbnailTexts: data.thumbnailTexts })]
-          );
-          seoId = insertResult.rows[0].id as string;
-        }
+             [data.titles[0].title, data.description, data.tags, data.tags, JSON.stringify({ titles: data.titles, thumbnails: data.thumbnails, topCombos: data.topCombos }), seoId, context.userId]
+           );
+         } else {
+           const insertResult = await client.query(
+             `INSERT INTO seo_data (user_id, video_id, optimized_title, description, tags, keywords, suggestions)
+              VALUES ($1, $2, $3, $4, $5, $6, $7)
+              RETURNING id`,
+             [context.userId, null, data.titles[0].title, data.description, data.tags, data.tags, JSON.stringify({ titles: data.titles, thumbnails: data.thumbnails, topCombos: data.topCombos })]
+           );
+           seoId = insertResult.rows[0].id as string;
+         }
 
         if (production?.id) {
           await client.query(
@@ -411,13 +576,13 @@ export const AI_PROFILES: AiProfile<unknown, unknown>[] = [
           );
         } else {
           await client.query(
-            `INSERT INTO productions (user_id, channel_id, title, status, idea_id, script_id, seo_id)
-             VALUES ($1, $2, $3, 'publishing', $4, $5, $6)`,
-            [context.userId, context.channelId, data.titles[0], input.ideaId, input.scriptId ?? null, seoId]
-          );
-        }
+             `INSERT INTO productions (user_id, channel_id, title, status, idea_id, script_id, seo_id)
+              VALUES ($1, $2, $3, 'publishing', $4, $5, $6)`,
+             [context.userId, context.channelId, data.titles[0].title, input.ideaId, input.scriptId ?? null, seoId]
+           );
+         }
 
-        return { applied: { seoId, titles: data.titles, thumbnailTexts: data.thumbnailTexts } };
+        return { applied: { seoId, titles: data.titles, thumbnails: data.thumbnails } };
       });
     },
   },

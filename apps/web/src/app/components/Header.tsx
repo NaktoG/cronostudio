@@ -48,12 +48,12 @@ export default function Header() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="w-full px-4 md:px-8 py-3 sm:py-4">
+      <div className="w-full px-3 sm:px-4 md:px-8 py-2.5 sm:py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href={isAuthenticated ? '/dashboard' : '/'} className="flex items-center gap-2 sm:gap-3 group">
             <motion.div
-              className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shadow-lg"
+              className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-[0_0_18px_rgba(246,201,69,0.22)] ring-2 ring-black/50"
               style={{
                 background: 'linear-gradient(135deg, rgba(246, 201, 69, 0.9), rgba(246, 201, 69, 0.6))',
                 boxShadow: '0 10px 24px rgba(246, 201, 69, 0.3)',
@@ -62,11 +62,11 @@ export default function Header() {
               whileTap={{ scale: 0.95 }}
             >
               <Image
-                src="/Logo_Crono_02.png"
+                src="/crono-mark-dark.svg"
                 alt="CronoStudio"
-                width={32}
-                height={32}
-                className="w-6 h-6 sm:w-8 sm:h-8 object-contain"
+                width={56}
+                height={56}
+                className="w-9 h-9 sm:w-12 sm:h-12 object-contain"
                 priority
               />
             </motion.div>
@@ -76,30 +76,37 @@ export default function Header() {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link key={item.href} href={item.href}>
-                  <motion.div
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                        ? 'bg-yellow-400/10 text-yellow-400'
-                        : 'text-slate-300 hover:text-white hover:bg-gray-800/50'
-                      }`}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </motion.div>
-                </Link>
-              );
-            })}
-          </nav>
+          {isAuthenticated && (
+            <nav className="hidden lg:flex items-center gap-1">
+              {NAV_ITEMS.map((item) => {
+                const isActive = pathname === item.href;
+                const Icon = item.icon;
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <motion.div
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                          ? 'bg-yellow-400/10 text-yellow-400'
+                          : 'text-slate-300 hover:text-white hover:bg-gray-800/50'
+                        }`}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </motion.div>
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
 
-          {/* User / Auth */}
-          <div className="flex items-center gap-3">
+            {/* User / Auth */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {!isLoading && !isAuthenticated && (
+                <div className="hidden md:inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-yellow-300">
+                  Estudio creativo
+                </div>
+              )}
             {isLoading ? (
               <div className="w-24 h-10 bg-gray-800 rounded-lg animate-pulse" />
             ) : isAuthenticated ? (
@@ -140,7 +147,7 @@ export default function Header() {
                 </motion.button>
               </div>
             ) : (
-              <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-3">
                 <Link href="/login">
                   <motion.button
                     className="px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 transition-colors"
@@ -167,7 +174,7 @@ export default function Header() {
 
             {/* Mobile Menu Button */}
             <motion.button
-              className="lg:hidden p-2.5 text-slate-300 hover:text-yellow-400 rounded-lg hover:bg-gray-800/50"
+              className="lg:hidden p-2 text-slate-300 hover:text-yellow-400 rounded-lg hover:bg-gray-800/50"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
               whileTap={{ scale: 0.95 }}
@@ -222,6 +229,28 @@ export default function Header() {
                     </Link>
                   )}
                   <div className="mt-5 flex flex-col gap-2">
+                    {!isAuthenticated && (
+                      <div className="mb-2 rounded-lg border border-gray-800 bg-gray-900/60 p-3">
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Empieza hoy</p>
+                        <p className="mt-2 text-sm text-slate-200">Organiza tu produccion y conecta YouTube.</p>
+                        <div className="mt-3 flex flex-col gap-2">
+                          <Link
+                            href="/register"
+                            className="inline-flex items-center justify-center rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold text-black"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            Crear cuenta
+                          </Link>
+                          <Link
+                            href="/login"
+                            className="inline-flex items-center justify-center rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold text-slate-200"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            Iniciar sesion
+                          </Link>
+                        </div>
+                      </div>
+                    )}
                     {isAuthenticated && (
                       <button
                         type="button"

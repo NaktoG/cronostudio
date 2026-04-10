@@ -13,8 +13,10 @@ export type SeoData = {
   tags: string[];
   keywords: string[];
   suggestions?: {
-    titles?: string[];
+    titles?: Array<string | { title?: string }>;
+    thumbnails?: Array<string | { text?: string }>;
     thumbnailTexts?: string[];
+    topCombos?: Array<{ title?: string; thumbnailText?: string }>;
   } | null;
   score: number;
   video_title: string | null;
@@ -52,8 +54,8 @@ export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataO
       setSeoData(result.items as SeoData[]);
     } catch (err) {
       if (signal?.aborted) return;
-      addToast(SEO_COPY.toasts.error, 'error');
-      setError(err instanceof Error ? err.message : SEO_COPY.toasts.error);
+      addToast(SEO_COPY.errors.load, 'error');
+      setError(err instanceof Error ? err.message : SEO_COPY.errors.load);
     } finally {
       if (signal?.aborted) return;
       setLoading(false);
@@ -75,27 +77,39 @@ export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataO
   }, [selectedChannel]);
 
   const refreshIdeaOptions = useCallback(async (signal?: AbortSignal) => {
-    if (!selectedChannel) {
+    try {
+      if (!selectedChannel) {
+        setIdeaOptions([]);
+        return;
+      }
+      const data = await seoService.fetchIdeaOptions(authFetch, selectedChannel, signal);
+      if (signal?.aborted) return;
+      const options = Array.isArray(data)
+        ? data.map((idea) => ({ id: (idea as { id: string }).id, title: (idea as { title: string }).title }))
+        : [];
+      setIdeaOptions(options);
+    } catch {
+      if (signal?.aborted) return;
       setIdeaOptions([]);
-      return;
     }
-    const data = await seoService.fetchIdeaOptions(authFetch, selectedChannel, signal);
-    const options = Array.isArray(data)
-      ? data.map((idea) => ({ id: (idea as { id: string }).id, title: (idea as { title: string }).title }))
-      : [];
-    setIdeaOptions(options);
   }, [authFetch, selectedChannel]);
 
   const refreshScriptOptions = useCallback(async (signal?: AbortSignal) => {
-    if (!selectedChannel) {
+    try {
+      if (!selectedChannel) {
+        setScriptOptions([]);
+        return;
+      }
+      const data = await seoService.fetchScriptOptions(authFetch, selectedChannel, signal);
+      if (signal?.aborted) return;
+      const options = Array.isArray(data)
+        ? data.map((script) => ({ id: (script as { id: string }).id, title: (script as { title: string }).title }))
+        : [];
+      setScriptOptions(options);
+    } catch {
+      if (signal?.aborted) return;
       setScriptOptions([]);
-      return;
     }
-    const data = await seoService.fetchScriptOptions(authFetch, selectedChannel, signal);
-    const options = Array.isArray(data)
-      ? data.map((script) => ({ id: (script as { id: string }).id, title: (script as { title: string }).title }))
-      : [];
-    setScriptOptions(options);
   }, [authFetch, selectedChannel]);
 
   useEffect(() => {

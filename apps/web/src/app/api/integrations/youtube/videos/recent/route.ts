@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { query } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { openSecret } from '@/lib/crypto/secretBox';
-import { fetchPlaylistItems, fetchUploadsPlaylist, refreshAccessToken } from '@/lib/youtube/client';
+import { fetchPlaylistItems, fetchUploadsPlaylist } from '@/lib/youtube/client';
+import { getIntegrationForUserChannel, getLatestIntegrationForUser, getValidAccessToken } from '@/application/services/YouTubeIntegrationService';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,43 +22,15 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     const limit = Math.min(Number(searchParams.get('limit') || '20'), 50);
     const youtubeChannelId = searchParams.get('youtubeChannelId');
 
-    const integration = await query(
-      youtubeChannelId
-        ? `SELECT id, youtube_channel_id, access_token_enc, refresh_token_enc, token_expiry_at, scope
-           FROM youtube_integrations
-           WHERE user_id = $1 AND youtube_channel_id = $2
-           ORDER BY updated_at DESC
-           LIMIT 1`
-        : `SELECT id, youtube_channel_id, access_token_enc, refresh_token_enc, token_expiry_at, scope
-           FROM youtube_integrations
-           WHERE user_id = $1
-           ORDER BY updated_at DESC
-           LIMIT 1`,
-      youtubeChannelId ? [userId, youtubeChannelId] : [userId]
-    );
+    const integration = youtubeChannelId
+      ? await getIntegrationForUserChannel(userId, youtubeChannelId)
+      : await getLatestIntegrationForUser(userId);
 
-    if (integration.rows.length === 0) {
-      return withSecurityHeaders(NextResponse.json({ error: 'YouTube no conectado' }, { status: 404 }));
+    if (!integration) {
+      return withSecurityHeaders(new NextResponse(null, { status: 204 }));
     }
 
-    const row = integration.rows[0];
-    let accessToken = openSecret(row.access_token_enc as string);
-
-    const expiry = row.token_expiry_at ? new Date(row.token_expiry_at as string) : null;
-    if (expiry && expiry.getTime() <= Date.now() + 60 * 1000) {
-      if (!row.refresh_token_enc) {
-        return withSecurityHeaders(NextResponse.json({ error: 'Refresh token faltante' }, { status: 400 }));
-      }
-      const refreshed = await refreshAccessToken(row.refresh_token_enc as string);
-      accessToken = openSecret(refreshed.accessTokenEnc);
-      const nextExpiry = refreshed.expiresIn ? new Date(Date.now() + refreshed.expiresIn * 1000) : null;
-      await query(
-        `UPDATE youtube_integrations
-         SET access_token_enc = $1, token_expiry_at = $2, scope = COALESCE($3, scope), updated_at = NOW()
-         WHERE id = $4`,
-        [refreshed.accessTokenEnc, nextExpiry?.toISOString() ?? null, refreshed.scope ?? null, row.id]
-      );
-    }
+    const accessToken = await getValidAccessToken(integration);
 
     const uploads = await fetchUploadsPlaylist(accessToken);
     if (youtubeChannelId && uploads.channelId !== youtubeChannelId) {
@@ -67,12 +38,15 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     }
 
     const items = await fetchPlaylistItems(accessToken, uploads.uploadsPlaylistId, limit);
+    const normalizedItems = items.filter((item): item is { videoId: string; title: string | undefined; publishedAt: string } => (
+      Boolean(item.videoId && item.publishedAt)
+    ));
 
     return withSecurityHeaders(NextResponse.json({
       youtubeChannelId: uploads.channelId,
-      items: items.map((item: { videoId: string; title: string; publishedAt: string }) => ({
+      items: normalizedItems.map((item) => ({
         videoId: item.videoId,
-        title: item.title,
+        title: item.title ?? 'Video',
         publishedAt: item.publishedAt,
         url: buildVideoUrl(item.videoId),
       })),

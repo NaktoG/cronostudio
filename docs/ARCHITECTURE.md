@@ -75,6 +75,67 @@ Punto de entrada de la aplicación.
 
 ---
 
+## 🔁 Flujos Críticos
+
+### 1) Autenticación
+1. Login → `/api/auth/login`.
+2. Emisión de access + refresh.
+3. Sesión persistida en DB.
+
+### 2) OAuth YouTube
+1. `/api/google/oauth/start` redirige a Google.
+2. `/api/google/oauth/callback` intercambia tokens.
+3. Tokens cifrados en DB + refresh automático.
+
+### 3) Automatización n8n
+1. n8n ejecuta workflow.
+2. Llama endpoints internos (sync/analytics).
+3. Registra `automation_runs`.
+
+### 4) Analytics
+1. n8n llama `/api/integrations/youtube/analytics/video`.
+2. Backend renueva token si expiró.
+3. Guarda métricas en DB.
+
+### 5) Transicion n8n -> Go (ADR-0003)
+1. Web/BFF (`apps/web`) mantiene endpoints publicos.
+2. BFF delega comandos a `automation-go` (servicio interno privado).
+3. `automation-go` encola jobs idempotentes y workers internos ejecutan workflows.
+4. Fallos transitorios usan retries con backoff+jitter; fallos terminales van a DLQ.
+5. El corte se hace por feature flags, con coexistencia temporal n8n+Go y rollback inmediato.
+
+#### Estado PR4 (worker shadow)
+- Worker MVP consume `automation_job_queue` con `FOR UPDATE SKIP LOCKED`.
+- Heartbeat mantiene `lease_until` para evitar doble procesamiento.
+- Handler noop (sin integraciones externas) valida pipeline de retries y DLQ antes de conectar servicios reales.
+
+#### Estado PR5 (primer handler real)
+- `youtube.sync.channels` ya se procesa en worker.
+- En esta fase, el worker delega la ejecucion al endpoint interno del BFF (`/api/internal/automation/youtube/sync/channels`) con secreto de webhook.
+- Esto permite cutover progresivo sin romper la logica de negocio existente mientras se migra el dominio a Go por etapas.
+
+#### Estado PR6 (segundo handler real)
+- `youtube.sync.videos` se procesa en worker con la misma estrategia de delegacion interna.
+- El worker invoca `/api/internal/automation/youtube/sync/videos` para mantener paridad funcional mientras migra la logica a Go.
+
+#### Estado PR7 (scheduler + analytics diario)
+- Nuevo proceso `cmd/scheduler` encola jobs `youtube.analytics.ingest.daily` en horario UTC configurable.
+- El worker ejecuta esos jobs llamando al endpoint interno `/api/internal/automation/youtube/analytics/ingest-daily`.
+- La ingesta diaria hace upsert en tabla `analytics` por `(video_id, date)` para preservar idempotencia.
+
+#### Estado PR9 (cutover gradual)
+- Endpoints legacy de sync aplican feature flags por workflow con porcentaje por tenant (hash estable).
+- Decision por request: `legacy_sync` o `queue_only`.
+- Kill switch global permite rollback inmediato sin despliegue adicional.
+
+## Referencias técnicas de automatización
+
+- Modelo de datos: `docs/automation/DATA_MODEL.md`
+- Cola, retries y DLQ: `docs/automation/QUEUE_RETRIES_DLQ.md`
+- Operación de cutover: `docs/runbooks/03-go-backend-cutover.md`
+
+---
+
 ## 🛡 Principios SOLID Aplicados
 
 - **Single Responsibility Principle (SRP)**: Cada Use Case hace una sola cosa.

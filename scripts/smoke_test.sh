@@ -17,9 +17,16 @@ curl -sS -o /tmp/cronostudio_login.json -w "%{http_code}\n" \
   "$API_BASE/auth/login" | tail -n 1
 cat /tmp/cronostudio_login.json
 
-echo "-> /api/health (n8n check)"
+if [[ "${N8N_ENABLED:-false}" == "true" || "${ENABLE_LEGACY_N8N:-false}" == "true" ]]; then
+  echo "-> /api/health (n8n check)"
+  if command -v jq >/dev/null 2>&1; then
+    jq -r '.services.n8n' /tmp/cronostudio_health.json || true
+  fi
+fi
+
+echo "-> /api/health (redis check)"
 if command -v jq >/dev/null 2>&1; then
-  jq -r '.services.n8n' /tmp/cronostudio_health.json || true
+  jq -r '.services.redis' /tmp/cronostudio_health.json || true
 fi
 
 echo "Smoke test complete."

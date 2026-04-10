@@ -3,6 +3,7 @@ import { getAuthUser, withSecurityHeaders } from '@/middleware/auth';
 import { requireRoles } from '@/middleware/rbac';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
 import { buildCollaborationService } from '@/application/factories/collaborationServiceFactory';
+import { logger } from '@/lib/logger';
 
 export const GET = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   try {
@@ -23,7 +24,7 @@ export const GET = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (requ
       })),
     }));
   } catch (error) {
-    console.error('[Collaborators] Error listing collaborators', error);
+    logger.error('collaborators.list.error', { error: String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'No pudimos obtener colaboradores' }, { status: 500 }));
   }
 }));

@@ -1,5 +1,5 @@
 import { openSecret, sealSecret } from '@/lib/crypto/secretBox';
-import { getOAuthConfig } from '@/lib/youtube/oauth';
+import { OAuthConfig, getEnvOAuthConfig } from '@/lib/youtube/oauth';
 
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
@@ -33,6 +33,34 @@ export async function fetchUploadsPlaylist(accessToken: string) {
   const url = new URL(`${YOUTUBE_API_BASE}/channels`);
   url.searchParams.set('part', 'id,contentDetails,snippet');
   url.searchParams.set('mine', 'true');
+
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const error = new Error('Failed to fetch YouTube uploads playlist.');
+    (error as { status?: number }).status = response.status;
+    throw error;
+  }
+
+  const data = await response.json();
+  const channel = data.items?.[0];
+  if (!channel) {
+    throw new Error('No YouTube channel found for account.');
+  }
+
+  return {
+    channelId: channel.id as string,
+    channelTitle: channel.snippet?.title as string | undefined,
+    uploadsPlaylistId: channel.contentDetails?.relatedPlaylists?.uploads as string,
+  };
+}
+
+export async function fetchUploadsPlaylistByChannelId(accessToken: string, channelId: string) {
+  const url = new URL(`${YOUTUBE_API_BASE}/channels`);
+  url.searchParams.set('part', 'id,contentDetails,snippet');
+  url.searchParams.set('id', channelId);
 
   const response = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -91,9 +119,9 @@ export async function fetchPlaylistItems(accessToken: string, playlistId: string
   }));
 }
 
-export async function refreshAccessToken(refreshTokenEnc: string) {
+export async function refreshAccessToken(refreshTokenEnc: string, configOverride?: OAuthConfig) {
   const refreshToken = openSecret(refreshTokenEnc);
-  const config = getOAuthConfig();
+  const config = configOverride ?? getEnvOAuthConfig();
   const body = new URLSearchParams({
     client_id: config.clientId,
     client_secret: config.clientSecret,
@@ -116,5 +144,36 @@ export async function refreshAccessToken(refreshTokenEnc: string) {
     accessTokenEnc: sealSecret(data.access_token as string),
     expiresIn: data.expires_in as number | undefined,
     scope: data.scope as string | undefined,
+  };
+}
+
+export async function fetchChannelDetails(accessToken: string, channelId: string) {
+  const url = new URL(`${YOUTUBE_API_BASE}/channels`);
+  url.searchParams.set('part', 'snippet,statistics');
+  url.searchParams.set('id', channelId);
+
+  const response = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) {
+    const error = new Error('Failed to fetch YouTube channel details.');
+    (error as { status?: number }).status = response.status;
+    throw error;
+  }
+
+  const data = await response.json();
+  const channel = data.items?.[0];
+  if (!channel) {
+    throw new Error('No YouTube channel found for account.');
+  }
+
+  const subscribersRaw = channel.statistics?.subscriberCount;
+  const subscribers = Number.isFinite(Number(subscribersRaw)) ? Number(subscribersRaw) : null;
+
+  return {
+    id: channel.id as string,
+    title: channel.snippet?.title as string | undefined,
+    subscribers,
   };
 }

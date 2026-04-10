@@ -1,6 +1,8 @@
-# Runbook: Hetzner VPS (CronoStudio + n8n)
+# Runbook: Hetzner VPS (CronoStudio)
 
 > Objetivo: dejar el VPS operativo sin depender de túneles manuales, con TLS automático, reverse proxy estable y tareas de backup/monitoreo.
+>
+> Estado actual: n8n se considera legacy y solo se habilita para rollback controlado.
 
 ## 1. Arquitectura
 
@@ -11,13 +13,14 @@ Internet
  │
  │  Nginx (host)
  │    ├─ proxy → CronoStudio (Next.js, puerto 3000)
- │    ├─ proxy → n8n (puerto 5678)
+ │    ├─ proxy → n8n (puerto 5678, solo rollback legacy)
  │    └─ proxy + basic auth → Adminer (puerto 8080)
  │
  │  Docker Compose (infra/docker/docker-compose.yml)
  │    ├─ Postgres 16 (127.0.0.1:5432)
- │    ├─ n8n
- │    └─ Adminer (solo para debug)
+ │    ├─ Redis 7
+ │    ├─ Adminer (solo para debug)
+ │    └─ n8n (profile legacy opcional)
  │
  │  CronoStudio (apps/web)
  │    ├─ next build && next start
@@ -40,10 +43,10 @@ Internet
 
 1. Copiar el archivo `infra/nginx/cronostudio.conf` a `/etc/nginx/sites-available/cronostudio.conf`.
 2. Ajustar los placeholders:
-   - `server_name` → dominio real `cronostudio.example.com` y `n8n.example.com` (si se usa subdominio único, agregar bloques `location`).
-   - `proxy_pass` apunta por defecto a `http://127.0.0.1:3000` (CronoStudio), `:5678` (n8n) y `:8080` (Adminer).
+   - `server_name` → dominio real `cronostudio.example.com` (y `n8n.example.com` solo si habilitas rollback legacy).
+   - `proxy_pass` apunta por defecto a `http://127.0.0.1:3000` (CronoStudio) y `:8080` (Adminer); `:5678` solo en legacy.
 3. Habilitar sitio: `ln -s /etc/nginx/sites-available/cronostudio.conf /etc/nginx/sites-enabled/` y eliminar `default`.
-4. Generar certificados: `certbot --nginx -d cronostudio.example.com -d n8n.example.com`. Certbot añadirá bloques `ssl_certificate` y renovará automáticamente.
+4. Generar certificados: `certbot --nginx -d cronostudio.example.com` (agregar `-d n8n.example.com` solo en legacy). Certbot añadirá bloques `ssl_certificate` y renovará automáticamente.
 5. Reiniciar Nginx: `systemctl reload nginx`. La configuración incluye:
    - Cabeceras seguras (`Strict-Transport-Security`, `X-Frame-Options`, etc.).
    - `proxy_set_header Host` para conservar SNI.
@@ -56,7 +59,7 @@ printf "admin:$(openssl passwd -apr1)" | sudo tee /etc/nginx/.adminer_htpasswd
 ```
 Actualiza las credenciales cuando sea necesario.
 
-### Rotación de credenciales para n8n
+### Rotación de credenciales para n8n (solo rollback legacy)
 
 > `n8n.atonixdev.com` y `/adminer` comparten el mismo archivo `/etc/nginx/.adminer_htpasswd`.
 
@@ -65,12 +68,12 @@ Actualiza las credenciales cuando sea necesario.
    ./scripts/n8n/rotate-basic-auth.sh nuevo_usuario nueva_password
    ```
    Copia la entrada `htpasswd` resultante al VPS (`/etc/nginx/.adminer_htpasswd`) y recarga Nginx (`sudo systemctl reload nginx`).
-2. Actualiza `infra/docker/.env` (valores `N8N_BASIC_AUTH_*`) y reinicia el contenedor: `docker compose -f infra/docker/docker-compose.yml up -d n8n`.
+2. Actualiza `infra/docker/.env` (valores `N8N_BASIC_AUTH_*`) y reinicia el contenedor: `docker compose --profile legacy-n8n -f infra/docker/docker-compose.yml up -d n8n`.
 3. Si necesitas resetear el usuario owner de n8n, ejecuta `./scripts/n8n/reset-owner.sh owner@example.com` (local o vía SSH). Sigue el enlace temporal que devuelve el comando.
 
 ## 4. Servicios de aplicación
 
-### Docker Compose (Postgres + n8n + Adminer)
+### Docker Compose (Postgres + Redis + Adminer)
 
 ```
 cd /opt/cronostudio/infra/docker
@@ -78,7 +81,13 @@ docker compose pull
 docker compose up -d
 ```
 
-Verificar `docker ps` para los tres contenedores.
+Verificar `docker ps` para los contenedores base.
+
+Si necesitas rollback legacy con n8n:
+
+```bash
+docker compose --profile legacy-n8n up -d
+```
 
 ### CronoStudio (Next.js)
 
@@ -120,7 +129,7 @@ Opcional: abrir 8080 solo desde IP específica (`ufw allow from <IP> to any port
 Script `scripts/hetzner/backup.sh` (incluido en repo) realiza:
 
 - `pg_dump` comprimido en `/var/backups/cronostudio/postgres/YYYYMMDD.sql.gz`.
-- Exportación de workflows n8n (carpeta `.n8n/`).
+- Exportación de workflows n8n (carpeta `.n8n/`) solo si el container legacy existe.
 - Rotación simple (mantiene 7 días por defecto).
 
 ### Instalación
@@ -150,14 +159,14 @@ Script `scripts/hetzner/backup.sh` (incluido en repo) realiza:
 | Problema | Solución |
 |----------|----------|
 | HTTPS cae después de renovar cert | `systemctl reload nginx`; revisar `/var/log/letsencrypt/letsencrypt.log` |
-| Nginx muestra bad gateway | verificar `systemctl status cronostudio-web` o `docker logs cronostudio-n8n` |
+| Nginx muestra bad gateway | verificar `systemctl status cronostudio-web` y, solo en rollback legacy, `docker logs cronostudio-n8n` |
 | Adminer inaccesible | revisar `auth_basic` y `ufw`; si se expone sólo por túnel, comentar bloque `allow 127.0.0.1` |
 | Docker contenedores no arrancan en boot | crear `systemd` unit `cronostudio-compose.service` que ejecute `docker compose up -d` |
 
 ## 9. Checklist post-deploy
 
 1. `curl -I https://cronostudio.example.com` → 200 y cabeceras de seguridad.
-2. `curl -I https://n8n.example.com` → 200 con `Basic realm="n8n"` si se habilita auth.
+2. `curl -I https://n8n.example.com` → 200 con `Basic realm="n8n"` solo si activaste rollback legacy.
 3. `docker exec cronostudio-postgres psql -U postgres -c "SELECT 1"`.
 4. `/usr/local/bin/cronostudio-backup --test` genera dump.
 5. Revisar `/var/log/nginx/error.log` y `/var/log/cronostudio-web.log` (si se configura) en busca de errores.

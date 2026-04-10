@@ -58,7 +58,11 @@ for (const file of files) {
   const missingEnv = envRefs.filter((key) => !env[key]);
   const functionNodes = nodes.filter((n) => n.type === 'n8n-nodes-base.function');
   const functionMissing = functionNodes.filter((n) => !n.parameters || !n.parameters.functionCode);
-  const youtubeNodes = nodes.filter((n) => n.type === 'n8n-nodes-base.httpRequest' && typeof n.parameters?.url === 'string' && n.parameters.url.includes('youtube'));
+  const youtubeNodes = nodes.filter((n) =>
+    n.type === 'n8n-nodes-base.httpRequest'
+    && typeof n.parameters?.url === 'string'
+    && (n.parameters.url.includes('googleapis.com/youtube') || n.parameters.url.includes('youtubeanalytics.googleapis.com'))
+  );
   const youtubeMissingParams = youtubeNodes.filter((n) => !n.parameters.url.includes('?'));
   const langchainNodes = nodes.filter((n) => typeof n.type === 'string' && n.type.includes('n8n-nodes-langchain'));
 

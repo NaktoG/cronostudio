@@ -14,9 +14,9 @@ function redactChannelId(value: string | null): string | null {
 
 function envConfigured() {
   return {
-    clientId: Boolean(process.env.YOUTUBE_OAUTH_CLIENT_ID),
-    clientSecret: Boolean(process.env.YOUTUBE_OAUTH_CLIENT_SECRET),
-    redirectUri: Boolean(process.env.YOUTUBE_OAUTH_REDIRECT_URI),
+    clientId: Boolean(process.env.GOOGLE_CLIENT_ID || process.env.YOUTUBE_OAUTH_CLIENT_ID),
+    clientSecret: Boolean(process.env.GOOGLE_CLIENT_SECRET || process.env.YOUTUBE_OAUTH_CLIENT_SECRET),
+    redirectUri: Boolean(process.env.GOOGLE_REDIRECT_URI || process.env.YOUTUBE_OAUTH_REDIRECT_URI),
     encryptionKey: Boolean(process.env.YOUTUBE_TOKEN_ENCRYPTION_KEY),
   };
 }
@@ -75,6 +75,4 @@ const handler = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
   }
 });
 
-export const GET = process.env.NODE_ENV === 'production'
-  ? withAuth(handler)
-  : handler;
+export const GET = withAuth(handler);

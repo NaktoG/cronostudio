@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { rateLimit, API_RATE_LIMIT } from '@/middleware/rateLimit';
-import { query } from '@/lib/db';
 import { logger } from '@/lib/logger';
-import { openSecret } from '@/lib/crypto/secretBox';
-import { fetchPlaylistItems, fetchUploadsPlaylist, refreshAccessToken } from '@/lib/youtube/client';
+import { query } from '@/lib/db';
+import { fetchPlaylistItems, fetchUploadsPlaylist } from '@/lib/youtube/client';
+import { getIntegrationForUserChannel, getLatestIntegrationForUser, getValidAccessToken } from '@/application/services/YouTubeIntegrationService';
 import {
   endOfIsoWeekInTimeZone,
   getDateFromIsoWeek,
@@ -51,6 +51,29 @@ type SuggestedAction = {
   };
 };
 
+function buildErrorResponse(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const status = (error as { status?: number }).status;
+
+  if (message === 'Refresh token faltante') {
+    return { status: 409, error: 'youtube_refresh_missing' };
+  }
+  if (message === 'Failed to refresh YouTube token.') {
+    return { status: 401, error: 'youtube_auth_invalid' };
+  }
+  if (message === 'Failed to fetch YouTube uploads playlist.' || message === 'Failed to fetch YouTube playlist items.') {
+    if (status === 401 || status === 403) return { status: 401, error: 'youtube_auth_invalid' };
+    if (status === 429) return { status: 429, error: 'youtube_rate_limited' };
+    if (status && status >= 500) return { status: 502, error: 'youtube_unavailable' };
+    return { status: 502, error: 'youtube_error' };
+  }
+  if (message === 'No YouTube channel found for account.') {
+    return { status: 404, error: 'youtube_channel_not_found' };
+  }
+
+  return null;
+}
+
 function buildVideoUrl(videoId: string) {
   return `https://www.youtube.com/watch?v=${videoId}`;
 }
@@ -80,43 +103,15 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
       return withSecurityHeaders(NextResponse.json({ error: 'isoYear e isoWeek son requeridos' }, { status: 400 }));
     }
 
-    const integration = await query(
-      youtubeChannelId
-        ? `SELECT id, youtube_channel_id, access_token_enc, refresh_token_enc, token_expiry_at
-           FROM youtube_integrations
-           WHERE user_id = $1 AND youtube_channel_id = $2
-           ORDER BY updated_at DESC
-           LIMIT 1`
-        : `SELECT id, youtube_channel_id, access_token_enc, refresh_token_enc, token_expiry_at
-           FROM youtube_integrations
-           WHERE user_id = $1
-           ORDER BY updated_at DESC
-           LIMIT 1`,
-      youtubeChannelId ? [userId, youtubeChannelId] : [userId]
-    );
+    const integration = youtubeChannelId
+      ? await getIntegrationForUserChannel(userId, youtubeChannelId)
+      : await getLatestIntegrationForUser(userId);
 
-    if (integration.rows.length === 0) {
-      return withSecurityHeaders(NextResponse.json({ error: 'YouTube no conectado' }, { status: 404 }));
+    if (!integration) {
+      return withSecurityHeaders(new NextResponse(null, { status: 204 }));
     }
 
-    const row = integration.rows[0];
-    let accessToken = openSecret(row.access_token_enc as string);
-
-    const expiry = row.token_expiry_at ? new Date(row.token_expiry_at as string) : null;
-    if (expiry && expiry.getTime() <= Date.now() + 60 * 1000) {
-      if (!row.refresh_token_enc) {
-        return withSecurityHeaders(NextResponse.json({ error: 'Refresh token faltante' }, { status: 400 }));
-      }
-      const refreshed = await refreshAccessToken(row.refresh_token_enc as string);
-      accessToken = openSecret(refreshed.accessTokenEnc);
-      const nextExpiry = refreshed.expiresIn ? new Date(Date.now() + refreshed.expiresIn * 1000) : null;
-      await query(
-        `UPDATE youtube_integrations
-         SET access_token_enc = $1, token_expiry_at = $2, scope = COALESCE($3, scope), updated_at = NOW()
-         WHERE id = $4`,
-        [refreshed.accessTokenEnc, nextExpiry?.toISOString() ?? null, refreshed.scope ?? null, row.id]
-      );
-    }
+    const accessToken = await getValidAccessToken(integration);
 
     const uploads = await fetchUploadsPlaylist(accessToken);
     const targetChannelId = youtubeChannelId || uploads.channelId;
@@ -149,7 +144,7 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
     });
 
     const items = await fetchPlaylistItems(accessToken, uploads.uploadsPlaylistId, 50);
-    const weekItems = (items as PlaylistItem[]).filter((item) => {
+    const weekItems = (items as PlaylistItem[]).filter((item): item is PlaylistItem & { publishedAt: string } => {
       if (!item.publishedAt) return false;
       const published = new Date(item.publishedAt);
       return published >= weekStart && published <= weekEnd;
@@ -162,14 +157,15 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
 
     for (const slot of expectedSlots) {
       if (!slot.date || !slot.windowStart || !slot.windowEnd) continue;
+      const slotKey = slot.key as 'tue' | 'fri';
       const start = new Date(slot.windowStart);
       const end = new Date(slot.windowEnd);
-      const match = weekItems.find((item: { publishedAt: string }) => {
+      const match = weekItems.find((item) => {
         const published = new Date(item.publishedAt);
         return published >= start && published <= end;
       });
       if (match) {
-        youtubeEvidence[slot.key] = {
+        youtubeEvidence[slotKey] = {
           matched: true,
           video: {
             videoId: match.videoId ?? '',
@@ -254,6 +250,11 @@ export const GET = withAuth(rateLimit(API_RATE_LIMIT)(async (request: NextReques
       suggestedActions,
     }));
   } catch (error) {
+    const mapped = buildErrorResponse(error);
+    if (mapped) {
+      logger.warn('[youtube.reconcile] handled error', { error: mapped.error });
+      return withSecurityHeaders(NextResponse.json({ error: mapped.error }, { status: mapped.status }));
+    }
     logger.error('[youtube.reconcile] Error', { message: error instanceof Error ? error.message : String(error) });
     return withSecurityHeaders(NextResponse.json({ error: 'Error al reconciliar YouTube' }, { status: 500 }));
   }

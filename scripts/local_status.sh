@@ -15,7 +15,11 @@ cat /tmp/cronostudio_health.json 2>/dev/null || true
 
 echo ""
 echo "==> n8n health"
-curl -sS -o /tmp/cronostudio_n8n_healthz.json -w "%{http_code}\n" http://localhost:5678/healthz || true
+if [[ "${N8N_ENABLED:-false}" == "true" || "${ENABLE_LEGACY_N8N:-false}" == "true" ]]; then
+  curl -sS -o /tmp/cronostudio_n8n_healthz.json -w "%{http_code}\n" http://localhost:5678/healthz || true
+else
+  echo "skipped (legacy n8n disabled)"
+fi
 
 echo ""
 echo "==> Next.js dev server"

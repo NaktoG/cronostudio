@@ -25,6 +25,29 @@ type AlertHandler = (event: AlertEvent) => void;
 const alertHandlers: AlertHandler[] = [];
 const alertCooldowns = new Map<string, number>();
 const DEFAULT_ALERT_COOLDOWN = 60_000;
+const REDACTED_VALUE = '[redacted]';
+const SENSITIVE_KEY_PATTERNS = [
+  /pass(word)?/i,
+  /token/i,
+  /secret/i,
+  /api[-_]?key/i,
+  /authorization/i,
+  /cookie/i,
+  /email/i,
+];
+
+function redactRecord<T extends Record<string, unknown> | undefined>(record: T): T {
+  if (!record) {
+    return record;
+  }
+  const redacted: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    redacted[key] = SENSITIVE_KEY_PATTERNS.some((pattern) => pattern.test(key))
+      ? REDACTED_VALUE
+      : value;
+  }
+  return redacted as T;
+}
 
 export function registerMetricsPumper(pumper: (event: MetricsEvent) => void) {
   pumpers.push(pumper);
@@ -70,7 +93,10 @@ if (config.observability.enabled && config.observability.endpoint) {
     fetch(config.observability.endpoint as string, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(event),
+      body: JSON.stringify({
+        ...event,
+        tags: redactRecord(event.tags),
+      }),
     }).catch((error) => logger.error('[Observability] remote sink failed', { error }));
   });
 } else if (process.env.NODE_ENV !== 'test') {
@@ -84,7 +110,11 @@ if (config.observability.alertWebhook) {
     fetch(config.observability.alertWebhook as string, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(event),
+      body: JSON.stringify({
+        ...event,
+        tags: redactRecord(event.tags),
+        context: redactRecord(event.context),
+      }),
     }).catch((error) => logger.error('[Observability] alert webhook failed', { error }));
   });
 }
@@ -97,6 +127,8 @@ if (process.env.NODE_ENV !== 'test') {
     if (!recipient) {
       return;
     }
+    const redactedTags = redactRecord(event.tags);
+    const redactedContext = redactRecord(event.context);
 
     void sendEmail({
       to: recipient,
@@ -105,8 +137,8 @@ if (process.env.NODE_ENV !== 'test') {
         <h2>${event.title}</h2>
         <p><strong>Severidad:</strong> ${event.severity}</p>
         <p>${event.message}</p>
-        ${event.tags ? `<pre>Tags: ${JSON.stringify(event.tags, null, 2)}</pre>` : ''}
-        ${event.context ? `<pre>Context: ${JSON.stringify(event.context, null, 2)}</pre>` : ''}
+        ${redactedTags ? `<pre>Tags: ${JSON.stringify(redactedTags, null, 2)}</pre>` : ''}
+        ${redactedContext ? `<pre>Context: ${JSON.stringify(redactedContext, null, 2)}</pre>` : ''}
       `,
     }).catch((error) => logger.error('[Observability] alert email failed', { error }));
   });

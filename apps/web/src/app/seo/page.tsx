@@ -16,6 +16,10 @@ import { useChannels } from '@/app/hooks/useChannels';
 import { useSeoData } from '@/app/seo/hooks/useSeoData';
 import { copyToClipboard } from '@/lib/clipboard';
 
+function isNonEmptyString(value: unknown): value is string {
+    return typeof value === 'string' && value.length > 0;
+}
+
 export default function SeoPage() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
@@ -45,6 +49,18 @@ export default function SeoPage() {
     const getScoreLabel = (score: number) => {
         const labelKey = getSeoScoreLabel(score);
         return SEO_SCORE_LABELS[labelKey];
+    };
+
+    const normalizeTitles = (titles?: Array<string | { title?: string }>) =>
+        Array.isArray(titles)
+            ? titles.map((item) => (typeof item === 'string' ? item : item.title)).filter(isNonEmptyString)
+            : [];
+
+    const normalizeThumbs = (thumbs?: Array<string | { text?: string }>, fallback?: string[]) => {
+        if (Array.isArray(fallback) && fallback.length > 0) return fallback.filter(isNonEmptyString);
+        return Array.isArray(thumbs)
+            ? thumbs.map((item) => (typeof item === 'string' ? item : item.text)).filter(isNonEmptyString)
+            : [];
     };
 
     return (
@@ -306,7 +322,11 @@ export default function SeoPage() {
                                         </div>
                                     )}
 
-                                    {(item.suggestions?.titles?.length || item.suggestions?.thumbnailTexts?.length) && (
+                                    {(() => {
+                                        const suggestionTitles = normalizeTitles(item.suggestions?.titles);
+                                        const suggestionThumbs = normalizeThumbs(item.suggestions?.thumbnails, item.suggestions?.thumbnailTexts);
+                                        if (suggestionTitles.length === 0 && suggestionThumbs.length === 0) return null;
+                                        return (
                                         <div className="mt-2 rounded-lg border border-gray-800 bg-gray-900/60 p-3">
                                             <button
                                                 type="button"
@@ -317,11 +337,11 @@ export default function SeoPage() {
                                             </button>
                                             {showPresets && (
                                                 <div className="mt-3 space-y-3">
-                                                    {item.suggestions?.titles?.length ? (
+                                                    {suggestionTitles.length ? (
                                                         <div>
                                                             <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Títulos sugeridos</div>
                                                             <div className="mt-2 flex flex-col gap-2">
-                                                                {item.suggestions.titles.slice(0, 6).map((title) => (
+                                                                {suggestionTitles.slice(0, 6).map((title) => (
                                                                     <button
                                                                         key={title}
                                                                         type="button"
@@ -334,11 +354,11 @@ export default function SeoPage() {
                                                             </div>
                                                         </div>
                                                     ) : null}
-                                                    {item.suggestions?.thumbnailTexts?.length ? (
+                                                    {suggestionThumbs.length ? (
                                                         <div>
                                                             <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Textos de miniatura</div>
                                                             <div className="mt-2 flex flex-wrap gap-2">
-                                                                {item.suggestions.thumbnailTexts.slice(0, 6).map((text) => (
+                                                                {suggestionThumbs.slice(0, 6).map((text) => (
                                                                     <button
                                                                         key={text}
                                                                         type="button"
@@ -354,7 +374,8 @@ export default function SeoPage() {
                                                 </div>
                                             )}
                                         </div>
-                                    )}
+                                        );
+                                    })()}
 
                                     {/* Score Bar */}
                                     <div className="mt-4 pt-4 border-t border-gray-800">

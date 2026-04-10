@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, FormEvent, useRef } from 'react';
+import { Suspense, useState, useEffect, FormEvent, useRef } from 'react';
 import { Lightbulb, Plus, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
@@ -27,7 +27,7 @@ const STATUS_LABELS: Record<IdeaStatus, { label: string; color: string }> = {
     archived: { label: IDEA_STATUS_LABELS.archived, color: IDEA_STATUS_BADGES.archived },
 };
 
-export default function IdeasPage() {
+function IdeasContent() {
     const { isAuthenticated } = useAuth();
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
@@ -306,8 +306,8 @@ export default function IdeasPage() {
                                     {idea.description && (
                                         <p className="text-gray-400 text-sm mb-3 line-clamp-3 sm:line-clamp-2">{idea.description}</p>
                                     )}
-                                    {idea.channel_name && (
-                                        <p className="text-xs text-slate-400">{IDEAS_COPY.channelPrefix} {idea.channel_name}</p>
+                                    {idea.channelName && (
+                                        <p className="text-xs text-slate-400">{IDEAS_COPY.channelPrefix} {idea.channelName}</p>
                                     )}
                                     {idea.tags?.length > 0 && (
                                         <div className="flex flex-wrap gap-2 mt-3">
@@ -569,5 +569,13 @@ export default function IdeasPage() {
                 </AnimatePresence>
             </div>
         </ProtectedRoute>
+    );
+}
+
+export default function IdeasPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex flex-col" />}>
+            <IdeasContent />
+        </Suspense>
     );
 }
