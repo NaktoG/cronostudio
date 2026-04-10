@@ -154,6 +154,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://cronostudio:cronostudio@localhost:5432/cronostudio
           JWT_SECRET: ci-test-secret-do-not-use-in-production
+          OPENAI_API_KEY: sk-ci-placeholder
 
   security:
     name: Security Audit
