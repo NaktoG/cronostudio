@@ -8,11 +8,14 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { HelpCircle, LogOut, Menu, Settings, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { NAV_ITEMS, NAV_LABELS } from '../content/navigation';
+import { NAV_ITEMS } from '../content/navigation';
+import { useLocale } from '@/app/contexts/LocaleContext';
+import LocaleSwitcher from './LocaleSwitcher';
 
 export default function Header() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const { t } = useLocale();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const reduceMotion = useReducedMotion();
   const mounted = typeof window !== 'undefined';
@@ -92,7 +95,7 @@ export default function Header() {
                       whileTap={{ scale: 0.98 }}
                     >
                       <Icon className="w-4 h-4" />
-                      <span>{item.label}</span>
+                      <span>{t(item.labelKey)}</span>
                     </motion.div>
                   </Link>
                 );
@@ -104,7 +107,7 @@ export default function Header() {
             <div className="flex items-center gap-2 sm:gap-3">
               {!isLoading && !isAuthenticated && (
                 <div className="hidden md:inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-yellow-300">
-                  Estudio creativo
+                  {t('header.creativeStudio')}
                 </div>
               )}
             {isLoading ? (
@@ -119,8 +122,9 @@ export default function Header() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <HelpCircle className="w-4 h-4" />
-                  Guía
+                  {t('header.guide')}
                 </motion.button>
+                <LocaleSwitcher />
                 <Link href="/configuracion" className="hidden sm:block">
                   <motion.div
                     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-yellow-500/50 transition-all"
@@ -143,7 +147,7 @@ export default function Header() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <LogOut className="w-4 h-4" />
-                  {NAV_LABELS.logout}
+                  {t('navigation.logout')}
                 </motion.button>
               </div>
             ) : (
@@ -153,7 +157,7 @@ export default function Header() {
                     className="px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 transition-colors"
                     whileHover={{ scale: 1.02 }}
                   >
-                    {NAV_LABELS.login}
+                    {t('navigation.login')}
                   </motion.button>
                 </Link>
                 <Link href="/register">
@@ -166,7 +170,7 @@ export default function Header() {
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    {NAV_LABELS.register}
+                    {t('navigation.register')}
                   </motion.button>
                 </Link>
               </div>
@@ -202,7 +206,7 @@ export default function Header() {
                   transition={{ duration: reduceMotion ? 0 : 0.2 }}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Menú</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">{t('navigation.menu')}</span>
                     <button
                       type="button"
                       onClick={() => setMobileMenuOpen(false)}
@@ -223,7 +227,7 @@ export default function Header() {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-semibold">{user?.name}</p>
-                        <p className="text-xs text-slate-400">Mi cuenta</p>
+                        <p className="text-xs text-slate-400">{t('navigation.account')}</p>
                       </div>
                       <Settings className="w-4 h-4 text-slate-400" />
                     </Link>
@@ -231,22 +235,22 @@ export default function Header() {
                   <div className="mt-5 flex flex-col gap-2">
                     {!isAuthenticated && (
                       <div className="mb-2 rounded-lg border border-gray-800 bg-gray-900/60 p-3">
-                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Empieza hoy</p>
-                        <p className="mt-2 text-sm text-slate-200">Organiza tu produccion y conecta YouTube.</p>
+                        <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{t('navigation.startToday')}</p>
+                        <p className="mt-2 text-sm text-slate-200">{t('navigation.startTodayDescription')}</p>
                         <div className="mt-3 flex flex-col gap-2">
                           <Link
                             href="/register"
                             className="inline-flex items-center justify-center rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold text-black"
                             onClick={() => setMobileMenuOpen(false)}
                           >
-                            Crear cuenta
+                            {t('navigation.createAccount')}
                           </Link>
                           <Link
                             href="/login"
                             className="inline-flex items-center justify-center rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold text-slate-200"
                             onClick={() => setMobileMenuOpen(false)}
                           >
-                            Iniciar sesion
+                            {t('navigation.login')}
                           </Link>
                         </div>
                       </div>
@@ -261,7 +265,7 @@ export default function Header() {
                         className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm text-slate-300 hover:text-yellow-400 hover:bg-gray-800/50"
                       >
                         <HelpCircle className="w-5 h-5" />
-                        <span className="font-medium">Guía</span>
+                        <span className="font-medium">{t('header.guide')}</span>
                       </button>
                     )}
                     {NAV_ITEMS.map((item) => {
@@ -278,7 +282,7 @@ export default function Header() {
                           onClick={() => setMobileMenuOpen(false)}
                         >
                           <Icon className="w-5 h-5" />
-                          <span className="font-medium">{item.label}</span>
+                          <span className="font-medium">{t(item.labelKey)}</span>
                         </Link>
                       );
                     })}
@@ -293,7 +297,7 @@ export default function Header() {
                       className="mt-4 flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-800 text-slate-200 hover:text-yellow-400 hover:border-yellow-500/40"
                     >
                       <LogOut className="w-4 h-4" />
-                      {NAV_LABELS.logout}
+                      {t('navigation.logout')}
                     </button>
                   )}
                 </motion.div>

@@ -3,10 +3,13 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
 import { AuthProvider } from "./contexts/AuthContext";
+import { LocaleProvider } from "./contexts/LocaleContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import GuidePanel from "./components/GuidePanel";
 import GlobalShortcuts from "./components/GlobalShortcuts";
+import { getInitialLocale } from "@/lib/locale";
+import { resolveMessage } from "@/app/i18n/messages";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,21 +37,24 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const locale = await getInitialLocale();
 
   return (
-    <html lang="es" data-theme="dark" className="overflow-x-hidden">
+    <html lang={locale} data-theme="dark" className="overflow-x-hidden">
       <body
         data-nonce={nonce}
         className={`${geistSans.variable} ${geistMono.variable} antialiased overflow-x-hidden`}
       >
         <ThemeProvider>
           <ToastProvider>
-            <AuthProvider>
-              <a href="#main-content" className="skip-link">Saltar al contenido principal</a>
-              <div id="main-content">{children}</div>
-              <GlobalShortcuts />
-              <GuidePanel />
-            </AuthProvider>
+            <LocaleProvider initialLocale={locale}>
+              <AuthProvider>
+                <a href="#main-content" className="skip-link">{resolveMessage(locale, 'common.skipToMain')}</a>
+                <div id="main-content">{children}</div>
+                <GlobalShortcuts />
+                <GuidePanel />
+              </AuthProvider>
+            </LocaleProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>
