@@ -29,7 +29,6 @@ describe('P0 security hardening guards', () => {
       NODE_ENV: 'production',
       JWT_SECRET: 'x'.repeat(32),
       DATABASE_URL: 'postgres://user:pass@localhost:5432/db',
-      REDIS_URL: 'redis://localhost:6379/0',
       CSRF_ENFORCE: 'true',
     };
   });
@@ -66,6 +65,11 @@ describe('P0 security hardening guards', () => {
 
   it('keeps public signup disabled by default in production', async () => {
     delete process.env.ALLOW_PUBLIC_SIGNUP;
+    vi.doMock('@/middleware/rateLimit', () => ({
+      LOGIN_RATE_LIMIT: { windowMs: 60_000, max: 5 },
+      rateLimit: () => (handler: unknown) => handler,
+      enforceRateLimit: vi.fn(async () => null),
+    }));
     const { POST } = await import('@/app/api/auth/register/route');
 
     const request = new NextRequest('http://localhost/api/auth/register', {
