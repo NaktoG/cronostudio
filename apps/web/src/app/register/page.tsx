@@ -6,11 +6,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Eye, EyeOff, Sparkles, Wand2, Youtube, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocale } from '../contexts/LocaleContext';
 import { GuestRoute } from '../components/ProtectedRoute';
 import Footer from '../components/Footer';
+import { getAuthCopy } from '../content/auth';
 
 export default function RegisterPage() {
     const { register, error, clearError, isLoading } = useAuth();
+    const { locale } = useLocale();
+    const copy = getAuthCopy(locale);
 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -29,33 +33,33 @@ export default function RegisterPage() {
         clearError();
 
         if (!name || !email || !password || !confirmPassword) {
-            setLocalError('Por favor completa todos los campos');
+            setLocalError(copy.register.validationRequired);
             return;
         }
 
         if (password !== confirmPassword) {
-            setLocalError('Las contraseñas no coinciden');
+            setLocalError(copy.register.validationPasswordMismatch);
             return;
         }
 
         if (password.length < 8) {
-            setLocalError('La contraseña debe tener al menos 8 caracteres');
+            setLocalError(copy.register.validationPasswordLength);
             return;
         }
 
         if (!/[A-Z]/.test(password)) {
-            setLocalError('La contraseña debe contener al menos una mayúscula');
+            setLocalError(copy.register.validationPasswordUpper);
             return;
         }
 
         if (!/[0-9]/.test(password)) {
-            setLocalError('La contraseña debe contener al menos un número');
+            setLocalError(copy.register.validationPasswordNumber);
             return;
         }
 
         try {
             const result = await register(email, password, name);
-            setSuccessMessage(result.message || 'Cuenta creada. Revisá tu email para verificarla.');
+            setSuccessMessage(result.message || copy.register.successFallback);
             setVerificationUrl(result.verificationUrl || '');
         } catch {
             // Error ya manejado en el context
@@ -94,46 +98,35 @@ export default function RegisterPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                 >
                                     <Sparkles className="h-4 w-4" />
-                                    Estudio creativo
+                                    {copy.marketingBadge}
                                 </motion.div>
                                 <h1 className="mt-6 text-4xl sm:text-5xl font-semibold text-white leading-tight">
-                                    Tu canal en un sistema de produccion constante
+                                    {copy.register.heroTitle}
                                 </h1>
                                 <p className="mt-4 text-base sm:text-lg text-slate-300 max-w-xl">
-                                    CronoStudio ordena el caos creativo para que publiques con ritmo, claridad y foco en calidad.
+                                    {copy.register.heroDescription}
                                 </p>
                             </div>
 
                             <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="rounded-2xl border border-gray-800 bg-gray-900/60 p-5">
-                                    <Wand2 className="h-5 w-5 text-yellow-300" />
-                                    <h3 className="mt-3 text-sm font-semibold text-white">Para que sirve</h3>
-                                    <p className="mt-2 text-sm text-slate-400">
-                                        Convertir ideas dispersas en una linea de produccion con entregables claros.
-                                    </p>
-                                </div>
-                                <div className="rounded-2xl border border-gray-800 bg-gray-900/60 p-5">
-                                    <Zap className="h-5 w-5 text-yellow-300" />
-                                    <h3 className="mt-3 text-sm font-semibold text-white">Resultados visibles</h3>
-                                    <p className="mt-2 text-sm text-slate-400">
-                                        Metricas, metas semanales y alertas para mantener el progreso.
-                                    </p>
-                                </div>
+                                {copy.marketingCards.map((card, index) => (
+                                    <div key={card.title} className="rounded-2xl border border-gray-800 bg-gray-900/60 p-5">
+                                        {index === 0 ? <Wand2 className="h-5 w-5 text-yellow-300" /> : <Zap className="h-5 w-5 text-yellow-300" />}
+                                        <h3 className="mt-3 text-sm font-semibold text-white">{card.title}</h3>
+                                        <p className="mt-2 text-sm text-slate-400">{card.text}</p>
+                                    </div>
+                                ))}
                             </div>
 
                             <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
                                 <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-400">
                                     <Youtube className="h-4 w-4 text-red-400" />
-                                    Como funciona
+                                    {copy.marketingFlowTitle}
                                 </div>
                                 <div className="mt-5 grid gap-4 sm:grid-cols-3">
-                                    {[
-                                        { title: 'Conecta', text: 'Autoriza YouTube y define tu canal.' },
-                                        { title: 'Planifica', text: 'Idea, guion, SEO y miniatura con flujo claro.' },
-                                        { title: 'Automatiza', text: 'Sincroniza videos y analytics sin tocar APIs.' },
-                                    ].map((step, index) => (
+                                    {copy.marketingSteps.map((step, index) => (
                                         <div key={step.title} className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
-                                            <div className="text-xs text-yellow-300">Paso {index + 1}</div>
+                                            <div className="text-xs text-yellow-300">{locale === 'en' ? 'Step' : 'Paso'} {index + 1}</div>
                                             <div className="mt-2 text-sm font-semibold text-white">{step.title}</div>
                                             <div className="mt-2 text-xs text-slate-400">{step.text}</div>
                                         </div>
@@ -158,8 +151,8 @@ export default function RegisterPage() {
                                         priority
                                     />
                                 </motion.div>
-                                <h2 className="text-3xl font-bold text-white">CronoStudio</h2>
-                                <p className="text-gray-400 mt-2">Crea tu cuenta</p>
+                                <h2 className="text-3xl font-bold text-white">{copy.register.title}</h2>
+                                <p className="text-gray-400 mt-2">{copy.register.subtitle}</p>
                             </div>
 
                             {/* Formulario */}
@@ -189,11 +182,11 @@ export default function RegisterPage() {
                                     <p>{successMessage}</p>
                                     {verificationUrl && (
                                         <p className="mt-2 break-all text-xs text-green-200">
-                                            Link de verificación: <a className="text-yellow-200 underline" href={verificationUrl}>{verificationUrl}</a>
+                                            {copy.register.verificationLinkLabel}: <a className="text-yellow-200 underline" href={verificationUrl}>{verificationUrl}</a>
                                         </p>
                                     )}
                                     <p className="mt-2 text-xs text-gray-300">
-                                        Si no te llega el email, podés <Link className="text-yellow-300 underline" href="/resend-verification">reenviar la verificación</Link>.
+                                        {copy.register.resendVerificationPrefix} <Link className="text-yellow-300 underline" href="/resend-verification">{copy.register.resendVerificationCta}</Link>.
                                     </p>
                                 </motion.div>
                             )}
@@ -201,7 +194,7 @@ export default function RegisterPage() {
                             <div className="space-y-4">
                                 <div>
                                     <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                                        Nombre
+                                        {copy.register.nameLabel}
                                     </label>
                                     <input
                                         id="name"
@@ -209,14 +202,14 @@ export default function RegisterPage() {
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                                        placeholder="Tu nombre"
+                                        placeholder={copy.register.namePlaceholder}
                                         disabled={isLoading}
                                     />
                                 </div>
 
                                 <div>
                                     <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
-                                        Email
+                                        {copy.register.emailLabel}
                                     </label>
                                     <input
                                         id="email"
@@ -224,14 +217,14 @@ export default function RegisterPage() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                                        placeholder="tu@email.com"
+                                        placeholder={copy.register.emailPlaceholder}
                                         disabled={isLoading}
                                     />
                                 </div>
 
                                 <div>
                                     <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
-                                        Contraseña
+                                        {copy.register.passwordLabel}
                                     </label>
                                     <div className="relative">
                                         <input
@@ -240,27 +233,27 @@ export default function RegisterPage() {
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             className="w-full px-4 py-3 pr-12 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                                            placeholder="••••••••"
+                                            placeholder={copy.register.passwordPlaceholder}
                                             disabled={isLoading}
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowPassword((prev) => !prev)}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
-                                            aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                            aria-label={showPassword ? copy.register.hidePassword : copy.register.showPassword}
                                             disabled={isLoading}
                                         >
                                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                         </button>
                                     </div>
                                     <p className="mt-1 text-xs text-gray-500">
-                                        Mínimo 8 caracteres, una mayúscula y un número
+                                        {copy.register.passwordHint}
                                     </p>
                                 </div>
 
                                 <div>
                                     <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">
-                                        Confirmar Contraseña
+                                        {copy.register.confirmPasswordLabel}
                                     </label>
                                     <div className="relative">
                                         <input
@@ -269,14 +262,14 @@ export default function RegisterPage() {
                                             value={confirmPassword}
                                             onChange={(e) => setConfirmPassword(e.target.value)}
                                             className="w-full px-4 py-3 pr-12 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                                            placeholder="••••••••"
+                                            placeholder={copy.register.confirmPasswordPlaceholder}
                                             disabled={isLoading}
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowConfirmPassword((prev) => !prev)}
                                             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
-                                            aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                            aria-label={showConfirmPassword ? copy.register.hidePassword : copy.register.showPassword}
                                             disabled={isLoading}
                                         >
                                             {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -298,22 +291,22 @@ export default function RegisterPage() {
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                         </svg>
-                                        Creando cuenta...
+                                        {copy.register.submitLoading}
                                     </span>
                                 ) : (
-                                    'Crear Cuenta'
+                                    copy.register.submitIdle
                                 )}
                             </motion.button>
 
                             <div className="text-center text-gray-500 text-xs">
-                                Te enviaremos un email para verificar tu cuenta
+                                {copy.register.verifyInfo}
                             </div>
 
 
                             <div className="text-center text-gray-400 text-sm">
-                                ¿Ya tienes cuenta?{' '}
+                                {copy.register.existingAccount}{' '}
                                 <Link href="/login" className="text-yellow-400 hover:text-yellow-300 transition-colors">
-                                    Inicia sesión
+                                    {copy.register.existingAccountCta}
                                 </Link>
                             </div>
                             </motion.form>

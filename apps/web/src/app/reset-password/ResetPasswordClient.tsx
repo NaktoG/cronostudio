@@ -8,9 +8,14 @@ import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { GuestRoute } from '../components/ProtectedRoute';
 import Footer from '../components/Footer';
+import { useLocale } from '../contexts/LocaleContext';
+import { getAuthCopy } from '../content/auth';
 
 export default function ResetPasswordClient() {
   const searchParams = useSearchParams();
+  const { locale } = useLocale();
+  const copy = getAuthCopy(locale);
+  const invalidTokenMessage = copy.resetPassword.invalidToken;
   const token = searchParams.get('token') || '';
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -22,9 +27,9 @@ export default function ResetPasswordClient() {
 
   useEffect(() => {
     if (!token) {
-      setError('Token inválido');
+      setError(invalidTokenMessage);
     }
-  }, [token]);
+  }, [token, invalidTokenMessage]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -32,17 +37,17 @@ export default function ResetPasswordClient() {
     setMessage('');
 
     if (!token) {
-      setError('Token inválido');
+      setError(invalidTokenMessage);
       return;
     }
 
     if (!password || !confirmPassword) {
-      setError('Completa todos los campos');
+      setError(copy.resetPassword.requiredFields);
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden');
+      setError(copy.resetPassword.passwordMismatch);
       return;
     }
 
@@ -54,10 +59,10 @@ export default function ResetPasswordClient() {
         body: JSON.stringify({ token, password }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Error al restablecer');
-      setMessage('Contraseña actualizada. Ya puedes iniciar sesión.');
+      if (!res.ok) throw new Error(data.error || copy.resetPassword.requestFailed);
+      setMessage(copy.resetPassword.successMessage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : copy.resetPassword.unknownError);
     } finally {
       setLoading(false);
     }
@@ -87,8 +92,8 @@ export default function ResetPasswordClient() {
                   priority
                 />
               </motion.div>
-              <h1 className="text-3xl font-bold text-white">Restablecer contraseña</h1>
-              <p className="text-gray-400 mt-2">Elige una nueva contraseña</p>
+              <h1 className="text-3xl font-bold text-white">{copy.resetPassword.title}</h1>
+              <p className="text-gray-400 mt-2">{copy.resetPassword.subtitle}</p>
             </div>
 
             <motion.form
@@ -105,7 +110,7 @@ export default function ResetPasswordClient() {
 
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">Nueva contraseña</label>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">{copy.resetPassword.passwordLabel}</label>
                   <div className="relative">
                     <input
                       id="password"
@@ -113,24 +118,24 @@ export default function ResetPasswordClient() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full px-4 py-3 pr-12 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                      placeholder="••••••••"
+                      placeholder={copy.resetPassword.passwordPlaceholder}
                       disabled={loading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword((prev) => !prev)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
-                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      aria-label={showPassword ? copy.resetPassword.hidePassword : copy.resetPassword.showPassword}
                       disabled={loading}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">Mínimo 8 caracteres, una mayúscula y un número</p>
+                  <p className="mt-1 text-xs text-gray-500">{copy.resetPassword.passwordHint}</p>
                 </div>
 
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">Confirmar contraseña</label>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300 mb-2">{copy.resetPassword.confirmPasswordLabel}</label>
                   <div className="relative">
                     <input
                       id="confirmPassword"
@@ -138,14 +143,14 @@ export default function ResetPasswordClient() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       className="w-full px-4 py-3 pr-12 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                      placeholder="••••••••"
+                      placeholder={copy.resetPassword.confirmPasswordPlaceholder}
                       disabled={loading}
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword((prev) => !prev)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
-                      aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                      aria-label={showConfirmPassword ? copy.resetPassword.hidePassword : copy.resetPassword.showPassword}
                       disabled={loading}
                     >
                       {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -161,12 +166,12 @@ export default function ResetPasswordClient() {
                 whileHover={{ scale: loading ? 1 : 1.02 }}
                 whileTap={{ scale: loading ? 1 : 0.98 }}
               >
-                {loading ? 'Actualizando...' : 'Actualizar contraseña'}
+                {loading ? copy.resetPassword.submitLoading : copy.resetPassword.submitIdle}
               </motion.button>
 
               <div className="text-center text-gray-400 text-sm">
                 <Link href="/login" className="text-yellow-400 hover:text-yellow-300 transition-colors">
-                  Volver a iniciar sesión
+                  {copy.resetPassword.backToLogin}
                 </Link>
               </div>
             </motion.form>
