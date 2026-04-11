@@ -7,6 +7,23 @@ on:
     branches: [main, develop]
 
 jobs:
+  policy-guards:
+    name: Security Policy Guards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Install web dependencies
+        run: npm ci
+        working-directory: apps/web
+      - name: Run P0 security policy tests
+        run: npm run test:run -- src/__tests__/security/p0-hardening.test.ts
+        working-directory: apps/web
+
   gitleaks:
     name: Secret Scan
     runs-on: ubuntu-latest
