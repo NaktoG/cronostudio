@@ -4,8 +4,9 @@ import { useMemo, useState } from 'react';
 import { MessageSquare, Send } from 'lucide-react';
 
 import { useAuthFetch } from '@/app/contexts/AuthContext';
+import { useLocale } from '@/app/contexts/LocaleContext';
 import { useToast } from '@/app/contexts/ToastContext';
-import { CRONO_COPY, type CronoRole } from '@/app/content/crono';
+import { getCronoCopy, type CronoRole } from '@/app/content/crono';
 
 type ChatMessage = {
   id: string;
@@ -23,22 +24,24 @@ function createMessage(role: CronoRole, content: string): ChatMessage {
 
 export default function CronoChatPanel() {
   const authFetch = useAuthFetch();
+  const { locale } = useLocale();
   const { addToast } = useToast();
+  const copy = getCronoCopy(locale);
   const [sessionKey, setSessionKey] = useState('default');
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    createMessage('assistant', CRONO_COPY.introMessage),
+    createMessage('assistant', copy.introMessage),
   ]);
 
   const disabled = sending;
 
-  const suggestions = useMemo(() => CRONO_COPY.suggestions, []);
+  const suggestions = useMemo(() => copy.suggestions, [copy.suggestions]);
 
   const sendMessage = async (text: string) => {
     const message = text.trim();
     if (!message) {
-      addToast(CRONO_COPY.emptyMessageError, 'error');
+      addToast(copy.emptyMessageError, 'error');
       return;
     }
 
@@ -57,9 +60,9 @@ export default function CronoChatPanel() {
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         if (body?.error === 'assistant_disabled' || body?.error === 'assistant_not_configured') {
-          addToast(CRONO_COPY.unavailable, 'error');
+          addToast(copy.unavailable, 'error');
         } else {
-          addToast(CRONO_COPY.genericError, 'error');
+          addToast(copy.genericError, 'error');
         }
         return;
       }
@@ -71,10 +74,10 @@ export default function CronoChatPanel() {
       if (typeof body?.reply === 'string' && body.reply.trim().length > 0) {
         setMessages((prev) => [...prev, createMessage('assistant', body.reply.trim())]);
       } else {
-        addToast(CRONO_COPY.genericError, 'error');
+        addToast(copy.genericError, 'error');
       }
     } catch {
-      addToast(CRONO_COPY.genericError, 'error');
+      addToast(copy.genericError, 'error');
     } finally {
       setSending(false);
       setDraft('');
@@ -88,8 +91,8 @@ export default function CronoChatPanel() {
           <MessageSquare className="w-5 h-5" />
         </span>
         <div>
-          <h3 className="text-lg font-semibold text-white">{CRONO_COPY.panelTitle}</h3>
-          <p className="text-sm text-slate-400">{CRONO_COPY.panelSubtitle}</p>
+          <h3 className="text-lg font-semibold text-white">{copy.panelTitle}</h3>
+          <p className="text-sm text-slate-400">{copy.panelSubtitle}</p>
         </div>
       </div>
 
@@ -97,7 +100,7 @@ export default function CronoChatPanel() {
         {messages.map((message) => (
           <div key={message.id} className={message.role === 'assistant' ? 'text-slate-100' : 'text-yellow-200'}>
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500 mb-1">
-              {message.role === 'assistant' ? CRONO_COPY.panelTitle : CRONO_COPY.userLabel}
+              {message.role === 'assistant' ? copy.panelTitle : copy.userLabel}
             </p>
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
           </div>
@@ -105,7 +108,7 @@ export default function CronoChatPanel() {
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{CRONO_COPY.suggestionLabel}</p>
+        <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{copy.suggestionLabel}</p>
         <div className="flex flex-wrap gap-2">
           {suggestions.map((suggestion) => (
             <button
@@ -131,7 +134,7 @@ export default function CronoChatPanel() {
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          placeholder={CRONO_COPY.inputPlaceholder}
+          placeholder={copy.inputPlaceholder}
           disabled={disabled}
           className="flex-1 rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-sm text-slate-100"
         />
@@ -141,7 +144,7 @@ export default function CronoChatPanel() {
           className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-black rounded-lg bg-yellow-400 hover:bg-yellow-300 disabled:opacity-60"
         >
           <Send className="w-4 h-4" />
-          {sending ? CRONO_COPY.sendingButton : CRONO_COPY.sendButton}
+          {sending ? copy.sendingButton : copy.sendButton}
         </button>
       </form>
     </section>

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { SHORTCUTS } from '../content/shortcuts';
+import { useLocale } from '@/app/contexts/LocaleContext';
 
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -12,6 +13,7 @@ function isTypingTarget(target: EventTarget | null) {
 
 export default function GlobalShortcuts() {
   const router = useRouter();
+  const { t } = useLocale();
   const [showHelp, setShowHelp] = useState(false);
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
@@ -98,21 +100,21 @@ export default function GlobalShortcuts() {
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Atajos</div>
-            <h4 id="shortcuts-title" className="mt-1 text-lg font-semibold text-white">Navegación rápida</h4>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-400/90">{t('shortcuts.title')}</div>
+            <h4 id="shortcuts-title" className="mt-1 text-lg font-semibold text-white">{t('shortcuts.subtitle')}</h4>
           </div>
           <button
             type="button"
             onClick={() => setShowHelp(false)}
             className="text-xs text-slate-400 hover:text-yellow-300"
           >
-            Cerrar
+            {t('common.close')}
           </button>
         </div>
         <div className="mt-4 space-y-2 text-sm text-slate-300">
           {SHORTCUTS.map((item) => (
             <div key={item.id} className="flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900/40 px-3 py-2">
-              <span>{item.label}</span>
+              <span>{t(item.labelKey)}</span>
               <span className="text-xs text-slate-400">{item.keys}</span>
             </div>
           ))}

@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { NAV_LABELS } from '../content/navigation';
+import { useLocale } from '@/app/contexts/LocaleContext';
 
 export default function BackToDashboard() {
+  const { t } = useLocale();
+
   return (
     <motion.div
       className="inline-flex mb-3"
@@ -17,7 +19,7 @@ export default function BackToDashboard() {
         className="group inline-flex items-center gap-2 text-sm text-gray-400 hover:text-yellow-400 transition-colors"
       >
         <span aria-hidden className="transition-transform group-hover:-translate-x-0.5">←</span>
-        <span>{NAV_LABELS.backToDashboard}</span>
+        <span>{t('navigation.backToDashboard')}</span>
       </Link>
     </motion.div>
   );
