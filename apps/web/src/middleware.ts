@@ -40,7 +40,7 @@ const DEFAULT_CSP = {
   frameAncestors: ["'none'"],
   objectSrc: ["'none'"],
   imgSrc: ["'self'", 'data:', 'https:'],
-  scriptSrc: ["'self'"],
+  scriptSrc: ["'self'", "'unsafe-inline'"],
   styleSrc: ["'self'", "'unsafe-inline'"],
   fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
   connectSrc: ["'self'"],
