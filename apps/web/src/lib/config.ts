@@ -14,6 +14,8 @@ const envSchema = z
     JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
     JWT_EXPIRES_IN: z.string().optional(),
     JWT_REFRESH_EXPIRES_IN: z.string().optional(),
+    JWT_ISSUER: z.string().optional(),
+    JWT_AUDIENCE: z.string().optional(),
 
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required').optional(),
 
@@ -22,6 +24,7 @@ const envSchema = z
     N8N_ENABLED: z.string().optional(),
     CORS_ALLOWED_ORIGINS: z.string().optional(),
     ALLOW_DEBUG_LINKS: z.string().optional(),
+    CSRF_ENFORCE: z.string().optional(),
 
     OBS_ENABLED: z.string().optional(),
     OBS_ENDPOINT: z.string().optional(),
@@ -102,6 +105,8 @@ function buildConfig() {
       secret: env.JWT_SECRET,
       expiresIn: env.JWT_EXPIRES_IN || '7d',
       refreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN || '30d',
+      issuer: env.JWT_ISSUER || 'cronostudio-web',
+      audience: env.JWT_AUDIENCE || 'cronostudio-users',
     },
 
     database: {
@@ -114,6 +119,7 @@ function buildConfig() {
 
     auth: {
       allowDebugLinks: (env.ALLOW_DEBUG_LINKS || 'false') === 'true' && !isProduction,
+      csrfEnforce: (env.CSRF_ENFORCE || (isProduction ? 'true' : 'false')) === 'true',
     },
 
     automation: {

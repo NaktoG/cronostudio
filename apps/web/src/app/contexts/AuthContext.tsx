@@ -30,6 +30,28 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const LAST_KNOWN_USER_KEY = 'cronostudio_user';
 const LOGOUT_MARKER_KEY = 'cronostudio_logout_marker';
+const CSRF_COOKIE_NAME = 'csrf_token';
+
+function getCookieValue(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    const match = document.cookie
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${name}=`));
+    if (!match) return null;
+    return decodeURIComponent(match.slice(name.length + 1));
+}
+
+function applyCsrfHeader(headers: Headers, method?: string) {
+    const normalizedMethod = (method || 'GET').toUpperCase();
+    if (normalizedMethod === 'GET' || normalizedMethod === 'HEAD' || normalizedMethod === 'OPTIONS') {
+        return;
+    }
+    const csrfToken = getCookieValue(CSRF_COOKIE_NAME);
+    if (csrfToken && !headers.has('x-csrf-token')) {
+        headers.set('x-csrf-token', csrfToken);
+    }
+}
 
 interface AuthProviderProps {
     children: ReactNode;
@@ -87,7 +109,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
                 const refreshResponse = await fetch('/api/auth/refresh', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: (() => {
+                        const headers = new Headers({ 'Content-Type': 'application/json' });
+                        applyCsrfHeader(headers, 'POST');
+                        return headers;
+                    })(),
                     credentials: 'include',
                     body: JSON.stringify({}),
                 });
@@ -129,9 +155,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: (() => {
+                    const headers = new Headers({ 'Content-Type': 'application/json' });
+                    applyCsrfHeader(headers, 'POST');
+                    return headers;
+                })(),
                 credentials: 'include',
                 body: JSON.stringify({ email, password }),
             });
@@ -158,9 +186,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             const response = await fetch('/api/auth/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: (() => {
+                    const headers = new Headers({ 'Content-Type': 'application/json' });
+                    applyCsrfHeader(headers, 'POST');
+                    return headers;
+                })(),
                 credentials: 'include',
                 body: JSON.stringify({ email, password, name }),
             });
@@ -192,7 +222,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
         fetch('/api/auth/logout', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: (() => {
+                const headers = new Headers({ 'Content-Type': 'application/json' });
+                applyCsrfHeader(headers, 'POST');
+                return headers;
+            })(),
             credentials: 'include',
         }).finally(() => {
             clearSession();
@@ -246,9 +280,11 @@ export function useAuthFetch() {
         }
 
         const headers = new Headers(baseOptions.headers);
+        const method = (baseOptions.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
         if (!headers.has('Content-Type') && baseOptions.body && !(baseOptions.body instanceof FormData)) {
             headers.set('Content-Type', 'application/json');
         }
+        applyCsrfHeader(headers, method);
 
         try {
             const response = await fetch(url, {

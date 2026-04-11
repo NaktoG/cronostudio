@@ -5,7 +5,7 @@ import type { CollaborationInviteRepository } from '@/domain/repositories/Collab
 export class PostgresCollaborationInviteRepository implements CollaborationInviteRepository {
   async listByInviter(invitedBy: string): Promise<CollaborationInvite[]> {
     const result = await query(
-      `SELECT id, email, role, invited_by, status, created_at, accepted_at
+      `SELECT id, email, role, invited_by, status, created_at, expires_at, accepted_at
        FROM collaboration_invites
        WHERE invited_by = $1
        ORDER BY created_at DESC`,
@@ -16,9 +16,9 @@ export class PostgresCollaborationInviteRepository implements CollaborationInvit
 
   async findPendingByEmail(email: string): Promise<CollaborationInvite | null> {
     const result = await query(
-      `SELECT id, email, role, invited_by, status, created_at, accepted_at
+      `SELECT id, email, role, invited_by, status, created_at, expires_at, accepted_at
        FROM collaboration_invites
-       WHERE email = $1 AND status = 'pending'
+       WHERE email = $1 AND status = 'pending' AND expires_at > NOW()
        LIMIT 1`,
       [email]
     );
@@ -28,9 +28,9 @@ export class PostgresCollaborationInviteRepository implements CollaborationInvit
 
   async findPendingByTokenHash(tokenHash: string): Promise<CollaborationInvite | null> {
     const result = await query(
-      `SELECT id, email, role, invited_by, status, created_at, accepted_at
+      `SELECT id, email, role, invited_by, status, created_at, expires_at, accepted_at
        FROM collaboration_invites
-       WHERE token_hash = $1 AND status = 'pending'
+       WHERE token_hash = $1 AND status = 'pending' AND expires_at > NOW()
        LIMIT 1`,
       [tokenHash]
     );
@@ -38,11 +38,11 @@ export class PostgresCollaborationInviteRepository implements CollaborationInvit
     return this.toDomain(result.rows[0]);
   }
 
-  async createInvite(input: { email: string; role: 'collaborator'; invitedBy: string; tokenHash: string }): Promise<void> {
+  async createInvite(input: { email: string; role: 'collaborator'; invitedBy: string; tokenHash: string; expiresAt: Date }): Promise<void> {
     await query(
-      `INSERT INTO collaboration_invites (email, role, invited_by, token_hash, status)
-       VALUES ($1, $2, $3, $4, 'pending')`,
-      [input.email, input.role, input.invitedBy, input.tokenHash]
+      `INSERT INTO collaboration_invites (email, role, invited_by, token_hash, status, expires_at)
+       VALUES ($1, $2, $3, $4, 'pending', $5)`,
+      [input.email, input.role, input.invitedBy, input.tokenHash, input.expiresAt]
     );
   }
 
@@ -63,6 +63,7 @@ export class PostgresCollaborationInviteRepository implements CollaborationInvit
       invitedBy: row.invited_by as string,
       status: row.status as 'pending' | 'accepted' | 'revoked',
       createdAt: new Date(row.created_at as string),
+      expiresAt: new Date(row.expires_at as string),
       acceptedAt: row.accepted_at ? new Date(row.accepted_at as string) : null,
     };
   }

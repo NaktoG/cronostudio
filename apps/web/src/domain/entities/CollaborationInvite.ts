@@ -7,5 +7,6 @@ export type CollaborationInvite = {
   invitedBy: string;
   status: CollaborationInviteStatus;
   createdAt: Date;
+  expiresAt: Date;
   acceptedAt?: Date | null;
 };
