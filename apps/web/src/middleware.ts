@@ -40,11 +40,15 @@ const DEFAULT_CSP = {
   frameAncestors: ["'none'"],
   objectSrc: ["'none'"],
   imgSrc: ["'self'", 'data:', 'https:'],
-  scriptSrc: ["'self'", "'unsafe-inline'"],
+  scriptSrc: ["'self'"],
   styleSrc: ["'self'", "'unsafe-inline'"],
   fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com'],
   connectSrc: ["'self'"],
 };
+
+function createNonce(): string {
+  return btoa(crypto.randomUUID());
+}
 
 function parseDirective(value: string | undefined, fallback: string[]) {
   if (!value) return fallback;
@@ -54,7 +58,7 @@ function parseDirective(value: string | undefined, fallback: string[]) {
     .filter(Boolean);
 }
 
-function buildCspHeader(): { header: string; reportOnly: boolean } {
+function buildCspHeader(nonce: string): { header: string; reportOnly: boolean } {
   const isProduction = process.env.NODE_ENV === 'production';
   const reportOnlyEnv = process.env.CSP_REPORT_ONLY;
   const reportOnly = reportOnlyEnv ? reportOnlyEnv === 'true' : !isProduction;
@@ -72,13 +76,19 @@ function buildCspHeader(): { header: string; reportOnly: boolean } {
     connectSrc: parseDirective(process.env.CSP_CONNECT_SRC, DEFAULT_CSP.connectSrc),
   };
 
+  const scriptSrc = [
+    ...directives.scriptSrc.filter((value) => value !== "'unsafe-inline'"),
+    `'nonce-${nonce}'`,
+    "'strict-dynamic'",
+  ];
+
   const parts = [
     `default-src ${directives.defaultSrc.join(' ')}`,
     `base-uri ${directives.baseUri.join(' ')}`,
     `frame-ancestors ${directives.frameAncestors.join(' ')}`,
     `object-src ${directives.objectSrc.join(' ')}`,
     `img-src ${directives.imgSrc.join(' ')}`,
-    `script-src ${directives.scriptSrc.join(' ')}`,
+    `script-src ${scriptSrc.join(' ')}`,
     `style-src ${directives.styleSrc.join(' ')}`,
     `font-src ${directives.fontSrc.join(' ')}`,
     `connect-src ${directives.connectSrc.join(' ')}`,
@@ -92,9 +102,10 @@ function buildCspHeader(): { header: string; reportOnly: boolean } {
   return { header: parts.join('; '), reportOnly };
 }
 
-function withCspHeaders(response: NextResponse) {
-  const { header, reportOnly } = buildCspHeader();
+function withCspHeaders(response: NextResponse, nonce: string) {
+  const { header, reportOnly } = buildCspHeader(nonce);
   response.headers.set(reportOnly ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy', header);
+  response.headers.set('x-nonce', nonce);
   return response;
 }
 
@@ -102,6 +113,9 @@ export function middleware(request: NextRequest) {
   const origin = request.headers.get('origin');
   const pathname = request.nextUrl.pathname;
   const isProduction = process.env.NODE_ENV === 'production';
+  const requestHeaders = new Headers(request.headers);
+  const nonce = createNonce();
+  requestHeaders.set('x-nonce', nonce);
 
   if (pathname.startsWith('/api') && request.method === 'OPTIONS') {
     if (isOriginAllowed(origin)) {
@@ -110,7 +124,11 @@ export function middleware(request: NextRequest) {
     return new NextResponse(null, { status: 403 });
   }
 
-  const response = NextResponse.next();
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
   if (pathname.startsWith('/api')) {
     if (isOriginAllowed(origin)) {
       return withCorsHeaders(response, origin);
@@ -119,7 +137,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (isProduction) {
-    return withCspHeaders(response);
+    return withCspHeaders(response, nonce);
   }
   return response;
 }
