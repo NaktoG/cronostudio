@@ -25,6 +25,9 @@ const envSchema = z
     CORS_ALLOWED_ORIGINS: z.string().optional(),
     ALLOW_DEBUG_LINKS: z.string().optional(),
     CSRF_ENFORCE: z.string().optional(),
+    CRONO_ASSISTANT_ENABLED: z.string().optional(),
+    OPENCLAW_GATEWAY_URL: z.string().optional(),
+    OPENCLAW_GATEWAY_TOKEN: z.string().optional(),
 
     OBS_ENABLED: z.string().optional(),
     OBS_ENDPOINT: z.string().optional(),
@@ -125,6 +128,12 @@ function buildConfig() {
     automation: {
       n8nBaseUrl: env.N8N_BASE_URL || 'http://localhost:5678',
       n8nEnabled: (env.N8N_ENABLED || 'false') === 'true',
+    },
+
+    assistant: {
+      enabled: (env.CRONO_ASSISTANT_ENABLED || 'false') === 'true',
+      gatewayUrl: env.OPENCLAW_GATEWAY_URL || 'http://127.0.0.1:18789',
+      gatewayToken: env.OPENCLAW_GATEWAY_TOKEN,
     },
 
     cors: {

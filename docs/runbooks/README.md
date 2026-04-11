@@ -4,3 +4,4 @@
 - [02 - Hetzner VPS](02-hetzner-vps.md)
 - [03 - Cutover n8n -> Go](03-go-backend-cutover.md)
 - [04 - Staging HTTPS + Deploy automation](04-staging-https-deploy.md)
+- [05 - OpenClaw Crono operations + security](05-openclaw-crono-operations.md)
