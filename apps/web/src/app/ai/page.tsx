@@ -8,6 +8,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import BackToDashboard from '../components/BackToDashboard';
 import ProtectedRoute from '../components/ProtectedRoute';
+import CronoChatPanel from '../components/CronoChatPanel';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useSearchParams } from 'next/navigation';
@@ -442,7 +443,7 @@ function AiStudioContent() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 pb-24 lg:pb-12 w-full">
-          <h1 className="sr-only">AI Studio</h1>
+          <h1 className="sr-only">Crono</h1>
           <motion.div
             className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between"
             initial={{ opacity: 0, y: -20 }}
@@ -455,9 +456,9 @@ function AiStudioContent() {
                   <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                     <Sparkles className="w-5 h-5" />
                   </span>
-                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">AI Studio</h2>
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">Crono</h2>
                 </div>
-                <p className="text-sm sm:text-base text-slate-300">Perfiles internos con flujo auto-first y modo manual para control fino.</p>
+                <p className="text-sm sm:text-base text-slate-300">Bienvenido a CronoStudio. Crono te ayuda a planificar y producir tus contenidos con flujo auto-first y control fino.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-3 justify-start sm:justify-end">
@@ -484,6 +485,8 @@ function AiStudioContent() {
 
           <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-6">
             <div className="space-y-6 min-w-0">
+              <CronoChatPanel />
+
               <section className="rounded-2xl border border-gray-800 bg-gray-950/60 p-5 shadow-[0_12px_30px_rgba(0,0,0,0.25)]">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

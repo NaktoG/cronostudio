@@ -8,7 +8,7 @@ export const NAV_LABELS = {
   seo: 'SEO',
   channels: 'Canales',
   analytics: 'Analitica',
-  aiStudio: 'AI Studio',
+  aiStudio: 'Crono',
   guide: 'Guia',
   settings: 'Configuracion',
   backToDashboard: 'Volver al dashboard',

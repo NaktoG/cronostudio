@@ -35,7 +35,7 @@ const AUTH_ROUTES = new Set([
 
 const PAGE_TIPS: Record<string, { title: string; description: string }> = {
   '/ai': {
-    title: 'AI Studio',
+    title: 'Crono',
     description: 'Usa los perfiles para generar ideas, guiones, retencion y titulos con salida aplicada.',
   },
   '/ideas': {
@@ -70,7 +70,7 @@ const PAGE_TIPS: Record<string, { title: string; description: string }> = {
 
 const PAGE_STEPS: Record<string, { title: string; items: string[] }> = {
   '/ai': {
-    title: 'AI Studio paso a paso',
+    title: 'Crono paso a paso',
     items: [
       'Selecciona canal y perfil (Evergreen AI, Script Architect, Retention Editor, Titles & Thumbs).',
       'Completa el brief con contexto real del canal.',
@@ -82,7 +82,7 @@ const PAGE_STEPS: Record<string, { title: string; items: string[] }> = {
     items: [
       'Revisa ideas draft y ajusta el angulo.',
       'Aprueba las ideas con potencial evergreen.',
-      'Enviala a guion desde AI Studio.',
+      'Enviala a guion desde Crono.',
     ],
   },
   '/scripts': {
@@ -114,7 +114,7 @@ const PAGE_STEPS: Record<string, { title: string; items: string[] }> = {
     items: [
       'Crea o conecta el canal.',
       'Verifica nombre y datos.',
-      'Vuelve a AI Studio para generar ideas.',
+      'Vuelve a Crono para generar ideas.',
     ],
   },
   '/': {
@@ -347,10 +347,10 @@ export default function GuidePanel() {
       {
         key: 'ideas',
         title: 'Genera ideas',
-        description: 'Usa AI Studio para generar ideas evergreen.',
+        description: 'Usa Crono para generar ideas evergreen.',
         complete: counts.ideasApproved > 0,
         href: '/ai',
-        actionLabel: 'Ir a AI Studio',
+        actionLabel: 'Ir a Crono',
       },
       {
         key: 'scripts',

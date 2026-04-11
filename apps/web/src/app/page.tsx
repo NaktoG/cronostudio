@@ -1786,7 +1786,7 @@ export function DashboardContent() {
                       showCreateButton={false}
                       emptyActions={[
                         { label: 'Crear producción', onClick: () => setShowModal(true) },
-                        { label: 'AI Studio', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
+                        { label: 'Crono', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
                       ]}
                       selectedIds={selectedProductionIds}
                       onToggleSelection={toggleProductionSelection}
