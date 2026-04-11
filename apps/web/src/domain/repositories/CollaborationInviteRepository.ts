@@ -4,6 +4,6 @@ export interface CollaborationInviteRepository {
   listByInviter(invitedBy: string): Promise<CollaborationInvite[]>;
   findPendingByEmail(email: string): Promise<CollaborationInvite | null>;
   findPendingByTokenHash(tokenHash: string): Promise<CollaborationInvite | null>;
-  createInvite(input: { email: string; role: 'collaborator'; invitedBy: string; tokenHash: string }): Promise<void>;
+  createInvite(input: { email: string; role: 'collaborator'; invitedBy: string; tokenHash: string; expiresAt: Date }): Promise<void>;
   markAccepted(inviteId: string): Promise<void>;
 }

@@ -46,7 +46,7 @@ export class AuthService {
         const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
 
         // Create user
-        const user = await this.userRepository.create({ ...input, role: input.role ?? 'owner' }, passwordHash);
+        const user = await this.userRepository.create({ ...input, role: input.role ?? 'collaborator' }, passwordHash);
 
         // Generate token
         const { refreshToken, sessionId } = await this.createRefreshSession(user.id);
@@ -67,7 +67,7 @@ export class AuthService {
         }
 
         const passwordHash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
-        const user = await this.userRepository.create({ ...input, role: input.role ?? 'owner' }, passwordHash);
+        const user = await this.userRepository.create({ ...input, role: input.role ?? 'collaborator' }, passwordHash);
         this.trackMetric('auth.register.success');
         return user;
     }
@@ -144,7 +144,11 @@ export class AuthService {
      */
     verifyToken(token: string): AuthTokenPayload {
         try {
-            const decoded = jwt.verify(token, config.jwt.secret) as AuthTokenPayload;
+            const decoded = jwt.verify(token, config.jwt.secret, {
+                issuer: config.jwt.issuer,
+                audience: config.jwt.audience,
+                algorithms: ['HS256'],
+            }) as AuthTokenPayload;
             return decoded;
         } catch (error) {
             if (error instanceof jwt.TokenExpiredError) {
@@ -182,6 +186,9 @@ export class AuthService {
         }
         const newHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
         await this.userRepository.updatePassword(userId, newHash);
+        if (this.sessionRepository) {
+            await this.sessionRepository.deleteByUserId(userId);
+        }
         this.trackMetric('auth.password.change');
     }
 
@@ -213,7 +220,12 @@ export class AuthService {
         return jwt.sign(
             { userId: user.id, email: user.email, role: user.role, sid: sessionId },
             config.jwt.secret,
-            { expiresIn }
+            {
+                expiresIn,
+                issuer: config.jwt.issuer,
+                audience: config.jwt.audience,
+                algorithm: 'HS256',
+            }
         );
     }
 

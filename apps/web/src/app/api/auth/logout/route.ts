@@ -6,7 +6,7 @@ import { AuthService } from '@/application/services/AuthService';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { PostgresSessionRepository } from '@/infrastructure/repositories/PostgresSessionRepository';
 import { logger } from '@/lib/logger';
-import { clearAccessCookie, clearRefreshCookie, getRefreshCookie } from '@/lib/authCookies';
+import { clearAccessCookie, clearCsrfCookie, clearRefreshCookie, getRefreshCookie } from '@/lib/authCookies';
 
 const userRepository = new PostgresUserRepository();
 const sessionRepository = new PostgresSessionRepository();
@@ -30,6 +30,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
     const response = NextResponse.json({ message: 'Sesion cerrada' });
     clearRefreshCookie(response);
     clearAccessCookie(response);
+    clearCsrfCookie(response);
     return withSecurityHeaders(response);
   } catch (error) {
     if (error instanceof Error && error.message.includes('Validation error')) {

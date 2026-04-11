@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { config } from '@/lib/config';
 
 const REFRESH_COOKIE = 'refresh_token';
 const ACCESS_COOKIE = 'access_token';
+const CSRF_COOKIE = 'csrf_token';
 
 function parseDurationToSeconds(value: string): number {
   const match = /^([0-9]+)([smhd])$/.exec(value);
@@ -59,12 +61,38 @@ export function clearAccessCookie(response: NextResponse) {
   });
 }
 
+export function ensureCsrfCookie(response: NextResponse): string {
+  const token = crypto.randomBytes(32).toString('hex');
+  response.cookies.set(CSRF_COOKIE, token, {
+    httpOnly: false,
+    secure: config.isProduction,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: parseDurationToSeconds(config.jwt.refreshExpiresIn),
+  });
+  return token;
+}
+
+export function clearCsrfCookie(response: NextResponse) {
+  response.cookies.set(CSRF_COOKIE, '', {
+    httpOnly: false,
+    secure: config.isProduction,
+    sameSite: 'strict',
+    path: '/',
+    maxAge: 0,
+  });
+}
+
 export function getRefreshCookie(request: Request | NextRequest): string | null {
   return readCookie(request, REFRESH_COOKIE);
 }
 
 export function getAccessCookie(request: Request | NextRequest): string | null {
   return readCookie(request, ACCESS_COOKIE);
+}
+
+export function getCsrfCookie(request: Request | NextRequest): string | null {
+  return readCookie(request, CSRF_COOKIE);
 }
 
 function readCookie(request: Request | NextRequest, name: string): string | null {

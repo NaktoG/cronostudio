@@ -54,7 +54,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
             return emailLimit;
         }
 
-        const allowPublicSignup = process.env.ALLOW_PUBLIC_SIGNUP !== 'false';
+        const allowPublicSignup = process.env.ALLOW_PUBLIC_SIGNUP === 'true';
         if (config.isProduction && !allowPublicSignup) {
             return withSecurityHeaders(NextResponse.json({ error: 'Registro deshabilitado' }, { status: 403 }));
         }

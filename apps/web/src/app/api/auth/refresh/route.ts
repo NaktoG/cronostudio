@@ -6,7 +6,7 @@ import { AuthService, AuthError } from '@/application/services/AuthService';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
 import { PostgresSessionRepository } from '@/infrastructure/repositories/PostgresSessionRepository';
 import { logger } from '@/lib/logger';
-import { getRefreshCookie, setAccessCookie, setRefreshCookie } from '@/lib/authCookies';
+import { ensureCsrfCookie, getRefreshCookie, setAccessCookie, setRefreshCookie } from '@/lib/authCookies';
 
 const userRepository = new PostgresUserRepository();
 const sessionRepository = new PostgresSessionRepository();
@@ -39,6 +39,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
 
     setAccessCookie(response, result.token);
     setRefreshCookie(response, result.refreshToken);
+    ensureCsrfCookie(response);
     logger.info('auth.refresh.success', { userId: result.user.id });
     return withSecurityHeaders(response);
   } catch (error) {

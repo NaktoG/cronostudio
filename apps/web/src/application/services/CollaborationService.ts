@@ -5,6 +5,8 @@ import type { UserRepository } from '@/domain/repositories/UserRepository';
 import { generateToken, hashToken } from '@/lib/token';
 import { config } from '@/lib/config';
 
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export class CollaborationService {
   constructor(
     private inviteRepository: CollaborationInviteRepository,
@@ -38,8 +40,9 @@ export class CollaborationService {
     const token = generateToken();
     const tokenHash = hashToken(token);
     const role = input.role ?? 'collaborator';
+    const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
 
-    await this.inviteRepository.createInvite({ email, role, invitedBy: input.invitedBy, tokenHash });
+    await this.inviteRepository.createInvite({ email, role, invitedBy: input.invitedBy, tokenHash, expiresAt });
     const inviteUrl = `${config.app.baseUrl}/invite?token=${token}`;
     return { inviteUrl };
   }

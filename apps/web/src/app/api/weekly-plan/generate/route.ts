@@ -44,6 +44,19 @@ export const POST = requireRoles(['owner'])(rateLimit(API_RATE_LIMIT)(async (req
   try {
     await client.query('BEGIN');
 
+    const ownedChannel = await client.query(
+      `SELECT id
+       FROM channels
+       WHERE id = $1 AND user_id = $2
+       LIMIT 1`,
+      [channelId, userId]
+    );
+
+    if (ownedChannel.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return withSecurityHeaders(NextResponse.json({ error: 'Canal no encontrado o no autorizado' }, { status: 404 }));
+    }
+
     const existing = await client.query(
       `SELECT id, title, planned_publish_day, status
        FROM productions

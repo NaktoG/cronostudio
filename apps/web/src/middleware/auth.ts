@@ -2,10 +2,11 @@
 // JWT authentication middleware
 
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { config } from '@/lib/config';
 import { isValidUserRole } from '@/domain/value-objects/UserRole';
-import { getAccessCookie } from '@/lib/authCookies';
+import { getAccessCookie, getCsrfCookie } from '@/lib/authCookies';
 import type { User } from '@/domain/entities/User';
 import { PostgresSessionRepository } from '@/infrastructure/repositories/PostgresSessionRepository';
 
@@ -27,6 +28,10 @@ export interface JWTPayload {
 export interface AuthenticatedRequest extends NextRequest {
   user: JWTPayload;
 }
+
+type TokenSource = 'bearer' | 'cookie';
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 function getValidatedRole(role: unknown): User['role'] | null {
   if (typeof role !== 'string') return null;
@@ -115,10 +120,22 @@ export async function getAuthUser(request: NextRequest): Promise<JWTPayload | nu
   if (cached) {
     return cached;
   }
-  const token = extractTokenFromRequest(request);
-  if (!token) return null;
+  const extracted = extractTokenFromRequest(request);
+  if (!extracted) return null;
+
+  if (config.auth.csrfEnforce && extracted.source === 'cookie' && !SAFE_METHODS.has(request.method)) {
+    if (!hasValidCsrfToken(request)) {
+      return null;
+    }
+  }
+
+  const token = extracted.token;
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const payload = jwt.verify(token, JWT_SECRET, {
+      issuer: config.jwt.issuer,
+      audience: config.jwt.audience,
+      algorithms: ['HS256'],
+    }) as JWTPayload;
     const role = getValidatedRole(payload.role);
     if (!role) return null;
 
@@ -141,11 +158,23 @@ export async function getAuthUser(request: NextRequest): Promise<JWTPayload | nu
   }
 }
 
-function extractTokenFromRequest(request: NextRequest): string | null {
+function extractTokenFromRequest(request: NextRequest): { token: string; source: TokenSource } | null {
   const authHeader = request.headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authHeader.slice(7);
+    return { token: authHeader.slice(7), source: 'bearer' };
   }
   const cookieToken = getAccessCookie(request);
-  return cookieToken || null;
+  if (!cookieToken) return null;
+  return { token: cookieToken, source: 'cookie' };
+}
+
+function hasValidCsrfToken(request: NextRequest): boolean {
+  const expected = getCsrfCookie(request);
+  const provided = request.headers.get('x-csrf-token') || request.headers.get('x-xsrf-token');
+  if (!expected || !provided) return false;
+
+  const expectedBuf = Buffer.from(expected);
+  const providedBuf = Buffer.from(provided);
+  if (expectedBuf.length !== providedBuf.length) return false;
+  return crypto.timingSafeEqual(expectedBuf, providedBuf);
 }

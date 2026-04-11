@@ -6,7 +6,7 @@ import { validateInput, LoginSchema } from '@/lib/validation';
 import { withSecurityHeaders } from '@/middleware/auth';
 import { rateLimit, LOGIN_RATE_LIMIT, enforceRateLimit } from '@/middleware/rateLimit';
 import { logger } from '@/lib/logger';
-import { setAccessCookie, setRefreshCookie } from '@/lib/authCookies';
+import { ensureCsrfCookie, setAccessCookie, setRefreshCookie } from '@/lib/authCookies';
 
 // Clean Architecture services
 import { AuthService, AuthError } from '@/application/services/AuthService';
@@ -53,6 +53,7 @@ export const POST = rateLimit(LOGIN_RATE_LIMIT)(async (request: NextRequest) => 
 
         setAccessCookie(response, result.token);
         setRefreshCookie(response, result.refreshToken);
+        ensureCsrfCookie(response);
 
         return withSecurityHeaders(response);
     } catch (error) {
