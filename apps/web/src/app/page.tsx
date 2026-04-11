@@ -15,9 +15,11 @@ import ProductionPipeline from './components/ProductionPipeline';
 import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
+import { useLocale } from './contexts/LocaleContext';
 import { IMPACT_METRICS } from '@/app/content/metrics';
 import { useToast } from './contexts/ToastContext';
-import { DASHBOARD_COPY, STAGE_LABELS } from './content/dashboard';
+import { getDashboardCopy, getStageLabels } from './content/dashboard';
+import { getLandingCopy } from './content/landing';
 import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/status/weekly';
 import { SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 import useDialogFocus from './hooks/useDialogFocus';
@@ -96,20 +98,20 @@ interface Channel {
   name: string;
 }
 
-function generatePriorityActions(productions: Production[]): PriorityAction[] {
+function generatePriorityActions(productions: Production[], dashboardCopy: ReturnType<typeof getDashboardCopy>): PriorityAction[] {
   const actions: PriorityAction[] = [];
   for (const prod of productions) {
     if (prod.status === 'scripting' && (!prod.script_status || prod.script_status === 'draft')) {
-      actions.push({ id: prod.id, type: 'script', title: DASHBOARD_COPY.priorityActions.script, productionTitle: prod.title, productionId: prod.id, urgency: 'high' });
+      actions.push({ id: prod.id, type: 'script', title: dashboardCopy.priorityActions.script, productionTitle: prod.title, productionId: prod.id, urgency: 'high' });
     }
     if ((prod.status === 'editing' || prod.status === 'shorts') && (!prod.thumbnail_status || prod.thumbnail_status === 'pending')) {
-      actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: DASHBOARD_COPY.priorityActions.thumbnail, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
+      actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: dashboardCopy.priorityActions.thumbnail, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
     }
     if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < SEO_SCORE_MIN_READY)) {
-      actions.push({ id: `${prod.id}-seo`, type: 'seo', title: DASHBOARD_COPY.priorityActions.seo, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
+      actions.push({ id: `${prod.id}-seo`, type: 'seo', title: dashboardCopy.priorityActions.seo, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
     }
     if (prod.status === 'shorts' && prod.shorts_count === 0) {
-      actions.push({ id: `${prod.id}-short`, type: 'short', title: DASHBOARD_COPY.priorityActions.shorts, productionTitle: prod.title, productionId: prod.id, urgency: 'low' });
+      actions.push({ id: `${prod.id}-short`, type: 'short', title: dashboardCopy.priorityActions.shorts, productionTitle: prod.title, productionId: prod.id, urgency: 'low' });
     }
   }
   const urgencyOrder = { high: 0, medium: 1, low: 2 };
@@ -277,8 +279,11 @@ function OnboardingTour({
 
 export function DashboardContent() {
   const { isAuthenticated, logout } = useAuth();
+  const { locale } = useLocale();
   const authFetch = useAuthFetch();
   const { addToast } = useToast();
+  const dashboardCopy = useMemo(() => getDashboardCopy(locale), [locale]);
+  const stageLabels = useMemo(() => getStageLabels(locale), [locale]);
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams?.toString() ?? '';
   const channelIdParam = searchParams?.get('channelId') ?? '';
@@ -621,12 +626,12 @@ export function DashboardContent() {
         setNewTitle('');
         setShowModal(false);
         fetchData();
-      addToast(DASHBOARD_COPY.toasts.created, 'success');
+      addToast(dashboardCopy.toasts.created, 'success');
       } else {
-      addToast(DASHBOARD_COPY.toasts.createFailed, 'error');
+      addToast(dashboardCopy.toasts.createFailed, 'error');
       }
     } catch (e) {
-      addToast(DASHBOARD_COPY.toasts.createError, 'error');
+      addToast(dashboardCopy.toasts.createError, 'error');
       console.error('Error:', e);
     }
   };
@@ -728,10 +733,9 @@ export function DashboardContent() {
     router.replace(query ? `/?${query}` : '/');
   };
 
-  const stageLabels: Record<keyof PipelineStats, string> = STAGE_LABELS;
   const resolveStageLabel = (status: string) => stageLabels[status as keyof PipelineStats] ?? status;
   const weeklyStyle = weeklyStatus ? WEEKLY_STATUS_STYLES[weeklyStatus.status] : WEEKLY_STATUS_STYLES.OK;
-  const nextConditionText = weeklyStatus?.nextCondition?.label ?? DASHBOARD_COPY.weeklyStatus.noNext;
+  const nextConditionText = weeklyStatus?.nextCondition?.label ?? dashboardCopy.weeklyStatus.noNext;
   const nextConditionDue = weeklyStatus?.nextCondition?.dueAt
     ? formatDateTime(weeklyStatus.nextCondition.dueAt)
     : null;
@@ -1082,7 +1086,7 @@ export function DashboardContent() {
     setTourStep((step) => Math.max(step - 1, 0));
   };
 
-  const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions);
+  const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions, dashboardCopy);
   const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
   const publishMissing = publishChecklist
     ? [
@@ -1161,12 +1165,12 @@ export function DashboardContent() {
         const data = await response.json();
         throw new Error(data.error || 'Error al programar publicación');
       }
-      addToast(DASHBOARD_COPY.toasts.scheduled, 'success');
+      addToast(dashboardCopy.toasts.scheduled, 'success');
       setScheduleProductionId('');
       setScheduleDate('');
       fetchData();
     } catch (error) {
-      addToast(error instanceof Error ? error.message : DASHBOARD_COPY.toasts.scheduleError, 'error');
+      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.scheduleError, 'error');
     }
   };
 
@@ -1180,10 +1184,10 @@ export function DashboardContent() {
         const data = await response.json();
         throw new Error(data.error || 'Error al cancelar publicación');
       }
-      addToast(DASHBOARD_COPY.toasts.canceled, 'success');
+      addToast(dashboardCopy.toasts.canceled, 'success');
       fetchData();
     } catch (error) {
-      addToast(error instanceof Error ? error.message : DASHBOARD_COPY.toasts.cancelError, 'error');
+      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.cancelError, 'error');
     }
   };
 
@@ -1207,20 +1211,20 @@ export function DashboardContent() {
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-col gap-2">
                   <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
-                    {DASHBOARD_COPY.context.title}
+                    {dashboardCopy.context.title}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
                     <span className="rounded-full border border-gray-800 px-3 py-1 text-slate-200">
-                      {DASHBOARD_COPY.context.isoWeek}: {weekLabel}
+                      {dashboardCopy.context.isoWeek}: {weekLabel}
                     </span>
                     {goalData && (
                       <span className="rounded-full border border-gray-800 px-3 py-1 text-slate-200">
-                        {DASHBOARD_COPY.context.goal}: {weeklyTarget} {DASHBOARD_COPY.context.videos} · {goalDays} · {goalData.horaCorte}
+                        {dashboardCopy.context.goal}: {weeklyTarget} {dashboardCopy.context.videos} · {goalDays} · {goalData.horaCorte}
                       </span>
                     )}
                     {weeklyTarget > 0 && (
                       <span className="rounded-full border border-gray-800 px-3 py-1 text-slate-200">
-                        {DASHBOARD_COPY.context.published}: {publishedCount}/{weeklyTarget}
+                        {dashboardCopy.context.published}: {publishedCount}/{weeklyTarget}
                       </span>
                     )}
                   </div>
@@ -1251,13 +1255,13 @@ export function DashboardContent() {
                   )}
                   {isDefaultChannel && channelName && (
                     <p className="text-xs text-amber-200">
-                      {DASHBOARD_COPY.context.defaultChannel}: {channelName}
+                      {dashboardCopy.context.defaultChannel}: {channelName}
                     </p>
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">
-                    {DASHBOARD_COPY.context.channel}
+                    {dashboardCopy.context.channel}
                   </label>
                   <select
                     value={selectedChannelId}
@@ -1265,7 +1269,7 @@ export function DashboardContent() {
                     className="w-full min-w-[220px] rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-white"
                     disabled={channels.length === 0}
                   >
-                    <option value="">{channels.length === 0 ? DASHBOARD_COPY.context.noChannels : DASHBOARD_COPY.context.selectChannel}</option>
+                    <option value="">{channels.length === 0 ? dashboardCopy.context.noChannels : dashboardCopy.context.selectChannel}</option>
                     {channels.map((channel) => (
                       <option key={channel.id} value={channel.id}>
                         {channel.name}
@@ -1387,13 +1391,13 @@ export function DashboardContent() {
                 <div>
                   <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-yellow-400/90 mb-3">
                     <Sparkles className="w-4 h-4" />
-                    {DASHBOARD_COPY.header.tag}
+                    {dashboardCopy.header.tag}
                   </div>
                   <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold text-white mb-3">
-                    {DASHBOARD_COPY.header.title}
+                    {dashboardCopy.header.title}
                   </h1>
                   <p className="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl">
-                    {DASHBOARD_COPY.header.subtitle}
+                    {dashboardCopy.header.subtitle}
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -1408,7 +1412,7 @@ export function DashboardContent() {
                     whileTap={reduceMotion ? undefined : { scale: 0.98 }}
                   >
             <Plus className="w-4 h-4" />
-            {DASHBOARD_COPY.fab.label}
+            {dashboardCopy.fab.label}
                   </motion.button>
                   <button
                     type="button"
@@ -1480,15 +1484,15 @@ export function DashboardContent() {
                       transition={{ duration: 0.3 }}
                     >
                       <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-3 text-center sm:text-left">
-                        {DASHBOARD_COPY.weeklyStreak.title}
+                        {dashboardCopy.weeklyStreak.title}
                       </div>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
                         <div>
-                          <p className="text-xs text-slate-400">{DASHBOARD_COPY.weeklyStreak.current}</p>
+                          <p className="text-xs text-slate-400">{dashboardCopy.weeklyStreak.current}</p>
                           <p className="text-lg font-semibold text-white">🔥 {streakCurrent} semanas</p>
                         </div>
                         <div className="text-center sm:text-right">
-                          <p className="text-xs text-slate-400">{DASHBOARD_COPY.weeklyStreak.best}</p>
+                          <p className="text-xs text-slate-400">{dashboardCopy.weeklyStreak.best}</p>
                           <p className="text-lg font-semibold text-white">🏆 {streakBest} semanas</p>
                         </div>
                       </div>
@@ -1687,11 +1691,11 @@ export function DashboardContent() {
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-center sm:text-left">
                           <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
-                            {DASHBOARD_COPY.weeklyStatus.title}
+                            {dashboardCopy.weeklyStatus.title}
                           </div>
                           {weeklyStatus?.channel && (
                             <p className="text-xs text-slate-400 mt-1">
-                              {DASHBOARD_COPY.weeklyStatus.channel}: {weeklyStatus.channel.name}
+                              {dashboardCopy.weeklyStatus.channel}: {weeklyStatus.channel.name}
                             </p>
                           )}
                         </div>
@@ -1702,7 +1706,7 @@ export function DashboardContent() {
                       </div>
                       <div className="mt-4 space-y-2">
                         <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">
-                          {DASHBOARD_COPY.weeklyStatus.next}
+                          {dashboardCopy.weeklyStatus.next}
                         </div>
                         <p className={`text-sm ${weeklyStyle.text}`}>{nextConditionText}</p>
                         {nextConditionDue && (
@@ -1725,7 +1729,7 @@ export function DashboardContent() {
                      >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-800 bg-gray-900/60">
                         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                          <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.pipeline.ideasActive}</span>
+                          <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{dashboardCopy.pipeline.ideasActive}</span>
                           <button
                             type="button"
                             onClick={() => setActiveStage(null)}
@@ -1735,12 +1739,12 @@ export function DashboardContent() {
                             <span aria-hidden="true">×</span>
                           </button>
                         </div>
-                          <span className="text-xs text-slate-400">{filteredIdeas.length} {DASHBOARD_COPY.pipeline.ideasCountLabel}</span>
+                          <span className="text-xs text-slate-400">{filteredIdeas.length} {dashboardCopy.pipeline.ideasCountLabel}</span>
                       </div>
                         <div className="divide-y divide-gray-800/50">
                           {filteredIdeas.length === 0 ? (
                           <div className="px-4 sm:px-5 py-6 text-slate-300">
-                            <p className="mb-3">{DASHBOARD_COPY.pipeline.noIdeas}</p>
+                            <p className="mb-3">{dashboardCopy.pipeline.noIdeas}</p>
                             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                               <button
                                 type="button"
@@ -1782,7 +1786,7 @@ export function DashboardContent() {
                       onCreateNew={() => setShowModal(true)}
                       filterLabel={activeStage ? stageLabels[activeStage] : null}
                       onClearFilter={() => setActiveStage(null)}
-                      title={activeStage ? DASHBOARD_COPY.pipeline.inStage : DASHBOARD_COPY.pipeline.active}
+                      title={activeStage ? dashboardCopy.pipeline.inStage : dashboardCopy.pipeline.active}
                       showCreateButton={false}
                       emptyActions={[
                         { label: 'Crear producción', onClick: () => setShowModal(true) },
@@ -2042,8 +2046,8 @@ export function DashboardContent() {
                     >
                       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
                         <div className="text-center sm:text-left">
-                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{DASHBOARD_COPY.calendar.title}</div>
-                          <p className="text-xs sm:text-sm text-slate-300">{DASHBOARD_COPY.calendar.subtitle}</p>
+                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{dashboardCopy.calendar.title}</div>
+                          <p className="text-xs sm:text-sm text-slate-300">{dashboardCopy.calendar.subtitle}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="flex rounded-full border border-gray-700 overflow-hidden">
@@ -2056,7 +2060,7 @@ export function DashboardContent() {
                                   : 'text-slate-300'
                               }`}
                             >
-                              {DASHBOARD_COPY.calendar.month}
+                              {dashboardCopy.calendar.month}
                             </button>
                             <button
                               type="button"
@@ -2067,7 +2071,7 @@ export function DashboardContent() {
                                   : 'text-slate-300'
                               }`}
                             >
-                              {DASHBOARD_COPY.calendar.week}
+                              {dashboardCopy.calendar.week}
                             </button>
                           </div>
                           <button
@@ -2092,7 +2096,7 @@ export function DashboardContent() {
                       </div>
 
                       <div className="grid grid-cols-7 gap-1 sm:gap-2 text-[9px] sm:text-[10px] text-slate-400 mb-2">
-                        {DASHBOARD_COPY.calendar.weekdays.map((day) => (
+                        {dashboardCopy.calendar.weekdays.map((day) => (
                           <span key={day} className="text-center">{day}</span>
                         ))}
                       </div>
@@ -2129,13 +2133,13 @@ export function DashboardContent() {
                       </div>
 
                       <div className="mt-4 space-y-3">
-                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">{DASHBOARD_COPY.calendar.schedule}</div>
+                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">{dashboardCopy.calendar.schedule}</div>
                         <select
                           value={scheduleProductionId}
                           onChange={(event) => setScheduleProductionId(event.target.value)}
                           className="w-full rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-white"
                         >
-                          <option value="">{DASHBOARD_COPY.calendar.selectContent}</option>
+                          <option value="">{dashboardCopy.calendar.selectContent}</option>
                           {activeProductions.map((production) => (
                             <option key={production.id} value={production.id}>
                               {production.title}
@@ -2154,7 +2158,7 @@ export function DashboardContent() {
                             onClick={handleSchedule}
                             className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-sm font-semibold text-black hover:bg-yellow-300"
                           >
-                            {DASHBOARD_COPY.calendar.scheduleAction}
+                            {dashboardCopy.calendar.scheduleAction}
                           </button>
                           <button
                             type="button"
@@ -2164,17 +2168,17 @@ export function DashboardContent() {
                             }}
                             className="w-full rounded-lg border border-gray-700 px-3 py-2 text-sm text-slate-200 hover:bg-gray-800"
                           >
-                            {DASHBOARD_COPY.calendar.clear}
+                            {dashboardCopy.calendar.clear}
                           </button>
                         </div>
                       </div>
 
                       <div className="mt-5 border-t border-gray-800 pt-4">
-                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em] mb-3">{DASHBOARD_COPY.calendar.agenda}</div>
+                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em] mb-3">{dashboardCopy.calendar.agenda}</div>
                         {selectedDate ? (
                           <div className="space-y-2">
                             {(scheduledByDate.get(selectedDate) || []).length === 0 && (
-                              <p className="text-xs text-slate-500">{DASHBOARD_COPY.calendar.emptyDay}</p>
+                              <p className="text-xs text-slate-500">{dashboardCopy.calendar.emptyDay}</p>
                             )}
                             {(scheduledByDate.get(selectedDate) || []).map((production) => (
                               <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
@@ -2189,14 +2193,14 @@ export function DashboardContent() {
                                     }}
                                     className="text-yellow-300 hover:text-yellow-200"
                                   >
-                                    {DASHBOARD_COPY.calendar.reschedule}
+                                    {dashboardCopy.calendar.reschedule}
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleUnschedule(production.id)}
                                     className="text-red-300 hover:text-red-200"
                                   >
-                                    {DASHBOARD_COPY.calendar.cancel}
+                                    {dashboardCopy.calendar.cancel}
                                   </button>
                                 </div>
                               </div>
@@ -2205,7 +2209,7 @@ export function DashboardContent() {
                         ) : (
                           <div className="space-y-2">
                             {upcomingScheduled.length === 0 ? (
-                              <p className="text-xs text-slate-500">{DASHBOARD_COPY.calendar.emptyUpcoming}</p>
+                              <p className="text-xs text-slate-500">{dashboardCopy.calendar.emptyUpcoming}</p>
                             ) : (
                               upcomingScheduled.map((production) => (
                                 <div key={production.id} className="flex flex-col gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between">
@@ -2221,14 +2225,14 @@ export function DashboardContent() {
                                       }}
                                       className="text-yellow-300 hover:text-yellow-200"
                                     >
-                                      {DASHBOARD_COPY.calendar.reschedule}
+                                      {dashboardCopy.calendar.reschedule}
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => handleUnschedule(production.id)}
                                       className="text-red-300 hover:text-red-200"
                                     >
-                                      {DASHBOARD_COPY.calendar.cancel}
+                                      {dashboardCopy.calendar.cancel}
                                     </button>
                                   </div>
                                 </div>
@@ -2250,9 +2254,9 @@ export function DashboardContent() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.2 }}
                     >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4 text-center sm:text-left">{DASHBOARD_COPY.social.title}</div>
+                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4 text-center sm:text-left">{dashboardCopy.social.title}</div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3">
-                        {DASHBOARD_COPY.social.items.map((item) => {
+                        {dashboardCopy.social.items.map((item) => {
                           const iconMap: Record<string, ReactNode> = {
                             Instagram: <Instagram className="w-4 h-4" />,
                             TikTok: <Music2 className="w-4 h-4" />,
@@ -2270,7 +2274,7 @@ export function DashboardContent() {
                                   <p className="text-xs text-slate-400">{item.description}</p>
                                 </div>
                               </div>
-                              <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">{DASHBOARD_COPY.social.connect}</button>
+                              <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">{dashboardCopy.social.connect}</button>
                             </div>
                           );
                         })}
@@ -2458,12 +2462,12 @@ export function DashboardContent() {
             animate={{ scale: 1, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="dashboard-modal-title" className="text-2xl font-semibold text-white mb-5">{DASHBOARD_COPY.modal.title}</h3>
+            <h3 id="dashboard-modal-title" className="text-2xl font-semibold text-white mb-5">{dashboardCopy.modal.title}</h3>
             <input
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder={DASHBOARD_COPY.modal.placeholder}
+              placeholder={dashboardCopy.modal.placeholder}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-lg text-white placeholder-gray-500 focus:border-yellow-500 focus:outline-none mb-5"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
@@ -2475,7 +2479,7 @@ export function DashboardContent() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {DASHBOARD_COPY.modal.cancel}
+                {dashboardCopy.modal.cancel}
               </motion.button>
               <motion.button
                 onClick={handleCreate}
@@ -2483,7 +2487,7 @@ export function DashboardContent() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {DASHBOARD_COPY.modal.create}
+                {dashboardCopy.modal.create}
               </motion.button>
             </div>
           </motion.div>
@@ -2595,6 +2599,9 @@ export default function HomePage() {
 }
 
 export function PublicLanding() {
+  const { locale } = useLocale();
+  const copy = getLandingCopy(locale);
+
   return (
     <div className="min-h-screen flex flex-col relative overflow-hidden">
       <div className="absolute inset-0">
@@ -2608,37 +2615,33 @@ export function PublicLanding() {
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-yellow-300">
               <Sparkles className="h-4 w-4" />
-              Estudio creativo
+              {copy.badge}
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white leading-tight">
-              La suite de produccion para creadores que publican con consistencia.
+              {copy.title}
             </h1>
             <p className="text-base sm:text-lg text-slate-300 max-w-xl">
-              CronoStudio integra ideas, guiones, miniaturas, SEO y analytics en un flujo unico con automatizaciones listas para escalar.
+              {copy.subtitle}
             </p>
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
               <Link
                 href="/register"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-400 px-5 py-3 text-sm font-semibold text-black w-full sm:w-auto"
               >
-                Crear cuenta
+                {copy.ctaPrimary}
                 <ChevronRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/login"
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-700 px-5 py-3 text-sm font-semibold text-slate-200 w-full sm:w-auto"
               >
-                Iniciar sesion
+                {copy.ctaSecondary}
               </Link>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {[
-                { title: 'Conecta', text: 'Autoriza YouTube y define tu canal.' },
-                { title: 'Planifica', text: 'Idea, guion, SEO y miniatura con flujo claro.' },
-                { title: 'Automatiza', text: 'Sincroniza videos y analytics sin tocar APIs.' },
-              ].map((step, index) => (
+              {copy.steps.map((step, index) => (
                 <div key={step.title} className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-                  <div className="text-xs text-yellow-300">Paso {index + 1}</div>
+                  <div className="text-xs text-yellow-300">{locale === 'en' ? 'Step' : 'Paso'} {index + 1}</div>
                   <div className="mt-2 text-sm font-semibold text-white">{step.title}</div>
                   <div className="mt-2 text-xs text-slate-400">{step.text}</div>
                 </div>
@@ -2650,53 +2653,49 @@ export function PublicLanding() {
             <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
               <div className="flex items-center gap-2 text-sm font-semibold text-white">
                 <Wand2 className="h-5 w-5 text-yellow-300" />
-                Para que sirve
+                {copy.purpose.title}
               </div>
               <p className="mt-3 text-sm text-slate-400">
-                Converti tu canal en un sistema: cada semana sabe que producir, cuando publicar y que medir.
+                {copy.purpose.description}
               </p>
               <div className="mt-4 grid gap-3">
-                <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
-                  Pipeline claro para ideas, guiones, SEO y miniaturas.
-                </div>
-                <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
-                  Metricas semanales y alertas de disciplina.
-                </div>
-                <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
-                  Automatizaciones para sincronizar contenido real.
-                </div>
+                {copy.purpose.bullets.map((bullet) => (
+                  <div key={bullet} className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
+                    {bullet}
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
               <div className="flex items-center gap-2 text-sm font-semibold text-white">
                 <Zap className="h-5 w-5 text-yellow-300" />
-                Como funciona
+                {copy.howItWorks.title}
               </div>
               <div className="mt-4 space-y-3 text-sm text-slate-300">
-                <p>1. Conectas YouTube con OAuth seguro.</p>
-                <p>2. CronoStudio sincroniza videos y analytics.</p>
-                <p>3. Planificas la semana con metas claras.</p>
+                {copy.howItWorks.items.map((item) => (
+                  <p key={item}>{item}</p>
+                ))}
               </div>
             </div>
 
             <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
-              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Integraciones</div>
+              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{copy.sections.integrations}</div>
               <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-300">
                 <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
-                  <Youtube className="h-4 w-4 text-red-400" /> YouTube
+                  <Youtube className="h-4 w-4 text-red-400" /> {copy.integrations[0]}
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
-                  <Instagram className="h-4 w-4 text-pink-400" /> Instagram
+                  <Instagram className="h-4 w-4 text-pink-400" /> {copy.integrations[1]}
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
-                  <Twitter className="h-4 w-4 text-sky-400" /> X / Twitter
+                  <Twitter className="h-4 w-4 text-sky-400" /> {copy.integrations[2]}
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
-                  <Linkedin className="h-4 w-4 text-blue-400" /> LinkedIn
+                  <Linkedin className="h-4 w-4 text-blue-400" /> {copy.integrations[3]}
                 </span>
                 <span className="inline-flex items-center gap-2 rounded-full border border-gray-800 px-3 py-1">
-                  <Music2 className="h-4 w-4 text-emerald-400" /> TikTok
+                  <Music2 className="h-4 w-4 text-emerald-400" /> {copy.integrations[4]}
                 </span>
               </div>
             </div>
@@ -2706,34 +2705,9 @@ export function PublicLanding() {
           <section className="mt-10 sm:mt-12 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] items-start">
             <div className="min-w-0 space-y-6">
               <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
-                <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Testimonios</div>
+                <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{copy.sections.testimonials}</div>
                 <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:hidden">
-                  {[
-                    {
-                      quote: 'Deje de improvisar: ahora cada semana tengo claro que producir y cuando publicar.',
-                      name: 'Nati R.',
-                      role: 'Creadora de contenido',
-                      photo: '/imgs/aiony-haust-3TLl_97HNJo-unsplash.jpg',
-                    },
-                    {
-                      quote: 'El tablero y las alertas me ayudaron a sostener el ritmo sin quemarme.',
-                      name: 'Leo M.',
-                      role: 'Estratega de canales',
-                      photo: '/imgs/ian-dooley-d1UPkiFd04A-unsplash.jpg',
-                    },
-                    {
-                      quote: 'Conectar YouTube y ver analytics en un solo lugar cambio el juego.',
-                      name: 'Caro V.',
-                      role: 'Productora digital',
-                      photo: '/imgs/andres-mfWsMDdN-Ro-unsplash.jpg',
-                    },
-                    {
-                      quote: 'Pase de caos a una rutina clara. Ahora publico sin apagar incendios.',
-                      name: 'Juli P.',
-                      role: 'Creadora educativa',
-                      photo: '/imgs/rafaella-mendes-diniz-et_78QkMMQs-unsplash.jpg',
-                    },
-                  ].map((item) => (
+                  {copy.testimonials.map((item) => (
                     <div key={item.name} className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
                       <div className="flex items-center gap-3">
                         <Image
@@ -2756,32 +2730,7 @@ export function PublicLanding() {
                 <div className="mt-6 hidden lg:block">
                   <div className="relative overflow-hidden w-full">
                     <div className="testimonial-track max-w-full">
-                      {[...Array(2)].flatMap(() => [
-                        {
-                          quote: 'Deje de improvisar: ahora cada semana tengo claro que producir y cuando publicar.',
-                          name: 'Nati R.',
-                          role: 'Creadora de contenido',
-                          photo: '/imgs/aiony-haust-3TLl_97HNJo-unsplash.jpg',
-                        },
-                        {
-                          quote: 'El tablero y las alertas me ayudaron a sostener el ritmo sin quemarme.',
-                          name: 'Leo M.',
-                          role: 'Estratega de canales',
-                          photo: '/imgs/ian-dooley-d1UPkiFd04A-unsplash.jpg',
-                        },
-                        {
-                          quote: 'Conectar YouTube y ver analytics en un solo lugar cambio el juego.',
-                          name: 'Caro V.',
-                          role: 'Productora digital',
-                          photo: '/imgs/andres-mfWsMDdN-Ro-unsplash.jpg',
-                        },
-                        {
-                          quote: 'Pase de caos a una rutina clara. Ahora publico sin apagar incendios.',
-                          name: 'Juli P.',
-                          role: 'Creadora educativa',
-                          photo: '/imgs/rafaella-mendes-diniz-et_78QkMMQs-unsplash.jpg',
-                        },
-                      ]).map((item, index) => (
+                      {[...Array(2)].flatMap(() => copy.testimonials).map((item, index) => (
                         <div key={`${item.name}-${index}`} className="testimonial-card rounded-xl border border-gray-800 bg-gray-900/50 p-4">
                           <div className="flex items-center gap-3">
                             <Image
@@ -2804,55 +2753,55 @@ export function PublicLanding() {
                 </div>
               </div>
               <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
-                <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Newsletter</div>
+                <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{copy.sections.newsletter}</div>
                 <p className="mt-2 text-sm text-slate-300">
-                  Recibi ideas, insights y actualizaciones del estudio creativo cada semana.
+                  {copy.newsletter.description}
                 </p>
-                <p className="mt-2 text-xs text-slate-500">Sin spam. Solo contenido accionable.</p>
+                <p className="mt-2 text-xs text-slate-500">{copy.newsletter.note}</p>
                 <form className="mt-4 flex flex-col gap-3 sm:flex-row">
                   <input
                     type="email"
                     name="email"
-                    placeholder="tu@email.com"
+                    placeholder={copy.newsletter.emailPlaceholder}
                     className="w-full rounded-lg border border-gray-700 bg-gray-950/60 px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-yellow-400/60"
                   />
                   <button
                     type="button"
                     className="inline-flex items-center justify-center rounded-lg bg-yellow-400 px-5 py-3 text-sm font-semibold text-black"
                   >
-                    Suscribirme
+                    {copy.newsletter.subscribe}
                   </button>
                 </form>
               </div>
             </div>
             <div className="min-w-0 rounded-2xl border border-gray-800 bg-gray-950/70 p-6">
-              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Precios</div>
+              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{copy.sections.pricing}</div>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div className="rounded-xl border border-yellow-400/40 bg-yellow-400/10 p-4">
                   <div className="flex items-center justify-between">
-                    <div className="text-sm font-semibold text-white">Creator Pro</div>
-                    <div className="text-sm text-yellow-300">Recomendado</div>
+                    <div className="text-sm font-semibold text-white">{copy.pricing.creatorPlanName}</div>
+                    <div className="text-sm text-yellow-300">{copy.pricing.recommended}</div>
                   </div>
-                  <div className="mt-2 text-3xl font-semibold text-white">$29<span className="text-sm text-slate-400">/mes</span></div>
+                  <div className="mt-2 text-3xl font-semibold text-white">$29<span className="text-sm text-slate-400">{copy.pricing.creatorPeriod}</span></div>
                   <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                    <li>Pipeline completo + panel de produccion</li>
-                    <li>Sync con YouTube y analytics diario</li>
-                    <li>Alertas semanales y objetivos</li>
+                    {copy.pricing.creatorFeatures.map((feature) => (
+                      <li key={feature}>{feature}</li>
+                    ))}
                   </ul>
                   <Link href="/register" className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-yellow-400 px-4 py-2 text-sm font-semibold text-black">
-                    Empezar ahora
+                    {copy.pricing.creatorCta}
                   </Link>
                 </div>
                 <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
-                  <div className="text-sm font-semibold text-white">Starter</div>
-                  <div className="mt-2 text-3xl font-semibold text-white">Gratis</div>
+                  <div className="text-sm font-semibold text-white">{copy.pricing.starterPlanName}</div>
+                  <div className="mt-2 text-3xl font-semibold text-white">{copy.pricing.starterPrice}</div>
                   <ul className="mt-4 space-y-2 text-sm text-slate-300">
-                    <li>Ideas y guiones esenciales</li>
-                    <li>Tablero de produccion basico</li>
-                    <li>1 canal conectado</li>
+                    {copy.pricing.starterFeatures.map((feature) => (
+                      <li key={feature}>{feature}</li>
+                    ))}
                   </ul>
                   <Link href="/register" className="mt-4 inline-flex w-full items-center justify-center rounded-lg border border-gray-700 px-4 py-2 text-sm font-semibold text-slate-200">
-                    Crear cuenta
+                    {copy.pricing.starterCta}
                   </Link>
                 </div>
               </div>
