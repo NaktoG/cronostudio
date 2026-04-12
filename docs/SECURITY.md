@@ -15,6 +15,7 @@ Este documento describe el estado actual de seguridad de CronoStudio (Atonix).
 - CSP estricta en modo report-only → enforcement.
 - Revisión periódica de permisos y scopes.
 - Rotación de secretos y keys.
+- Fase 2 (pendiente, priorizada para mas tarde): eliminar `unsafe-inline` de `style-src`, activar Trusted Types y agregar pruebas automáticas de regresión CSP.
 
 ## Controles obligatorios para migracion n8n -> Go
 - **Auth servicio-a-servicio**: JWT asimetrico Ed25519 entre BFF y `automation-go` con `iss`, `aud`, `exp`, `kid` y `scope` obligatorios.
