@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { CheckCircle2, ChevronRight, RefreshCw, Sparkles } from 'lucide-react';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { useLocale } from '../contexts/LocaleContext';
+import { getGuidePanelCopy } from '../content/guidePanel';
 import { evaluateIdeaReady } from '@/lib/ideaReady';
 
 type GuideCounts = {
@@ -33,110 +35,10 @@ const AUTH_ROUTES = new Set([
   '/resend-verification',
 ]);
 
-const PAGE_TIPS: Record<string, { title: string; description: string }> = {
-  '/ai': {
-    title: 'Crono',
-    description: 'Usa los perfiles para generar ideas, guiones, retencion y titulos con salida aplicada.',
-  },
-  '/ideas': {
-    title: 'Ideas',
-    description: 'Refina ideas, aprueba las viables y prepara el paso a guion.',
-  },
-  '/scripts': {
-    title: 'Guiones',
-    description: 'Verifica hook, estructura y duracion antes de marcar listo.',
-  },
-  '/seo': {
-    title: 'SEO',
-    description: 'Elige el titulo final y asegura descripcion + tags consistentes.',
-  },
-  '/thumbnails': {
-    title: 'Miniaturas',
-    description: 'Define texto, variante y estado antes de publicar.',
-  },
-  '/channels': {
-    title: 'Canales',
-    description: 'Conecta YouTube y define el canal activo.',
-  },
-  '/': {
-    title: 'Dashboard',
-    description: 'Prioriza el flujo semanal y registra publicaciones.',
-  },
-  '/start': {
-    title: 'Guia',
-    description: 'Flujo recomendado con checkpoints y atajos.',
-  },
-};
-
-const PAGE_STEPS: Record<string, { title: string; items: string[] }> = {
-  '/ai': {
-    title: 'Crono paso a paso',
-    items: [
-      'Selecciona canal y perfil (Evergreen AI, Script Architect, Retention Editor, Titles & Thumbs).',
-      'Completa el brief con contexto real del canal.',
-      'Usa “Generar y aplicar” y valida el resultado.',
-    ],
-  },
-  '/ideas': {
-    title: 'Ideas paso a paso',
-    items: [
-      'Revisa ideas draft y ajusta el angulo.',
-      'Aprueba las ideas con potencial evergreen.',
-      'Enviala a guion desde Crono.',
-    ],
-  },
-  '/scripts': {
-    title: 'Guiones paso a paso',
-    items: [
-      'Revisa hook, promesa y ritmo.',
-      'Marca listo cuando el guion este pulido.',
-      'Continua con SEO y miniaturas.',
-    ],
-  },
-  '/seo': {
-    title: 'SEO paso a paso',
-    items: [
-      'Elige el titulo final.',
-      'Asegura descripcion y tags.',
-      'Marca listo antes de publicar.',
-    ],
-  },
-  '/thumbnails': {
-    title: 'Miniaturas paso a paso',
-    items: [
-      'Define texto de miniatura.',
-      'Sube o pega la URL final.',
-      'Aprueba antes de publicar.',
-    ],
-  },
-  '/channels': {
-    title: 'Canales paso a paso',
-    items: [
-      'Crea o conecta el canal.',
-      'Verifica nombre y datos.',
-      'Vuelve a Crono para generar ideas.',
-    ],
-  },
-  '/': {
-    title: 'Dashboard paso a paso',
-    items: [
-      'Selecciona canal activo.',
-      'Revisa pipeline y backlog.',
-      'Publica cuando el video este listo.',
-    ],
-  },
-  '/start': {
-    title: 'Guia paso a paso',
-    items: [
-      'Conecta canal y valida datos.',
-      'Genera ideas y aprueba.',
-      'Crea guion, SEO y publica.',
-    ],
-  },
-};
-
 export default function GuidePanel() {
   const pathname = usePathname();
+  const { locale } = useLocale();
+  const guideCopy = getGuidePanelCopy(locale);
   const { isAuthenticated } = useAuth();
   const authFetch = useAuthFetch();
   const [counts, setCounts] = useState<GuideCounts>({
@@ -159,8 +61,8 @@ export default function GuidePanel() {
   const [ideaChecklist, setIdeaChecklist] = useState<IdeaChecklist>({ total: 0, ready: 0, missing: [] });
   const stepsDialogRef = useRef<HTMLDivElement | null>(null);
   const autoStepsRef = useRef<Record<string, boolean>>({});
-  const tip = PAGE_TIPS[pathname] ?? null;
-  const sectionSteps = PAGE_STEPS[pathname] ?? null;
+  const tip = guideCopy.pageTips[pathname] ?? null;
+  const sectionSteps = guideCopy.pageSteps[pathname] ?? null;
 
   useEffect(() => {
     if (!isAuthenticated || AUTH_ROUTES.has(pathname)) return;
@@ -338,60 +240,60 @@ export default function GuidePanel() {
     return [
       {
         key: 'channel',
-        title: 'Conecta tu canal',
-        description: 'Crea o conecta tu canal para iniciar el flujo.',
+        title: guideCopy.flow.connectChannel.title,
+        description: guideCopy.flow.connectChannel.description,
         complete: counts.channels > 0,
         href: '/channels',
-        actionLabel: 'Ir a canales',
+        actionLabel: guideCopy.flow.connectChannel.actionLabel,
       },
       {
         key: 'ideas',
-        title: 'Genera ideas',
-        description: 'Usa Crono para generar ideas evergreen.',
+        title: guideCopy.flow.generateIdeas.title,
+        description: guideCopy.flow.generateIdeas.description,
         complete: counts.ideasApproved > 0,
         href: '/ai',
-        actionLabel: 'Ir a Crono',
+        actionLabel: guideCopy.flow.generateIdeas.actionLabel,
       },
       {
         key: 'scripts',
-        title: 'Crea el guion',
-        description: 'Transforma una idea en un guion listo para grabar.',
+        title: guideCopy.flow.createScript.title,
+        description: guideCopy.flow.createScript.description,
         complete: counts.scriptsReady > 0,
         href: '/ai',
-        actionLabel: 'Crear guion',
+        actionLabel: guideCopy.flow.createScript.actionLabel,
       },
       {
         key: 'seo',
-        title: 'Optimiza SEO',
-        description: 'Genera titulos, miniaturas y tags con AI.',
+        title: guideCopy.flow.optimizeSeo.title,
+        description: guideCopy.flow.optimizeSeo.description,
         complete: counts.seo > 0,
         href: '/ai',
-        actionLabel: 'Optimizar SEO',
+        actionLabel: guideCopy.flow.optimizeSeo.actionLabel,
       },
       {
         key: 'publish',
-        title: 'Publica el video',
-        description: 'Marca publicado cuando el video ya esta en YouTube.',
+        title: guideCopy.flow.publishVideo.title,
+        description: guideCopy.flow.publishVideo.description,
         complete: counts.published > 0,
         href: '/',
-        actionLabel: 'Ir al dashboard',
+        actionLabel: guideCopy.flow.publishVideo.actionLabel,
       },
     ];
-  }, [counts]);
+  }, [counts, guideCopy.flow]);
 
   const completedCount = steps.filter((step) => step.complete).length;
   const progress = Math.round((completedCount / steps.length) * 100);
   const currentStep = steps.find((step) => !step.complete) ?? steps[steps.length - 1];
   const quickAction = useMemo(() => {
     const map: Record<string, { label: string; href: string }> = {
-      channel: { label: 'Crear canal', href: '/channels' },
-      ideas: { label: 'Crear idea', href: '/ideas?new=1' },
-      scripts: { label: 'Crear guion', href: '/scripts?new=1' },
-      seo: { label: 'Abrir SEO', href: '/seo' },
-      publish: { label: 'Abrir dashboard', href: '/?new=1' },
+      channel: { label: guideCopy.quickActions.channel, href: '/channels' },
+      ideas: { label: guideCopy.quickActions.ideas, href: '/ideas?new=1' },
+      scripts: { label: guideCopy.quickActions.scripts, href: '/scripts?new=1' },
+      seo: { label: guideCopy.quickActions.seo, href: '/seo' },
+      publish: { label: guideCopy.quickActions.publish, href: '/?new=1' },
     };
     return map[currentStep.key] ?? null;
-  }, [currentStep.key]);
+  }, [currentStep.key, guideCopy.quickActions]);
   
 
   if (!isAuthenticated || AUTH_ROUTES.has(pathname)) return null;
@@ -405,10 +307,10 @@ export default function GuidePanel() {
       <div className="w-[min(92vw,360px)] rounded-2xl border border-gray-800 bg-gray-950/95 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-yellow-400/90">Modo guia</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-yellow-400/90">{guideCopy.panel.modeLabel}</div>
             <h3 className="mt-1 text-lg font-semibold text-white flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-yellow-300" />
-              Proximo paso recomendado
+              {guideCopy.panel.nextStep}
             </h3>
           </div>
           <button
@@ -419,7 +321,7 @@ export default function GuidePanel() {
             }}
             className="text-xs text-slate-400 hover:text-yellow-300"
           >
-            Cerrar
+            {guideCopy.panel.close}
           </button>
         </div>
 
@@ -428,29 +330,29 @@ export default function GuidePanel() {
           <p className="text-xs text-slate-400 mt-1">{currentStep.description}</p>
           {currentStep.key === 'ideas' && ideaChecklist.total > 0 && counts.ideasApproved === 0 && ideaChecklist.ready > 0 && (
             <div className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[11px] text-emerald-200">
-              Tenes {ideaChecklist.ready} ideas listas para aprobar.
+              {guideCopy.panel.ideasReady.replace('{n}', String(ideaChecklist.ready))}
               <Link href="/ideas" className="mt-1 inline-flex items-center text-[11px] font-semibold text-emerald-200">
-                Aprobar ahora
+                {guideCopy.panel.approveNow}
                 <ChevronRight className="h-3 w-3" />
               </Link>
             </div>
           )}
           {currentStep.key === 'ideas' && ideaChecklist.total > 0 && ideaChecklist.ready === 0 && ideaChecklist.missing.length > 0 && (
             <div className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
-              <div className="font-semibold">Checklist para aprobar</div>
+              <div className="font-semibold">{guideCopy.panel.checklistTitle}</div>
               <ul className="mt-1 list-disc pl-4 space-y-0.5">
                 {ideaChecklist.missing.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
               <Link href="/ideas" className="mt-2 inline-flex items-center text-[11px] font-semibold text-yellow-300">
-                Ir a Ideas
+                {guideCopy.panel.goIdeas}
                 <ChevronRight className="h-3 w-3" />
               </Link>
             </div>
           )}
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Progreso {progress}%</span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{guideCopy.panel.progress} {progress}%</span>
             <Link
               href={currentStep.href}
               className="inline-flex items-center gap-1 text-xs font-semibold text-yellow-300"
@@ -496,7 +398,7 @@ export default function GuidePanel() {
 
         {showFull && tip && (
           <div className="mt-4 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-yellow-400/90">En esta seccion</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-yellow-400/90">{guideCopy.panel.inSection}</div>
             <p className="mt-1 text-sm font-semibold text-white">{tip.title}</p>
             <p className="text-xs text-slate-400 mt-1">{tip.description}</p>
           </div>
@@ -510,7 +412,7 @@ export default function GuidePanel() {
             disabled={loading}
           >
             <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Actualizando...' : 'Actualizar guia'}
+            {loading ? guideCopy.panel.updating : guideCopy.panel.refresh}
           </button>
           <div className="flex items-center gap-2">
             <button
@@ -518,7 +420,7 @@ export default function GuidePanel() {
               onClick={() => setShowFull((current) => !current)}
               className="text-[10px] uppercase tracking-[0.2em] text-slate-400 hover:text-yellow-300"
             >
-              {showFull ? 'Ver menos' : 'Ver todo'}
+              {showFull ? guideCopy.panel.showLess : guideCopy.panel.showAll}
             </button>
             {sectionSteps && (
               <button
@@ -526,10 +428,10 @@ export default function GuidePanel() {
                 onClick={() => setShowSteps(true)}
                 className="text-[10px] uppercase tracking-[0.2em] text-yellow-300"
               >
-                {tourSeen ? 'Repetir' : 'Guíame'}
+                {tourSeen ? guideCopy.panel.repeat : guideCopy.panel.guideMe}
               </button>
             )}
-            <span className="text-[10px] text-slate-500">{completedCount}/{steps.length} completados</span>
+            <span className="text-[10px] text-slate-500">{completedCount}/{steps.length} {guideCopy.panel.completed}</span>
           </div>
         </div>
       </div>
@@ -546,7 +448,7 @@ export default function GuidePanel() {
             >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Guía rápida</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-400/90">{guideCopy.panel.quickGuide}</div>
                 <h4 id="guide-steps-title" className="mt-1 text-lg font-semibold text-white">{sectionSteps.title}</h4>
               </div>
               <button
@@ -559,7 +461,7 @@ export default function GuidePanel() {
                 }}
                 className="text-xs text-slate-400 hover:text-yellow-300"
               >
-                Cerrar
+                {guideCopy.panel.close}
               </button>
             </div>
             <ol className="mt-4 space-y-2">
@@ -583,13 +485,13 @@ export default function GuidePanel() {
                 }}
                 className="text-xs text-slate-400"
               >
-                Entendido
+                {guideCopy.panel.understood}
               </button>
               <Link
                 href={currentStep.href}
                 className="inline-flex items-center gap-1 rounded-md bg-yellow-400 px-3 py-2 text-xs font-semibold text-black"
               >
-                Ir al paso recomendado
+                {guideCopy.panel.goRecommended}
                 <ChevronRight className="h-3 w-3" />
               </Link>
             </div>

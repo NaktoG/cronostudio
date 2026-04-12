@@ -72,7 +72,7 @@ function AnalyticsView() {
             }
         } catch (err) {
             if (signal?.aborted) return;
-            console.error('Error fetching channels:', err);
+            console.error('[analytics] channels fetch failed', err);
         }
     }, [isAuthenticated, authFetch]);
 

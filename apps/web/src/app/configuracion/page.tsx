@@ -10,6 +10,8 @@ import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { PageTransition } from '../components/Animations';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
+import { useLocale } from '../contexts/LocaleContext';
+import { getSettingsCopy } from '../content/pages/settings';
 
 interface Perfil {
   name: string;
@@ -45,6 +47,8 @@ interface OAuthSettings {
 
 export default function ConfiguracionPage() {
   const { logout, user } = useAuth();
+  const { locale } = useLocale();
+  const settingsCopy = getSettingsCopy(locale);
   const authFetch = useAuthFetch();
   const router = useRouter();
 
@@ -90,18 +94,18 @@ export default function ConfiguracionPage() {
     const cargar = async () => {
       try {
         const response = await authFetch('/api/auth/profile');
-        if (!response.ok) throw new Error('No pudimos cargar tu perfil');
+        if (!response.ok) throw new Error(settingsCopy.profile.loadError);
         const data = await response.json();
         setPerfil({ name: data.user.name, email: data.user.email });
       } catch (error) {
-        console.error(error);
-        setErrorGeneral('No pudimos obtener tu información. Intenta más tarde.');
+        console.error('[settings] profile load failed', error);
+        setErrorGeneral(settingsCopy.profile.loadErrorFallback);
       } finally {
         setCargandoPerfil(false);
       }
     };
     cargar();
-  }, [authFetch]);
+  }, [authFetch, settingsCopy.profile.loadError, settingsCopy.profile.loadErrorFallback]);
 
   useEffect(() => {
     if (user?.role !== 'owner') return;
@@ -120,11 +124,11 @@ export default function ConfiguracionPage() {
           setInvites(data.invites ?? []);
         }
       } catch (error) {
-        console.error(error);
+        console.error('[settings] team load failed', error);
       }
     };
     fetchTeam();
-  }, [authFetch, user?.role]);
+  }, [authFetch, user?.role, settingsCopy.oauth.loadError, settingsCopy.oauth.loadErrorFallback]);
 
   useEffect(() => {
     return () => {
@@ -158,7 +162,7 @@ export default function ConfiguracionPage() {
       setOauthError(null);
       try {
         const response = await authFetch('/api/oauth/settings?provider=youtube');
-        if (!response.ok) throw new Error('No pudimos cargar la configuracion de YouTube');
+        if (!response.ok) throw new Error(settingsCopy.oauth.loadError);
         const data = (await response.json()) as OAuthSettings;
         setOauthSettings(data);
         setOauthForm({
@@ -168,14 +172,14 @@ export default function ConfiguracionPage() {
           scopes: (data.scopes ?? []).join(' '),
         });
       } catch (error) {
-        setOauthError(error instanceof Error ? error.message : 'No pudimos cargar la configuracion');
+        setOauthError(error instanceof Error ? error.message : settingsCopy.oauth.loadErrorFallback);
       } finally {
         setOauthLoading(false);
       }
     };
 
     loadOAuthSettings();
-  }, [authFetch, user?.role]);
+  }, [authFetch, user?.role, settingsCopy.oauth.loadError, settingsCopy.oauth.loadErrorFallback]);
 
   const guardarPerfil = async () => {
     setMensajePerfil(null);
@@ -187,11 +191,11 @@ export default function ConfiguracionPage() {
       });
       const data = await respuesta.json();
       if (!respuesta.ok) {
-        throw new Error(data.error || 'No pudimos guardar los cambios');
+        throw new Error(data.error || settingsCopy.profile.saveError);
       }
-      setMensajePerfil('Datos actualizados correctamente');
+      setMensajePerfil(settingsCopy.profile.saved);
     } catch (error) {
-      setErrorGeneral(error instanceof Error ? error.message : 'Error al guardar el perfil');
+      setErrorGeneral(error instanceof Error ? error.message : settingsCopy.profile.saveErrorFallback);
     }
   };
 
@@ -199,7 +203,7 @@ export default function ConfiguracionPage() {
     setMensajePassword(null);
     setErrorGeneral(null);
     if (passwordNueva !== passwordConfirmacion) {
-      setErrorGeneral('La confirmación no coincide con la nueva contraseña');
+      setErrorGeneral(settingsCopy.security.mismatch);
       return;
     }
     try {
@@ -209,14 +213,14 @@ export default function ConfiguracionPage() {
       });
       const data = await respuesta.json();
       if (!respuesta.ok) {
-        throw new Error(data.error || 'No pudimos actualizar la contraseña');
+        throw new Error(data.error || settingsCopy.security.updateError);
       }
-      setMensajePassword('Contraseña actualizada');
+      setMensajePassword(settingsCopy.security.updated);
       setPasswordActual('');
       setPasswordNueva('');
       setPasswordConfirmacion('');
     } catch (error) {
-      setErrorGeneral(error instanceof Error ? error.message : 'No pudimos actualizar la contraseña');
+      setErrorGeneral(error instanceof Error ? error.message : settingsCopy.security.updateError);
     }
   };
 
@@ -229,11 +233,11 @@ export default function ConfiguracionPage() {
       });
       const data = await respuesta.json();
       if (!respuesta.ok) {
-        throw new Error(data.error || 'No pudimos enviar el correo');
+        throw new Error(data.error || settingsCopy.recovery.sendError);
       }
-      setMensajeRecuperacion('Te enviamos un correo con instrucciones de recuperación');
+      setMensajeRecuperacion(settingsCopy.recovery.sent);
     } catch (error) {
-      setErrorGeneral(error instanceof Error ? error.message : 'No pudimos enviar el correo de recuperación');
+      setErrorGeneral(error instanceof Error ? error.message : settingsCopy.recovery.sendErrorFallback);
     }
   };
 
@@ -242,7 +246,7 @@ export default function ConfiguracionPage() {
     setInviteMessage(null);
     setInviteLink('');
     if (!inviteEmail.trim()) {
-      setInviteError('Ingresa un correo valido');
+      setInviteError(settingsCopy.team.invalidEmail);
       return;
     }
     setInviteLoading(true);
@@ -253,18 +257,18 @@ export default function ConfiguracionPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'No pudimos crear la invitacion');
+        throw new Error(data.error || settingsCopy.team.createError);
       }
       setInviteLink(data.inviteUrl);
       setInviteEmail('');
-      setInviteMessage('Invitacion creada');
+      setInviteMessage(settingsCopy.team.created);
       const invitesRes = await authFetch('/api/collaborators/invites');
       if (invitesRes.ok) {
         const invitesData = await invitesRes.json();
         setInvites(invitesData.invites ?? []);
       }
     } catch (error) {
-      setInviteError(error instanceof Error ? error.message : 'No pudimos crear la invitacion');
+      setInviteError(error instanceof Error ? error.message : settingsCopy.team.createError);
     } finally {
       setInviteLoading(false);
     }
@@ -274,9 +278,9 @@ export default function ConfiguracionPage() {
     if (!inviteLink) return;
     try {
       await navigator.clipboard.writeText(inviteLink);
-      setInviteMessage('Link copiado');
+      setInviteMessage(settingsCopy.team.linkCopied);
     } catch {
-      setInviteError('No pudimos copiar el link');
+      setInviteError(settingsCopy.team.linkCopyError);
     }
   };
 
@@ -284,9 +288,9 @@ export default function ConfiguracionPage() {
     if (!recommendedRedirect) return;
     try {
       await navigator.clipboard.writeText(recommendedRedirect);
-      setOauthMessage('Redirect URI copiado');
+      setOauthMessage(settingsCopy.oauth.copyRedirectSuccess);
     } catch {
-      setOauthError('No pudimos copiar el redirect URI');
+      setOauthError(settingsCopy.oauth.copyRedirectError);
     }
   };
 
@@ -310,13 +314,13 @@ export default function ConfiguracionPage() {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'No pudimos guardar la configuracion');
+        throw new Error(data.error || settingsCopy.oauth.saveError);
       }
       setOauthSettings(data);
       setOauthForm((current) => ({ ...current, clientSecret: '' }));
-      setOauthMessage('Configuracion guardada');
+      setOauthMessage(settingsCopy.oauth.saveSuccess);
     } catch (error) {
-      setOauthError(error instanceof Error ? error.message : 'No pudimos guardar la configuracion');
+      setOauthError(error instanceof Error ? error.message : settingsCopy.oauth.saveError);
     } finally {
       setOauthLoading(false);
     }
@@ -335,7 +339,7 @@ export default function ConfiguracionPage() {
       const response = await authFetch('/api/oauth/settings?provider=youtube', { method: 'DELETE' });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'No pudimos eliminar la configuracion');
+        throw new Error(data.error || settingsCopy.oauth.deleteError);
       }
       const refreshed = await authFetch('/api/oauth/settings?provider=youtube');
       if (refreshed.ok) {
@@ -348,9 +352,9 @@ export default function ConfiguracionPage() {
           scopes: (data.scopes ?? []).join(' '),
         });
       }
-      setOauthMessage('Configuracion eliminada. Usando valores del servidor.');
+      setOauthMessage(settingsCopy.oauth.deleteSuccess);
     } catch (error) {
-      setOauthError(error instanceof Error ? error.message : 'No pudimos eliminar la configuracion');
+      setOauthError(error instanceof Error ? error.message : settingsCopy.oauth.deleteError);
     } finally {
       setOauthLoading(false);
     }
@@ -373,7 +377,7 @@ export default function ConfiguracionPage() {
     const popup = window.open(connectUrl, 'youtube-oauth-test', 'width=520,height=700');
     if (!popup) {
       setOauthTesting(false);
-      setOauthError('No se pudo abrir la ventana de Google. Revisa el bloqueador de popups.');
+      setOauthError(settingsCopy.oauth.popupError);
       return;
     }
     oauthWindowRef.current = popup;
@@ -401,7 +405,7 @@ export default function ConfiguracionPage() {
         const data = await statusRes.json();
         if (data?.connected) {
           stopTesting();
-          setOauthMessage('Conexion exitosa con YouTube');
+          setOauthMessage(settingsCopy.oauth.connectSuccess);
         }
       } catch {
         // ignore transient errors
@@ -411,14 +415,14 @@ export default function ConfiguracionPage() {
     window.setTimeout(() => {
       if (oauthTesting) {
         stopTesting();
-        setOauthError('No se pudo completar la conexion. Reintenta.');
+        setOauthError(settingsCopy.oauth.connectTimeout);
       }
     }, 120000);
   };
 
   const eliminarCuenta = async () => {
     if (textoConfirmacion.trim().toUpperCase() !== 'ELIMINAR') {
-      setErrorGeneral('Escribe ELIMINAR para confirmar');
+      setErrorGeneral(settingsCopy.danger.confirmError);
       return;
     }
     setEliminando(true);
@@ -427,12 +431,12 @@ export default function ConfiguracionPage() {
       const respuesta = await authFetch('/api/auth/profile', { method: 'DELETE' });
       const data = await respuesta.json().catch(() => ({}));
       if (!respuesta.ok) {
-        throw new Error(data.error || 'No pudimos eliminar la cuenta');
+        throw new Error(data.error || settingsCopy.danger.deleteError);
       }
       logout();
       router.replace('/login');
     } catch (error) {
-      setErrorGeneral(error instanceof Error ? error.message : 'No pudimos eliminar la cuenta');
+      setErrorGeneral(error instanceof Error ? error.message : settingsCopy.danger.deleteError);
     } finally {
       setEliminando(false);
     }
@@ -441,11 +445,11 @@ export default function ConfiguracionPage() {
   const contenido = (
     <div className="space-y-6">
       <section className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Perfil</h2>
-        <p className="text-sm text-gray-400 mb-6">Administra tu nombre y correo. Todo el panel está ahora en español.</p>
+        <h2 className="text-xl font-semibold text-white mb-4">{settingsCopy.profile.section}</h2>
+        <p className="text-sm text-gray-400 mb-6">{settingsCopy.profile.helper}</p>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="text-sm text-gray-400">Nombre</label>
+            <label className="text-sm text-gray-400">{settingsCopy.profile.name}</label>
             <input
               type="text"
               value={perfil.name}
@@ -454,7 +458,7 @@ export default function ConfiguracionPage() {
             />
           </div>
           <div>
-            <label className="text-sm text-gray-400">Correo</label>
+            <label className="text-sm text-gray-400">{settingsCopy.profile.email}</label>
             <input
               type="email"
               value={perfil.email}
@@ -468,16 +472,16 @@ export default function ConfiguracionPage() {
           className="mt-4 px-5 py-2.5 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
           whileHover={{ scale: 1.02 }}
         >
-          Guardar cambios
+          {settingsCopy.profile.save}
         </motion.button>
         {mensajePerfil && <p className="text-sm text-green-400 mt-3">{mensajePerfil}</p>}
       </section>
 
       <section className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Seguridad</h2>
+        <h2 className="text-xl font-semibold text-white mb-4">{settingsCopy.security.section}</h2>
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <label className="text-sm text-gray-400">Contraseña actual</label>
+            <label className="text-sm text-gray-400">{settingsCopy.security.currentPassword}</label>
             <div className="relative mt-1">
               <input
                 type={showPasswordActual ? 'text' : 'password'}
@@ -489,14 +493,14 @@ export default function ConfiguracionPage() {
                 type="button"
                 onClick={() => setShowPasswordActual((prev) => !prev)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
-                aria-label={showPasswordActual ? 'Ocultar contraseña actual' : 'Mostrar contraseña actual'}
+                aria-label={showPasswordActual ? settingsCopy.security.hideCurrent : settingsCopy.security.showCurrent}
               >
                 {showPasswordActual ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
           <div>
-            <label className="text-sm text-gray-400">Nueva contraseña</label>
+            <label className="text-sm text-gray-400">{settingsCopy.security.newPassword}</label>
             <div className="relative mt-1">
               <input
                 type={showPasswordNueva ? 'text' : 'password'}
@@ -508,14 +512,14 @@ export default function ConfiguracionPage() {
                 type="button"
                 onClick={() => setShowPasswordNueva((prev) => !prev)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
-                aria-label={showPasswordNueva ? 'Ocultar nueva contraseña' : 'Mostrar nueva contraseña'}
+                aria-label={showPasswordNueva ? settingsCopy.security.hideNew : settingsCopy.security.showNew}
               >
                 {showPasswordNueva ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
           </div>
           <div>
-            <label className="text-sm text-gray-400">Confirmar nueva</label>
+            <label className="text-sm text-gray-400">{settingsCopy.security.confirmNew}</label>
             <div className="relative mt-1">
               <input
                 type={showPasswordConfirmacion ? 'text' : 'password'}
@@ -527,7 +531,7 @@ export default function ConfiguracionPage() {
                 type="button"
                 onClick={() => setShowPasswordConfirmacion((prev) => !prev)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
-                aria-label={showPasswordConfirmacion ? 'Ocultar confirmación' : 'Mostrar confirmación'}
+                aria-label={showPasswordConfirmacion ? settingsCopy.security.hideConfirm : settingsCopy.security.showConfirm}
               >
                 {showPasswordConfirmacion ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -539,7 +543,7 @@ export default function ConfiguracionPage() {
           className="mt-4 px-5 py-2.5 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
           whileHover={{ scale: 1.02 }}
         >
-          Actualizar contraseña
+          {settingsCopy.security.updatePassword}
         </motion.button>
         {mensajePassword && <p className="text-sm text-green-400 mt-3">{mensajePassword}</p>}
       </section>
@@ -548,18 +552,18 @@ export default function ConfiguracionPage() {
         <section className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6">
           <div className="flex items-center gap-2 text-white mb-4">
             <KeyRound className="h-5 w-5 text-yellow-300" />
-            <h2 className="text-xl font-semibold">Integracion YouTube</h2>
+            <h2 className="text-xl font-semibold">{settingsCopy.oauth.section}</h2>
           </div>
           <p className="text-sm text-gray-400 mb-2">
-            Configura credenciales OAuth propias para conectar el canal correcto.
+            {settingsCopy.oauth.helper}
           </p>
           {oauthSettings && (
             <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
               <span className="rounded-full border border-gray-800 px-3 py-1">
-                Fuente: {oauthSettings.source === 'user' ? 'configuracion personalizada' : 'variables del servidor'}
+                {settingsCopy.oauth.source} {oauthSettings.source === 'user' ? settingsCopy.oauth.sourceUser : settingsCopy.oauth.sourceEnv}
               </span>
               <span className={`rounded-full border px-3 py-1 ${oauthSettings.configured ? 'border-green-500/40 text-green-400' : 'border-yellow-500/40 text-yellow-300'}`}>
-                {oauthSettings.configured ? 'Configurado' : 'Sin configurar'}
+                {oauthSettings.configured ? settingsCopy.oauth.configured : settingsCopy.oauth.notConfigured}
               </span>
             </div>
           )}
@@ -588,14 +592,14 @@ export default function ConfiguracionPage() {
                 </span>
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span>Recomendado: {recommendedRedirect || '...'}</span>
+                <span>{settingsCopy.oauth.recommended} {recommendedRedirect || '...'}</span>
                 <button
                   type="button"
                   onClick={copiarRedirectRecomendado}
                   className="inline-flex items-center gap-1 rounded-full border border-gray-800 px-2 py-1 text-[11px] text-slate-300 hover:border-yellow-400/50"
                 >
                   <Clipboard className="h-3 w-3" />
-                  Copiar
+                  {settingsCopy.oauth.copy}
                 </button>
               </div>
             </div>
@@ -606,19 +610,19 @@ export default function ConfiguracionPage() {
                   type={showClientSecret ? 'text' : 'password'}
                   value={oauthForm.clientSecret}
                   onChange={(e) => setOauthForm((prev) => ({ ...prev, clientSecret: e.target.value }))}
-                  placeholder={oauthSettings?.hasSecret ? '•••••••• (guardado)' : 'Ingresa el secret'}
+                  placeholder={oauthSettings?.hasSecret ? settingsCopy.oauth.secretPlaceholderSaved : settingsCopy.oauth.secretPlaceholderEmpty}
                   className="w-full rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 pr-10 text-white focus:border-yellow-400 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowClientSecret((prev) => !prev)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-300 transition-colors"
-                  aria-label={showClientSecret ? 'Ocultar secret' : 'Mostrar secret'}
+                  aria-label={showClientSecret ? settingsCopy.security.hideNew : settingsCopy.security.showNew}
                 >
                   {showClientSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              <p className="mt-2 text-xs text-slate-500">Si lo dejas vacio, se conserva el secret existente.</p>
+              <p className="mt-2 text-xs text-slate-500">{settingsCopy.oauth.keepSecretHint}</p>
             </div>
             <div>
               <label className="text-sm text-gray-400">Scopes</label>
@@ -628,7 +632,7 @@ export default function ConfiguracionPage() {
                 rows={3}
                 className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
               />
-              <p className="mt-2 text-xs text-slate-500">Separados por espacio o coma. Permitidos: youtube.readonly, yt-analytics.readonly.</p>
+              <p className="mt-2 text-xs text-slate-500">{settingsCopy.oauth.scopesHint}</p>
             </div>
           </div>
 
@@ -639,7 +643,7 @@ export default function ConfiguracionPage() {
               className="px-5 py-2.5 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-60"
               whileHover={{ scale: 1.02 }}
             >
-              {oauthLoading ? 'Guardando...' : 'Guardar configuracion'}
+              {oauthLoading ? settingsCopy.oauth.saving : settingsCopy.oauth.save}
             </motion.button>
             <motion.button
               onClick={guardarYProbarOAuth}
@@ -647,7 +651,7 @@ export default function ConfiguracionPage() {
               className="px-5 py-2.5 bg-gray-200 text-black font-semibold rounded-lg hover:bg-white disabled:opacity-60"
               whileHover={{ scale: 1.02 }}
             >
-              {oauthLoading || oauthTesting ? 'Preparando...' : 'Guardar y probar'}
+              {oauthLoading || oauthTesting ? settingsCopy.oauth.preparing : settingsCopy.oauth.saveAndTest}
             </motion.button>
             <button
               type="button"
@@ -655,7 +659,7 @@ export default function ConfiguracionPage() {
               disabled={oauthTesting}
               className="px-5 py-2.5 rounded-lg border border-gray-800 text-sm text-gray-300 hover:border-yellow-400/50 disabled:opacity-50"
             >
-              {oauthTesting ? 'Probando...' : 'Probar conexion'}
+              {oauthTesting ? settingsCopy.oauth.testing : settingsCopy.oauth.test}
             </button>
             <button
               type="button"
@@ -663,7 +667,7 @@ export default function ConfiguracionPage() {
               disabled={oauthLoading || !oauthSettings?.configured}
               className="px-5 py-2.5 rounded-lg border border-gray-800 text-sm text-gray-300 hover:border-yellow-400/50 disabled:opacity-50"
             >
-              Restablecer a valores del servidor
+              {settingsCopy.oauth.resetServer}
             </button>
           </div>
           {oauthMessage && <p className="text-sm text-green-400 mt-3">{oauthMessage}</p>}
@@ -675,17 +679,17 @@ export default function ConfiguracionPage() {
         <section className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6">
           <div className="flex items-center gap-2 text-white mb-4">
             <Users className="h-5 w-5 text-yellow-300" />
-            <h2 className="text-xl font-semibold">Equipo y colaboradores</h2>
+            <h2 className="text-xl font-semibold">{settingsCopy.team.section}</h2>
           </div>
-          <p className="text-sm text-gray-400 mb-4">Invita colaboradores con acceso de lectura y edicion limitada.</p>
-          <p className="text-xs text-slate-500 mb-4">El colaborador debe iniciar sesion con el correo invitado para aceptar.</p>
+          <p className="text-sm text-gray-400 mb-4">{settingsCopy.team.helper}</p>
+          <p className="text-xs text-slate-500 mb-4">{settingsCopy.team.helper2}</p>
 
           <div className="grid gap-3 md:grid-cols-[1fr_auto]">
             <input
               type="email"
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="correo@dominio.com"
+              placeholder={settingsCopy.team.emailPlaceholder}
               className="w-full rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
             />
             <motion.button
@@ -694,7 +698,7 @@ export default function ConfiguracionPage() {
               className="px-5 py-2.5 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-60"
               whileHover={{ scale: 1.02 }}
             >
-              {inviteLoading ? 'Creando...' : 'Crear invitacion'}
+              {inviteLoading ? settingsCopy.team.creating : settingsCopy.team.createInvite}
             </motion.button>
           </div>
 
@@ -703,7 +707,7 @@ export default function ConfiguracionPage() {
 
           {inviteLink && (
             <div className="mt-4 rounded-lg border border-gray-800 bg-gray-950/70 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Link de invitacion</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{settingsCopy.team.invitationLink}</p>
             <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
               <input
                 type="text"
@@ -717,7 +721,7 @@ export default function ConfiguracionPage() {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40 sm:w-auto"
               >
                 <Clipboard className="h-4 w-4" />
-                Copiar
+                {settingsCopy.oauth.copy}
               </button>
             </div>
             </div>
@@ -725,9 +729,9 @@ export default function ConfiguracionPage() {
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-gray-800 bg-gray-950/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Colaboradores</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{settingsCopy.team.collaborators}</p>
               <div className="mt-3 space-y-2 text-sm text-slate-200">
-                {collaborators.length === 0 && <p className="text-slate-500">Sin colaboradores.</p>}
+                {collaborators.length === 0 && <p className="text-slate-500">{settingsCopy.team.noCollaborators}</p>}
                 {collaborators.map((collab) => (
                   <div key={collab.id} className="flex min-w-0 items-center justify-between gap-3">
                     <span className="min-w-0 flex-1 truncate">{collab.name || collab.email}</span>
@@ -737,9 +741,9 @@ export default function ConfiguracionPage() {
               </div>
             </div>
             <div className="rounded-xl border border-gray-800 bg-gray-950/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Invitaciones</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{settingsCopy.team.invites}</p>
               <div className="mt-3 space-y-2 text-sm text-slate-200">
-                {invites.length === 0 && <p className="text-slate-500">Sin invitaciones.</p>}
+                {invites.length === 0 && <p className="text-slate-500">{settingsCopy.team.noInvites}</p>}
                 {invites.map((invite) => (
                   <div key={invite.id} className="flex min-w-0 items-center justify-between gap-3">
                     <span className="min-w-0 flex-1 truncate">{invite.email}</span>
@@ -753,22 +757,22 @@ export default function ConfiguracionPage() {
       )}
 
       <section className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Recuperación</h2>
-        <p className="text-sm text-gray-400 mb-4">¿Perdiste el acceso? Podemos enviarte un enlace para restablecer la cuenta.</p>
+        <h2 className="text-xl font-semibold text-white mb-4">{settingsCopy.recovery.section}</h2>
+        <p className="text-sm text-gray-400 mb-4">{settingsCopy.recovery.helper}</p>
         <motion.button
           onClick={enviarRecuperacion}
           className="px-5 py-2.5 bg-gray-200 text-black font-semibold rounded-lg hover:bg-white"
           whileHover={{ scale: 1.02 }}
         >
-          Enviar enlace de recuperación
+          {settingsCopy.recovery.send}
         </motion.button>
         {mensajeRecuperacion && <p className="text-sm text-green-400 mt-3">{mensajeRecuperacion}</p>}
       </section>
 
       <section className="bg-red-950/40 border border-red-900 rounded-2xl p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Eliminar cuenta</h2>
-        <p className="text-sm text-red-300 mb-4">Esta acción eliminará todos tus datos. No se puede deshacer.</p>
-        <label className="text-sm text-gray-400">Escribe ELIMINAR para confirmar</label>
+        <h2 className="text-xl font-semibold text-white mb-4">{settingsCopy.danger.section}</h2>
+        <p className="text-sm text-red-300 mb-4">{settingsCopy.danger.helper}</p>
+        <label className="text-sm text-gray-400">{settingsCopy.danger.confirmLabel}</label>
         <input
           type="text"
           value={textoConfirmacion}
@@ -781,7 +785,7 @@ export default function ConfiguracionPage() {
           className="mt-4 px-5 py-2.5 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500 disabled:opacity-50"
           whileHover={{ scale: eliminando ? 1 : 1.02 }}
         >
-          {eliminando ? 'Eliminando...' : 'Eliminar mi cuenta'}
+          {eliminando ? settingsCopy.danger.deleting : settingsCopy.danger.delete}
         </motion.button>
       </section>
     </div>
@@ -796,9 +800,9 @@ export default function ConfiguracionPage() {
             <motion.div className="mb-8 space-y-2" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
               <BackToDashboard />
               <div>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">Configuración</h1>
-                <p className="text-sm sm:text-base text-gray-400">Administra tu cuenta personal de CronoStudio.</p>
-                {user && <p className="text-sm text-gray-500 mt-1">Sesión iniciada como {user.email}</p>}
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white">{settingsCopy.title}</h1>
+                <p className="text-sm sm:text-base text-gray-400">{settingsCopy.subtitle}</p>
+                {user && <p className="text-sm text-gray-500 mt-1">{settingsCopy.signedInAs} {user.email}</p>}
               </div>
             </motion.div>
             {cargandoPerfil ? (

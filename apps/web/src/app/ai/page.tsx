@@ -9,11 +9,13 @@ import Footer from '../components/Footer';
 import BackToDashboard from '../components/BackToDashboard';
 import ProtectedRoute from '../components/ProtectedRoute';
 import CronoChatPanel from '../components/CronoChatPanel';
+import { useLocale } from '../contexts/LocaleContext';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useSearchParams } from 'next/navigation';
 import { formatDateTime } from '@/lib/dates';
 import { IDEA_PRESETS, SCRIPT_STYLE_PRESETS } from '@/app/content/aiPresets';
+import { getAiOutputCopy } from '@/app/content/aiOutput';
 import { useAiStudio } from '@/app/ai/hooks/useAiStudio';
 
 
@@ -200,7 +202,7 @@ function renderEvergreenOutput(output: JsonObject) {
   );
 }
 
-function renderScriptOutput(output: JsonObject) {
+function renderScriptOutput(output: JsonObject, outputCopy: ReturnType<typeof getAiOutputCopy>) {
   const development = Array.isArray(output.development) ? output.development : [];
   const hook = toText(output.hook);
   const promise = toText(output.promise);
@@ -224,7 +226,7 @@ function renderScriptOutput(output: JsonObject) {
       {turningPoint && <Section title="Punto de inflexion">{turningPoint}</Section>}
       {closing && <Section title="Cierre">{closing}</Section>}
       {legacyScript && !development.length && (
-        <Section title="Guion">
+        <Section title={outputCopy.script}>
           <div className="whitespace-pre-wrap text-sm text-slate-100">{legacyScript}</div>
         </Section>
       )}
@@ -242,7 +244,7 @@ function renderScriptOutput(output: JsonObject) {
   );
 }
 
-function renderRetentionOutput(output: JsonObject) {
+function renderRetentionOutput(output: JsonObject, outputCopy: ReturnType<typeof getAiOutputCopy>) {
   const changes = Array.isArray(output.changes) ? output.changes : [];
   const boosts = Array.isArray(output.retentionBoosts) ? output.retentionBoosts : [];
   const actionPlanContent = renderActionPlan(output.actionPlan);
@@ -251,7 +253,7 @@ function renderRetentionOutput(output: JsonObject) {
   return (
     <div className="space-y-4">
       {(scriptV2 || legacyScript) && (
-        <Section title="Guion optimizado">
+        <Section title={outputCopy.optimizedScript}>
           <div className="whitespace-pre-wrap text-sm text-slate-100">{scriptV2 ?? legacyScript}</div>
         </Section>
       )}
@@ -281,7 +283,7 @@ function renderRetentionOutput(output: JsonObject) {
   );
 }
 
-function renderTitlesOutput(output: JsonObject) {
+function renderTitlesOutput(output: JsonObject, outputCopy: ReturnType<typeof getAiOutputCopy>) {
   const titles = Array.isArray(output.titles) ? output.titles : [];
   const thumbs = Array.isArray(output.thumbnails)
     ? output.thumbnails
@@ -293,7 +295,7 @@ function renderTitlesOutput(output: JsonObject) {
   return (
     <div className="space-y-4">
       {titles.length > 0 && (
-        <Section title="Titulos propuestos">
+        <Section title={outputCopy.proposedTitles}>
           <ol className="list-decimal list-inside space-y-1">
             {titles.map((item, index) => {
               if (isObject(item)) {
@@ -347,14 +349,14 @@ function renderTitlesOutput(output: JsonObject) {
   );
 }
 
-function renderOutput(profileKey: string | null, output: unknown) {
+function renderOutput(profileKey: string | null, output: unknown, outputCopy: ReturnType<typeof getAiOutputCopy>) {
   if (!profileKey || !isObject(output)) {
     return <div className="text-sm text-slate-400">No hay salida para mostrar.</div>;
   }
   if (profileKey === 'evergreen_ideas') return renderEvergreenOutput(output);
-  if (profileKey === 'script_architect') return renderScriptOutput(output);
-  if (profileKey === 'retention_editor') return renderRetentionOutput(output);
-  if (profileKey === 'titles_thumbs') return renderTitlesOutput(output);
+  if (profileKey === 'script_architect') return renderScriptOutput(output, outputCopy);
+  if (profileKey === 'retention_editor') return renderRetentionOutput(output, outputCopy);
+  if (profileKey === 'titles_thumbs') return renderTitlesOutput(output, outputCopy);
   return <div className="text-sm text-slate-400">Salida no compatible.</div>;
 }
 
@@ -372,6 +374,8 @@ function renderInputSummary(input: unknown) {
 }
 
 function AiStudioContent() {
+  const { locale } = useLocale();
+  const aiOutputCopy = getAiOutputCopy(locale);
   const searchParams = useSearchParams();
   const publicModel = process.env.NEXT_PUBLIC_OPENAI_MODEL || 'gpt-4o-mini';
   const publicMaxTokens = process.env.NEXT_PUBLIC_OPENAI_MAX_OUTPUT_TOKENS || '800';
@@ -714,7 +718,7 @@ function AiStudioContent() {
                 {autoOutput ? (
                   <div className="grid gap-3">
                     <div className="rounded-lg border border-gray-800 bg-gray-900/60 p-4">
-                      {renderOutput(autoOutputProfileKey ?? activeProfile?.key ?? null, autoOutput)}
+                      {renderOutput(autoOutputProfileKey ?? activeProfile?.key ?? null, autoOutput, aiOutputCopy)}
                     </div>
                     {autoApplied && (
                       <div className="text-xs text-slate-300">
@@ -800,7 +804,7 @@ function AiStudioContent() {
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-1">Output</p>
                     <div className="text-xs text-slate-200 bg-gray-900/70 border border-gray-800 rounded-lg p-3 overflow-auto max-h-64">
-                      {renderOutput(selectedRun.profile_key, selectedRun.output_json ?? {})}
+                      {renderOutput(selectedRun.profile_key, selectedRun.output_json ?? {}, aiOutputCopy)}
                     </div>
                   </div>
                   <details className="text-xs text-slate-400">
