@@ -32,8 +32,10 @@
 - Editor de guiones avanzado con plantillas.
 - Panel de rendimiento con insights semanales.
 - Integraciones adicionales (Instagram/TikTok).
+- Internacionalizacion completa de la app (ES/EN) con selector de idioma, rutas/locales y textos traducidos en UI + emails.
 
 ## Later
 - Multi‑tenant para agencias.
 - Automatizaciones avanzadas con IA (sugerencias SEO + thumbnails).
 - Exportación y reporting PDF.
+- Hardening de seguridad fase 2 (post-online): CSP estricta sin `unsafe-inline` en estilos, Trusted Types, SRI en assets criticos y pruebas E2E de seguridad.
