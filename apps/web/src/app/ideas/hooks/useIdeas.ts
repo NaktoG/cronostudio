@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ideasService } from '@/app/ideas/services/ideasService';
 import { ideaPipelineService } from '@/app/ideas/services/ideaPipelineService';
 import { evaluateIdeaReady } from '@/lib/ideaReady';
-import { IDEAS_COPY } from '@/app/content/pages/ideas';
+import type { IdeasCopy } from '@/app/content/pages/ideas';
 import type { IdeaStatus } from '@/app/content/status/ideas';
 
 type AuthFetch = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
@@ -32,9 +32,10 @@ type UseIdeasOptions = {
   isAuthenticated: boolean;
   authFetch: AuthFetch;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  ideasCopy: IdeasCopy;
 };
 
-export function useIdeas({ isAuthenticated, authFetch, addToast }: UseIdeasOptions) {
+export function useIdeas({ isAuthenticated, authFetch, addToast, ideasCopy }: UseIdeasOptions) {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
@@ -60,19 +61,19 @@ export function useIdeas({ isAuthenticated, authFetch, addToast }: UseIdeasOptio
       }
       const result = await ideasService.fetchIdeas(authFetch, selectedChannel || undefined, signal);
       if (result.error) {
-        setListError(result.error);
+        setListError(result.error ?? ideasCopy.errors.loadIdeas);
       }
       setIdeas(result.ideas as Idea[]);
     } catch (err) {
       if (signal?.aborted) return;
       console.error('Error:', err);
-      addToast(IDEAS_COPY.toasts.error, 'error');
-      setListError(err instanceof Error ? err.message : IDEAS_COPY.toasts.error);
+      addToast(ideasCopy.toasts.error, 'error');
+      setListError(err instanceof Error ? err.message : ideasCopy.errors.loadIdeas);
     } finally {
       if (signal?.aborted) return;
       setLoading(false);
     }
-  }, [isAuthenticated, authFetch, addToast, selectedChannel]);
+  }, [isAuthenticated, authFetch, addToast, selectedChannel, ideasCopy.toasts.error, ideasCopy.errors.loadIdeas]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -141,7 +142,7 @@ export function useIdeas({ isAuthenticated, authFetch, addToast }: UseIdeasOptio
         if (targetIdea) {
           const readiness = evaluateIdeaReady(targetIdea.title, targetIdea.description);
           if (!readiness.isReady) {
-            addToast(IDEAS_COPY.toasts.ideaNotReady, 'error');
+            addToast(ideasCopy.toasts.ideaNotReady, 'error');
             setStatusErrors((prev) => ({ ...prev, [id]: readiness.errors }));
             return;
           }
@@ -155,11 +156,11 @@ export function useIdeas({ isAuthenticated, authFetch, addToast }: UseIdeasOptio
         return next;
       });
       await refreshIdeas();
-      addToast(IDEAS_COPY.toasts.statusUpdated, 'success');
+      addToast(ideasCopy.toasts.statusUpdated, 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : IDEAS_COPY.toasts.error, 'error');
+      addToast(err instanceof Error ? err.message : ideasCopy.toasts.error, 'error');
     }
-  }, [ideas, authFetch, addToast, refreshIdeas]);
+  }, [ideas, authFetch, addToast, refreshIdeas, ideasCopy.toasts.ideaNotReady, ideasCopy.toasts.statusUpdated, ideasCopy.toasts.error]);
 
   const updateSelectedStatus = useCallback(async (status: IdeaStatus) => {
     if (selectedIds.length === 0) return;
@@ -181,7 +182,7 @@ export function useIdeas({ isAuthenticated, authFetch, addToast }: UseIdeasOptio
 
         if (Object.keys(nextErrors).length > 0) {
           setStatusErrors((prev) => ({ ...prev, ...nextErrors }));
-          addToast(IDEAS_COPY.toasts.ideaNotReady, 'error');
+          addToast(ideasCopy.toasts.ideaNotReady, 'error');
         }
 
         if (readyIds.length === 0) return;
@@ -193,14 +194,14 @@ export function useIdeas({ isAuthenticated, authFetch, addToast }: UseIdeasOptio
       await Promise.all(selectedIds.map((id) => updateStatus(id, status)));
       clearSelection();
     } catch {
-      addToast(IDEAS_COPY.toasts.error, 'error');
+      addToast(ideasCopy.toasts.error, 'error');
     }
-  }, [selectedIds, ideas, updateStatus, clearSelection, addToast]);
+  }, [selectedIds, ideas, updateStatus, clearSelection, addToast, ideasCopy.toasts.ideaNotReady, ideasCopy.toasts.error]);
 
   const runPipeline = useCallback(async (idea: Idea) => {
     const channelId = idea.channelId ?? selectedChannel;
     if (!channelId) {
-      addToast('Selecciona un canal para ejecutar el pipeline', 'error');
+      addToast(ideasCopy.toasts.pipelineNeedsChannel, 'error');
       return;
     }
     if (pipelineLoading.includes(idea.id)) return;
@@ -208,13 +209,13 @@ export function useIdeas({ isAuthenticated, authFetch, addToast }: UseIdeasOptio
     try {
       await ideaPipelineService.runPipeline(authFetch, { channelId, ideaId: idea.id });
       await refreshIdeas();
-      addToast('Pipeline completado (guion + SEO)', 'success');
+      addToast(ideasCopy.toasts.pipelineDone, 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'Error al ejecutar pipeline', 'error');
+      addToast(err instanceof Error ? err.message : ideasCopy.toasts.pipelineError, 'error');
     } finally {
       setPipelineLoading((current) => current.filter((id) => id !== idea.id));
     }
-  }, [authFetch, addToast, refreshIdeas, selectedChannel, pipelineLoading]);
+  }, [authFetch, addToast, refreshIdeas, selectedChannel, pipelineLoading, ideasCopy.toasts.pipelineNeedsChannel, ideasCopy.toasts.pipelineDone, ideasCopy.toasts.pipelineError]);
 
   return {
     state: {

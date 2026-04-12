@@ -91,6 +91,35 @@ type AuthLocaleCopy = {
     successMessage: string;
     unknownError: string;
   };
+  verifyEmail: {
+    title: string;
+    subtitle: string;
+    loading: string;
+    invalidToken: string;
+    requestFailed: string;
+    successFallback: string;
+    backToLogin: string;
+  };
+  resendVerification: {
+    title: string;
+    subtitle: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    submitIdle: string;
+    submitLoading: string;
+    backToLogin: string;
+    validationRequired: string;
+    requestFailed: string;
+    successFallback: string;
+    manualLinkLabel: string;
+    unknownError: string;
+  };
+  common: {
+    loginError: string;
+    registerError: string;
+    unknownError: string;
+    networkError: string;
+  };
 };
 
 const AUTH_COPY: Record<Locale, AuthLocaleCopy> = {
@@ -190,6 +219,35 @@ const AUTH_COPY: Record<Locale, AuthLocaleCopy> = {
       successMessage: 'Contrasena actualizada. Ya puedes iniciar sesion.',
       unknownError: 'Error desconocido',
     },
+    verifyEmail: {
+      title: 'Verificacion de email',
+      subtitle: 'Estamos procesando tu solicitud',
+      loading: 'Verificando...',
+      invalidToken: 'Token invalido',
+      requestFailed: 'Error al verificar',
+      successFallback: 'Email verificado',
+      backToLogin: 'Ir a login',
+    },
+    resendVerification: {
+      title: 'Reenviar verificacion',
+      subtitle: 'Te enviaremos un nuevo link de verificacion',
+      emailLabel: 'Email',
+      emailPlaceholder: 'tu@email.com',
+      submitIdle: 'Reenviar link',
+      submitLoading: 'Enviando...',
+      backToLogin: 'Volver a iniciar sesion',
+      validationRequired: 'Ingresa tu email',
+      requestFailed: 'Error al reenviar verificacion',
+      successFallback: 'Si el email existe, se envio un link',
+      manualLinkLabel: 'Link de verificacion',
+      unknownError: 'Error desconocido',
+    },
+    common: {
+      loginError: 'Error al iniciar sesion',
+      registerError: 'Error al registrar usuario',
+      unknownError: 'Error desconocido',
+      networkError: 'No se pudo conectar con el servidor',
+    },
   },
   en: {
     marketingBadge: 'Creative studio',
@@ -286,6 +344,35 @@ const AUTH_COPY: Record<Locale, AuthLocaleCopy> = {
       requestFailed: 'Failed to reset password',
       successMessage: 'Password updated. You can sign in now.',
       unknownError: 'Unknown error',
+    },
+    verifyEmail: {
+      title: 'Email verification',
+      subtitle: 'We are processing your request',
+      loading: 'Verifying...',
+      invalidToken: 'Invalid token',
+      requestFailed: 'Error verifying email',
+      successFallback: 'Email verified',
+      backToLogin: 'Go to login',
+    },
+    resendVerification: {
+      title: 'Resend verification',
+      subtitle: 'We will send you a new verification link',
+      emailLabel: 'Email',
+      emailPlaceholder: 'you@email.com',
+      submitIdle: 'Resend link',
+      submitLoading: 'Sending...',
+      backToLogin: 'Back to sign in',
+      validationRequired: 'Enter your email',
+      requestFailed: 'Error resending verification',
+      successFallback: 'If the email exists, a link was sent',
+      manualLinkLabel: 'Verification link',
+      unknownError: 'Unknown error',
+    },
+    common: {
+      loginError: 'Error signing in',
+      registerError: 'Error registering user',
+      unknownError: 'Unknown error',
+      networkError: 'Could not connect to server',
     },
   },
 };

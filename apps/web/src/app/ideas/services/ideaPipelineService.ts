@@ -11,7 +11,7 @@ export const ideaPipelineService = {
     });
     const scriptId = (scriptData.applied?.scriptId as string | undefined) ?? null;
     if (!scriptId) {
-      throw new Error('Guion no generado');
+      throw new Error('Script not generated');
     }
 
     await aiStudioService.executeRun(authFetch, {

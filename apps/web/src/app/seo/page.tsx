@@ -9,8 +9,9 @@ import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { SEO_COPY } from '../content/pages/seo';
-import { SEO_SCORE_THRESHOLDS, SEO_SCORE_LABELS, getSeoScoreLabel } from '@/app/content/status/seo';
+import { useLocale } from '../contexts/LocaleContext';
+import { getSeoCopy } from '../content/pages/seo';
+import { SEO_SCORE_THRESHOLDS, getSeoScoreLabel, getSeoScoreLabels } from '@/app/content/status/seo';
 import { useRouter } from 'next/navigation';
 import { useChannels } from '@/app/hooks/useChannels';
 import { useSeoData } from '@/app/seo/hooks/useSeoData';
@@ -22,20 +23,23 @@ function isNonEmptyString(value: unknown): value is string {
 
 export default function SeoPage() {
     const { isAuthenticated } = useAuth();
+    const { locale } = useLocale();
+    const seoCopy = getSeoCopy(locale);
+    const scoreLabels = getSeoScoreLabels(locale);
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const router = useRouter();
     const { channels } = useChannels({ isAuthenticated, authFetch });
-    const { state, actions } = useSeoData({ isAuthenticated, authFetch, addToast });
+    const { state, actions } = useSeoData({ isAuthenticated, authFetch, addToast, seoCopy });
     const { seoData, loading, error, selectedChannel, selectedIds, ideaOptions, scriptOptions } = state;
     const { setSelectedChannel, refreshSeo, toggleSelection, clearSelection, copySelected, copyItem } = actions;
     const [showPresets, setShowPresets] = useState(false);
     const handlePresetCopy = async (value: string) => {
         try {
             await copyToClipboard(value);
-            addToast(SEO_COPY.toasts.copied, 'success');
+            addToast(seoCopy.toasts.copied, 'success');
         } catch {
-            addToast(SEO_COPY.toasts.error, 'error');
+            addToast(seoCopy.toasts.error, 'error');
         }
     };
 
@@ -48,7 +52,7 @@ export default function SeoPage() {
 
     const getScoreLabel = (score: number) => {
         const labelKey = getSeoScoreLabel(score);
-        return SEO_SCORE_LABELS[labelKey];
+        return scoreLabels[labelKey];
     };
 
     const normalizeTitles = (titles?: Array<string | { title?: string }>) =>
@@ -68,7 +72,7 @@ export default function SeoPage() {
             <div className="min-h-screen flex flex-col">
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
-                    <h1 className="sr-only">{SEO_COPY.title}</h1>
+                    <h1 className="sr-only">{seoCopy.title}</h1>
                     <motion.div
                         className="flex flex-col gap-4 mb-8 sm:flex-row sm:items-start sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
@@ -80,13 +84,13 @@ export default function SeoPage() {
                                 <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                     <Search className="w-5 h-5" />
                                 </span>
-                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{SEO_COPY.title}</h2>
+                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{seoCopy.title}</h2>
                             </div>
-                            <p className="text-sm sm:text-base text-slate-300">{SEO_COPY.subtitle}</p>
+                            <p className="text-sm sm:text-base text-slate-300">{seoCopy.subtitle}</p>
                         </div>
                         {channels.length > 0 && (
                             <div className="min-w-[220px]">
-                                <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>
+                                <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">{seoCopy.controls.channel}</label>
                                 <select
                                     value={selectedChannel}
                                     onChange={(event) => {
@@ -98,7 +102,7 @@ export default function SeoPage() {
                                     }}
                                     className="w-full px-4 py-2.5 bg-gray-900/70 border border-gray-800 rounded-lg text-sm text-white focus:ring-2 focus:ring-yellow-400"
                                 >
-                                    <option value="">Todos los canales</option>
+                                    <option value="">{seoCopy.controls.allChannels}</option>
                                     {channels.map((channel) => (
                                         <option key={channel.id} value={channel.id}>
                                             {channel.name}
@@ -109,34 +113,34 @@ export default function SeoPage() {
                         )}
                         {selectedIds.length > 0 && (
                             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                                <span className="text-xs text-slate-400">{selectedIds.length} seleccionados</span>
+                                <span className="text-xs text-slate-400">{selectedIds.length} {seoCopy.controls.selectedCount}</span>
                                 <button
                                     type="button"
                                     onClick={() => copySelected('title')}
                                     className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
                                 >
-                                    Copiar títulos
+                                    {seoCopy.controls.copyTitles}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => copySelected('description')}
                                     className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                                 >
-                                    Copiar descripciones
+                                    {seoCopy.controls.copyDescriptions}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => copySelected('tags')}
                                     className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                                 >
-                                    Copiar tags
+                                    {seoCopy.controls.copyTags}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={clearSelection}
                                     className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                                 >
-                                    Limpiar
+                                    {seoCopy.controls.clear}
                                 </button>
                             </div>
                         )}
@@ -151,10 +155,10 @@ export default function SeoPage() {
                     >
                         <h3 className="text-lg font-semibold text-teal-300 mb-3 flex items-center gap-2">
                             <Lightbulb className="w-4 h-4" />
-                            {SEO_COPY.tipsTitle}
+                            {seoCopy.tipsTitle}
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
-                            {SEO_COPY.tips.map((tip) => (
+                            {seoCopy.tips.map((tip) => (
                                 <div key={tip.title}>
                                     <p className="text-white font-medium mb-1">{tip.title}</p>
                                     <p className="text-gray-400">{tip.description}</p>
@@ -180,7 +184,7 @@ export default function SeoPage() {
                                     onClick={() => refreshSeo()}
                                     className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
                                 >
-                                    Reintentar
+                                    {seoCopy.controls.retry}
                                 </button>
                             </div>
                         </motion.div>
@@ -189,9 +193,9 @@ export default function SeoPage() {
                             <div className="w-20 h-20 mx-auto mb-6 bg-gray-900/60 border border-gray-800 rounded-full flex items-center justify-center text-yellow-400">
                                 <Search className="w-8 h-8" />
                             </div>
-                            <h3 className="text-xl font-semibold text-white mb-2">{SEO_COPY.emptyTitle}</h3>
-                            <p className="text-slate-300 mb-2">{SEO_COPY.emptySubtitle}</p>
-                            <p className="text-slate-500 text-sm">{SEO_COPY.emptyHint}</p>
+                            <h3 className="text-xl font-semibold text-white mb-2">{seoCopy.emptyTitle}</h3>
+                            <p className="text-slate-300 mb-2">{seoCopy.emptySubtitle}</p>
+                            <p className="text-slate-500 text-sm">{seoCopy.emptyHint}</p>
                             <motion.div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
                                 <motion.button
                                     onClick={() => router.push('/channels')}
@@ -199,7 +203,7 @@ export default function SeoPage() {
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    {SEO_COPY.connectChannel}
+                                    {seoCopy.connectChannel}
                                 </motion.button>
                                 <motion.button
                                     onClick={() => router.push('/analytics')}
@@ -207,7 +211,7 @@ export default function SeoPage() {
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    {SEO_COPY.viewAnalytics}
+                                    {seoCopy.viewAnalytics}
                                 </motion.button>
                             </motion.div>
                         </motion.div>
@@ -239,10 +243,10 @@ export default function SeoPage() {
                                                     type="checkbox"
                                                     checked={selectedIds.includes(item.id)}
                                                     onChange={() => toggleSelection(item.id)}
-                                                    aria-label={`Seleccionar SEO ${item.optimized_title}`}
+                                                    aria-label={`${seoCopy.controls.selectPrefix} ${item.optimized_title}`}
                                                     className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
                                                 />
-                                                Seleccionar
+                                                {seoCopy.controls.select}
                                             </label>
                                             <h3 className="text-lg font-semibold text-white break-words">
                                                 {item.optimized_title}
@@ -254,7 +258,7 @@ export default function SeoPage() {
                                                 onClick={() => copyItem(item, 'title')}
                                                 className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
                                             >
-                                                Copiar título
+                                                {seoCopy.controls.copyTitle}
                                             </button>
                                             {item.description && (
                                                 <button
@@ -262,7 +266,7 @@ export default function SeoPage() {
                                                     onClick={() => copyItem(item, 'description')}
                                                     className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
                                                 >
-                                                    Copiar descripción
+                                                    {seoCopy.controls.copyDescription}
                                                 </button>
                                             )}
                                             {item.tags?.length > 0 && (
@@ -271,24 +275,24 @@ export default function SeoPage() {
                                                     onClick={() => copyItem(item, 'tags')}
                                                     className="text-[11px] px-2 py-1 rounded-full border border-gray-800 text-slate-300 hover:text-white"
                                                 >
-                                                    Copiar tags
+                                                    {seoCopy.controls.copyTagsSingle}
                                                 </button>
                                             )}
                                         </div>
                                             {item.video_title && (
-                                                <p className="text-sm text-gray-500">{SEO_COPY.videoPrefix} {item.video_title}</p>
+                                                <p className="text-sm text-gray-500">{seoCopy.videoPrefix} {item.video_title}</p>
                                             )}
                                             <div className="mt-2 flex flex-wrap gap-2">
                                                 <input
                                                     type="text"
                                                     list="seo-idea-options"
-                                                    placeholder="Idea ID"
+                                                    placeholder={seoCopy.controls.ideaIdPlaceholder}
                                                     className="w-40 rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
                                                 />
                                                 <input
                                                     type="text"
                                                     list="seo-script-options"
-                                                    placeholder="Script ID"
+                                                    placeholder={seoCopy.controls.scriptIdPlaceholder}
                                                     className="w-40 rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 text-xs text-slate-200"
                                                 />
                                             </div>
@@ -316,7 +320,7 @@ export default function SeoPage() {
                                             ))}
                                             {item.tags.length > 8 && (
                                                 <span className="text-xs text-gray-500">
-                                                    +{item.tags.length - 8} más
+                                                    +{item.tags.length - 8} {seoCopy.controls.moreSuffix}
                                                 </span>
                                             )}
                                         </div>
@@ -333,13 +337,13 @@ export default function SeoPage() {
                                                 onClick={() => setShowPresets((current) => !current)}
                                                 className="text-xs uppercase tracking-[0.2em] text-yellow-300"
                                             >
-                                                {showPresets ? 'Ocultar presets' : 'Ver presets'}
+                                                {showPresets ? seoCopy.presets.hide : seoCopy.presets.show}
                                             </button>
                                             {showPresets && (
                                                 <div className="mt-3 space-y-3">
                                                     {suggestionTitles.length ? (
                                                         <div>
-                                                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Títulos sugeridos</div>
+                                                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">{seoCopy.presets.suggestedTitles}</div>
                                                             <div className="mt-2 flex flex-col gap-2">
                                                                 {suggestionTitles.slice(0, 6).map((title) => (
                                                                     <button
@@ -356,7 +360,7 @@ export default function SeoPage() {
                                                     ) : null}
                                                     {suggestionThumbs.length ? (
                                                         <div>
-                                                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Textos de miniatura</div>
+                                                            <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">{seoCopy.presets.thumbnailTexts}</div>
                                                             <div className="mt-2 flex flex-wrap gap-2">
                                                                 {suggestionThumbs.slice(0, 6).map((text) => (
                                                                     <button
@@ -380,7 +384,7 @@ export default function SeoPage() {
                                     {/* Score Bar */}
                                     <div className="mt-4 pt-4 border-t border-gray-800">
                                         <div className="flex items-center gap-4">
-                                            <span className="text-xs text-gray-500">{SEO_COPY.scoreLabel}</span>
+                                            <span className="text-xs text-gray-500">{seoCopy.scoreLabel}</span>
                                             <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
                                                 <motion.div
                                                     className={`h-full ${item.score >= SEO_SCORE_THRESHOLDS.excellent

@@ -4,6 +4,8 @@ import { Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { formatDayMonth } from '@/lib/dates';
+import { useLocale } from '../contexts/LocaleContext';
+import { getComponentsCopy } from '../content/components';
 
 export interface Production {
     id: string;
@@ -28,37 +30,37 @@ interface ProductionCardProps {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
     idea: { label: 'Idea', color: 'text-gray-400', bg: 'bg-gray-500/20' },
-    scripting: { label: 'En guión', color: 'text-blue-400', bg: 'bg-blue-500/20' },
-    recording: { label: 'Grabando', color: 'text-purple-400', bg: 'bg-purple-500/20' },
-    editing: { label: 'Editando', color: 'text-orange-400', bg: 'bg-orange-500/20' },
+    scripting: { label: 'Scripting', color: 'text-blue-400', bg: 'bg-blue-500/20' },
+    recording: { label: 'Recording', color: 'text-purple-400', bg: 'bg-purple-500/20' },
+    editing: { label: 'Editing', color: 'text-orange-400', bg: 'bg-orange-500/20' },
     shorts: { label: 'Shorts', color: 'text-cyan-400', bg: 'bg-cyan-500/20' },
-    publishing: { label: 'Publicando', color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
-    published: { label: 'Publicado', color: 'text-green-400', bg: 'bg-green-500/20' },
+    publishing: { label: 'Publishing', color: 'text-yellow-400', bg: 'bg-yellow-500/20' },
+    published: { label: 'Published', color: 'text-green-400', bg: 'bg-green-500/20' },
 };
 
-function getProgress(production: Production): { label: string; percent: number; status: 'done' | 'pending' | 'none' }[] {
+function getProgress(production: Production): { label: 'script' | 'thumbnail' | 'seo' | 'shorts'; percent: number; status: 'done' | 'pending' | 'none' }[] {
     return [
-        {
-            label: 'Guión',
+      {
+            label: 'script',
             percent: production.script_status === 'approved' || production.script_status === 'recorded' ? 100 :
                 production.script_status === 'review' ? 80 :
                     production.script_status === 'draft' ? 40 : 0,
             status: production.script_status ? (production.script_status === 'approved' || production.script_status === 'recorded' ? 'done' : 'pending') : 'none'
         },
         {
-            label: 'Miniatura',
+            label: 'thumbnail',
             percent: production.thumbnail_status === 'approved' ? 100 :
                 production.thumbnail_status === 'designed' ? 70 :
                     production.thumbnail_status === 'designing' ? 40 : 0,
             status: production.thumbnail_status ? (production.thumbnail_status === 'approved' ? 'done' : 'pending') : 'none'
         },
         {
-            label: 'SEO',
+            label: 'seo',
             percent: production.seo_score || 0,
             status: production.seo_score ? (production.seo_score >= 80 ? 'done' : 'pending') : 'none'
         },
         {
-            label: 'Shorts',
+            label: 'shorts',
             percent: production.shorts_count > 0 ? (production.shorts_published / production.shorts_count) * 100 : 0,
             status: production.shorts_count > 0 ? (production.shorts_published === production.shorts_count ? 'done' : 'pending') : 'none'
         },
@@ -66,7 +68,18 @@ function getProgress(production: Production): { label: string; percent: number; 
 }
 
 export default function ProductionCard({ production, onClick }: ProductionCardProps) {
-    const statusConfig = STATUS_CONFIG[production.status] || STATUS_CONFIG.idea;
+    const { locale } = useLocale();
+    const componentsCopy = getComponentsCopy(locale);
+    const statusConfigLocalized: typeof STATUS_CONFIG = {
+        idea: { ...STATUS_CONFIG.idea, label: componentsCopy.productionCard.labels.idea },
+        scripting: { ...STATUS_CONFIG.scripting, label: componentsCopy.productionCard.labels.scripting },
+        recording: { ...STATUS_CONFIG.recording, label: componentsCopy.productionCard.labels.recording },
+        editing: { ...STATUS_CONFIG.editing, label: componentsCopy.productionCard.labels.editing },
+        shorts: { ...STATUS_CONFIG.shorts, label: componentsCopy.productionCard.labels.shorts },
+        publishing: { ...STATUS_CONFIG.publishing, label: componentsCopy.productionCard.labels.publishing },
+        published: { ...STATUS_CONFIG.published, label: componentsCopy.productionCard.labels.published },
+    };
+    const statusConfig = statusConfigLocalized[production.status] || statusConfigLocalized.idea;
     const progress = getProgress(production);
 
     return (
@@ -74,7 +87,7 @@ export default function ProductionCard({ production, onClick }: ProductionCardPr
             type="button"
             className="surface-panel glow-hover w-full p-4 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60"
             onClick={() => onClick?.(production)}
-            aria-label={`Abrir produccion ${production.title}`}
+            aria-label={`${componentsCopy.productionCard.openProduction} ${production.title}`}
             whileHover={{ x: 4 }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -98,7 +111,7 @@ export default function ProductionCard({ production, onClick }: ProductionCardPr
                         <span className={`w-2 h-2 rounded-full ${item.status === 'done' ? 'bg-green-500' :
                                 item.status === 'pending' ? 'bg-yellow-500' : 'bg-gray-700'
                             }`} />
-                        <span className="text-xs text-gray-400 w-16">{item.label}</span>
+                        <span className="text-xs text-gray-400 w-16">{item.label === 'script' ? componentsCopy.productionCard.progress.script : item.label === 'thumbnail' ? componentsCopy.productionCard.progress.thumbnail : item.label === 'seo' ? componentsCopy.productionCard.progress.seo : componentsCopy.productionCard.progress.shorts}</span>
                         <div className="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
                             <motion.div
                                 className={`h-full ${item.status === 'done' ? 'bg-green-500' :
@@ -109,7 +122,7 @@ export default function ProductionCard({ production, onClick }: ProductionCardPr
                                 transition={{ duration: 0.5 }}
                             />
                         </div>
-                        {item.label === 'Shorts' && production.shorts_count > 0 && (
+                        {item.label === 'shorts' && production.shorts_count > 0 && (
                             <span className="text-xs text-gray-500">
                                 {production.shorts_published}/{production.shorts_count}
                             </span>
@@ -131,7 +144,7 @@ export default function ProductionCard({ production, onClick }: ProductionCardPr
                     className="text-xs text-yellow-400 hover:text-yellow-300 font-medium ml-auto"
                     onClick={(e) => e.stopPropagation()}
                 >
-                    Ver detalle →
+                    {componentsCopy.productionCard.detail}
                 </Link>
             </div>
         </motion.button>

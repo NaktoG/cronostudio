@@ -6,8 +6,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { GuestRoute } from '../components/ProtectedRoute';
 import Footer from '../components/Footer';
+import { useLocale } from '../contexts/LocaleContext';
+import { getAuthCopy } from '../content/auth';
 
 export default function ResendVerificationPage() {
+  const { locale } = useLocale();
+  const authCopy = getAuthCopy(locale);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -21,7 +25,7 @@ export default function ResendVerificationPage() {
     setManualLink('');
 
     if (!email) {
-      setError('Ingresa tu email');
+      setError(authCopy.resendVerification.validationRequired);
       return;
     }
 
@@ -34,12 +38,12 @@ export default function ResendVerificationPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Error al reenviar verificacion');
+        throw new Error(data.error || authCopy.resendVerification.requestFailed);
       }
-      setMessage(data.message || 'Si el email existe, se envio un link');
+      setMessage(data.message || authCopy.resendVerification.successFallback);
       setManualLink(data.enlaceVerificacion || '');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : authCopy.resendVerification.unknownError);
     } finally {
       setLoading(false);
     }
@@ -69,8 +73,8 @@ export default function ResendVerificationPage() {
                   priority
                 />
               </motion.div>
-              <h1 className="text-3xl font-bold text-white">Reenviar verificacion</h1>
-              <p className="text-gray-400 mt-2">Te enviaremos un nuevo link de verificacion</p>
+              <h1 className="text-3xl font-bold text-white">{authCopy.resendVerification.title}</h1>
+              <p className="text-gray-400 mt-2">{authCopy.resendVerification.subtitle}</p>
             </div>
 
             <motion.form
@@ -84,21 +88,21 @@ export default function ResendVerificationPage() {
                   <p>{error || message}</p>
                   {!error && manualLink && (
                     <p className="mt-2 break-all text-xs text-green-200">
-                      Link de verificacion: <a className="text-yellow-200 underline" href={manualLink}>{manualLink}</a>
+                      {authCopy.resendVerification.manualLinkLabel}: <a className="text-yellow-200 underline" href={manualLink}>{manualLink}</a>
                     </p>
                   )}
                 </div>
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">Email</label>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">{authCopy.resendVerification.emailLabel}</label>
                 <input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                  placeholder="tu@email.com"
+                  placeholder={authCopy.resendVerification.emailPlaceholder}
                   disabled={loading}
                 />
               </div>
@@ -110,12 +114,12 @@ export default function ResendVerificationPage() {
                 whileHover={{ scale: loading ? 1 : 1.02 }}
                 whileTap={{ scale: loading ? 1 : 0.98 }}
               >
-                {loading ? 'Enviando...' : 'Reenviar link'}
+                {loading ? authCopy.resendVerification.submitLoading : authCopy.resendVerification.submitIdle}
               </motion.button>
 
               <div className="text-center text-gray-400 text-sm">
                 <Link href="/login" className="text-yellow-400 hover:text-yellow-300 transition-colors">
-                  Volver a iniciar sesion
+                  {authCopy.resendVerification.backToLogin}
                 </Link>
               </div>
             </motion.form>

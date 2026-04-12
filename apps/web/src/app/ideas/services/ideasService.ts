@@ -4,10 +4,10 @@ async function parseJson<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function ensureOk(response: Response): Promise<Response> {
+async function ensureOk(response: Response, fallbackMessage = 'Request failed'): Promise<Response> {
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    const message = (data as { error?: string }).error || 'Solicitud fallida';
+    const message = (data as { error?: string }).error || fallbackMessage;
     throw new Error(message);
   }
   return response;
@@ -19,7 +19,7 @@ export const ideasService = {
     const response = await authFetch(`/api/ideas${query}`, { signal });
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      return { ideas: [], error: data?.error || 'Error al cargar ideas' };
+      return { ideas: [], error: data?.error || null };
     }
     const ideas = await parseJson<unknown[]>(response);
     return { ideas, error: null };

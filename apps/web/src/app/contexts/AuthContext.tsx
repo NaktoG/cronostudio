@@ -2,6 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode, useRef } from 'react';
 import type { User as DomainUser } from '@/domain/entities/User';
+import { getAuthCopy } from '@/app/content/auth';
+import type { Locale } from '@/app/i18n/messages';
 
 type UserRole = DomainUser['role'];
 
@@ -31,6 +33,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const LAST_KNOWN_USER_KEY = 'cronostudio_user';
 const LOGOUT_MARKER_KEY = 'cronostudio_logout_marker';
 const CSRF_COOKIE_NAME = 'csrf_token';
+
+function getCurrentLocale(): Locale {
+    if (typeof document === 'undefined') return 'es';
+    return document.documentElement.lang.startsWith('en') ? 'en' : 'es';
+}
 
 function getCookieValue(name: string): string | null {
     if (typeof document === 'undefined') return null;
@@ -165,14 +172,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
 
             const data = await response.json();
+            const authCopy = getAuthCopy(getCurrentLocale());
 
             if (!response.ok) {
-                throw new Error(data.error || 'Error al iniciar sesión');
+                throw new Error(data.error || authCopy.common.loginError);
             }
 
             saveSession(data.user);
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Error desconocido';
+            const authCopy = getAuthCopy(getCurrentLocale());
+            const message = err instanceof Error ? err.message : authCopy.common.unknownError;
             setError(message);
             setStatus('unauthenticated');
             throw err;
@@ -196,9 +205,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
             });
 
             const data = await response.json();
+            const authCopy = getAuthCopy(getCurrentLocale());
 
             if (!response.ok) {
-                throw new Error(data.error || 'Error al registrar usuario');
+                throw new Error(data.error || authCopy.common.registerError);
             }
 
             // Registro requiere verificación, no iniciamos sesión
@@ -208,7 +218,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 verificationUrl: data.enlaceVerificacion,
             };
         } catch (err) {
-            const message = err instanceof Error ? err.message : 'Error desconocido';
+            const authCopy = getAuthCopy(getCurrentLocale());
+            const message = err instanceof Error ? err.message : authCopy.common.unknownError;
             setError(message);
             setStatus('unauthenticated');
             throw err;
@@ -299,7 +310,10 @@ export function useAuthFetch() {
             }
 
             return new Response(
-                JSON.stringify({ error: 'network_error', message: 'No se pudo conectar con el servidor' }),
+                JSON.stringify({
+                    error: 'network_error',
+                    message: getAuthCopy(getCurrentLocale()).common.networkError,
+                }),
                 {
                     status: 503,
                     headers: { 'Content-Type': 'application/json' },

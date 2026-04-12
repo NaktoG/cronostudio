@@ -118,15 +118,6 @@ function generatePriorityActions(productions: Production[], dashboardCopy: Retur
   return actions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]).slice(0, 5);
 }
 
-const TOUR_STEPS = [
-  { id: 'week-stepper', title: 'Esta semana', description: 'Revisa Mar/Vie y el estado real del canal.' },
-  { id: 'action-dock', title: 'Acciones rápidas', description: 'Registra, planifica o verifica YouTube en 1 clic.' },
-  { id: 'pipeline', title: 'Producción', description: 'Avanza por etapas sin perder el foco.' },
-  { id: 'calendar', title: 'Calendario', description: 'Programa contenido y ajusta fechas.' },
-  { id: 'integrations', title: 'Integraciones', description: 'Conecta canales y valida datos externos.' },
-];
-
-
 function getChecklistStatus(production: Production) {
   const scriptReady = production.script_status && production.script_status !== 'draft';
   const seoReady = typeof production.seo_score === 'number' && production.seo_score >= SEO_SCORE_MIN_READY;
@@ -144,6 +135,8 @@ function getChecklistStatus(production: Production) {
 function OnboardingTour({
   open,
   stepIndex,
+  steps,
+  labels,
   onClose,
   onNext,
   onBack,
@@ -151,13 +144,15 @@ function OnboardingTour({
 }: {
   open: boolean;
   stepIndex: number;
+  steps: ReadonlyArray<{ id: string; title: string; description: string }>;
+  labels: { quickGuide: string; back: string; close: string; next: string; finish: string };
   onClose: () => void;
   onNext: () => void;
   onBack: () => void;
   reduceMotion: boolean;
 }) {
   const [anchorTick, setAnchorTick] = useState(0);
-  const step = TOUR_STEPS[stepIndex];
+  const step = steps[stepIndex];
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   const anchorRect = useMemo(() => {
@@ -247,7 +242,7 @@ function OnboardingTour({
             : { top: '20%', left: '50%', transform: 'translateX(-50%)' }
         }
       >
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">Guía rápida</div>
+        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">{labels.quickGuide}</div>
         <h4 id="tour-step-title" className="mt-2 text-lg font-semibold">{step.title}</h4>
         <p className="mt-2 text-sm text-slate-300">{step.description}</p>
         <div className="mt-4 flex items-center justify-between">
@@ -257,18 +252,18 @@ function OnboardingTour({
             disabled={stepIndex === 0}
             className="text-xs text-slate-400 disabled:opacity-40"
           >
-            Atrás
+            {labels.back}
           </button>
           <div className="flex items-center gap-2">
             <button type="button" onClick={onClose} className="text-xs text-slate-400">
-              Cerrar
+              {labels.close}
             </button>
             <button
               type="button"
               onClick={onNext}
               className="rounded-md bg-yellow-400 px-3 py-1 text-xs font-semibold text-black"
             >
-              {stepIndex === TOUR_STEPS.length - 1 ? 'Finalizar' : 'Siguiente'}
+              {stepIndex === steps.length - 1 ? labels.finish : labels.next}
             </button>
           </div>
         </div>
@@ -284,6 +279,7 @@ export function DashboardContent() {
   const { addToast } = useToast();
   const dashboardCopy = useMemo(() => getDashboardCopy(locale), [locale]);
   const stageLabels = useMemo(() => getStageLabels(locale), [locale]);
+  const tourSteps = dashboardCopy.tour.steps;
   const searchParams = useSearchParams();
   const searchParamsKey = searchParams?.toString() ?? '';
   const channelIdParam = searchParams?.get('channelId') ?? '';
@@ -342,22 +338,22 @@ export function DashboardContent() {
   const resolveReconcileError = useCallback((code: string | null) => {
     if (!code) return null;
     if (code === 'youtube_auth_invalid') {
-      return { message: 'YouTube necesita reautorizacion.', actionLabel: 'Reautorizar', actionHref: '/configuracion' };
+      return { message: dashboardCopy.reconcile.authInvalid, actionLabel: dashboardCopy.reconcile.authInvalidAction, actionHref: '/configuracion' };
     }
     if (code === 'youtube_refresh_missing') {
-      return { message: 'Falta refresh token. Reconecta YouTube.', actionLabel: 'Reconectar', actionHref: '/channels' };
+      return { message: dashboardCopy.reconcile.refreshMissing, actionLabel: dashboardCopy.reconcile.refreshMissingAction, actionHref: '/channels' };
     }
     if (code === 'youtube_rate_limited') {
-      return { message: 'YouTube esta limitando. Reintenta en unos minutos.', actionLabel: '', actionHref: '' };
+      return { message: dashboardCopy.reconcile.rateLimited, actionLabel: '', actionHref: '' };
     }
     if (code === 'youtube_unavailable') {
-      return { message: 'YouTube no responde ahora. Reintenta luego.', actionLabel: '', actionHref: '' };
+      return { message: dashboardCopy.reconcile.unavailable, actionLabel: '', actionHref: '' };
     }
     if (code === 'youtube_channel_not_found') {
-      return { message: 'No se encontro canal en YouTube para esta cuenta.', actionLabel: 'Revisar canal', actionHref: '/channels' };
+      return { message: dashboardCopy.reconcile.channelNotFound, actionLabel: dashboardCopy.reconcile.channelNotFoundAction, actionHref: '/channels' };
     }
-    return { message: 'No se pudo verificar YouTube.', actionLabel: 'Revisar integracion', actionHref: '/channels' };
-  }, []);
+    return { message: dashboardCopy.reconcile.generic, actionLabel: dashboardCopy.reconcile.genericAction, actionHref: '/channels' };
+  }, [dashboardCopy.reconcile]);
 
   useDialogFocus(modalRef, showModal);
   useDialogFocus(publishRef, Boolean(publishTarget));
@@ -467,7 +463,7 @@ export function DashboardContent() {
       const responses = [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes];
       if (responses.some((res) => res.status === 401)) {
         logout();
-        addToast('Sesion expirada. Inicia sesion nuevamente.', 'error');
+        addToast(dashboardCopy.toasts.sessionExpired, 'error');
         return;
       }
 
@@ -510,7 +506,7 @@ export function DashboardContent() {
         setWeeklyError(null);
       } else {
         const errorData = await weeklyRes.json().catch(() => null);
-        setWeeklyError(errorData?.error || 'Error al cargar estado semanal');
+        setWeeklyError(errorData?.error || dashboardCopy.toasts.weeklyStatusError);
         setWeeklyStatus(null);
         setWeeklyActions([]);
       }
@@ -548,7 +544,7 @@ export function DashboardContent() {
               }
               if (reconcileRes.status === 401) {
                 logout();
-                addToast('Sesion expirada. Inicia sesion nuevamente.', 'error');
+                addToast(dashboardCopy.toasts.sessionExpired, 'error');
                 return;
               }
               setReconcileError(errorData?.error || 'youtube_error');
@@ -564,11 +560,11 @@ export function DashboardContent() {
       }
     } catch (e) {
       if (signal?.aborted) return;
-      console.error('Error:', e);
+      console.error('[dashboard] request failed', e);
     } finally {
       setLoading(false);
     }
-  }, [authFetch, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, addToast, logout]);
+  }, [authFetch, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, addToast, logout, dashboardCopy.toasts.sessionExpired, dashboardCopy.toasts.weeklyStatusError]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -632,7 +628,7 @@ export function DashboardContent() {
       }
     } catch (e) {
       addToast(dashboardCopy.toasts.createError, 'error');
-      console.error('Error:', e);
+      console.error('[dashboard] update failed', e);
     }
   };
 
@@ -654,16 +650,16 @@ export function DashboardContent() {
       });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Error al marcar como publicado');
+        throw new Error(data.error || dashboardCopy.toasts.publishMarkError);
       }
       setPublishTarget(null);
       setPublishUrl('');
       setPublishPlatformId('');
       setPublishPlatformTouched(false);
       fetchData();
-      addToast('Publicado', 'success');
+      addToast(dashboardCopy.toasts.publishMarked, 'success');
     } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al marcar como publicado', 'error');
+      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.publishMarkError, 'error');
     } finally {
       setPublishSubmitting(false);
     }
@@ -686,7 +682,7 @@ export function DashboardContent() {
 
   const handleGeneratePlan = async () => {
     if (!selectedChannelId) {
-      addToast('Selecciona un canal primero', 'error');
+      addToast(dashboardCopy.toasts.selectChannelFirst, 'error');
       return;
     }
     setPlanSubmitting(true);
@@ -703,12 +699,12 @@ export function DashboardContent() {
       });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Error al generar plan');
+        throw new Error(data.error || dashboardCopy.toasts.generatePlanError);
       }
-      addToast('Plan semanal generado', 'success');
+      addToast(dashboardCopy.toasts.planGenerated, 'success');
       fetchData();
     } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al generar plan', 'error');
+      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.generatePlanError, 'error');
     } finally {
       setPlanSubmitting(false);
     }
@@ -748,13 +744,13 @@ export function DashboardContent() {
         ? `${weeklyGoal.isoYear}-W${String(weeklyGoal.isoWeek).padStart(2, '0')}`
         : `${fallbackIso.isoYear}-W${String(fallbackIso.isoWeek).padStart(2, '0')}`;
   const dayLabels: Record<string, string> = {
-    monday: 'Lun',
-    tuesday: 'Mar',
-    wednesday: 'Mie',
-    thursday: 'Jue',
-    friday: 'Vie',
-    saturday: 'Sab',
-    sunday: 'Dom',
+    monday: dashboardCopy.labels.mondayShort,
+    tuesday: dashboardCopy.labels.tuesdayShort,
+    wednesday: dashboardCopy.labels.wednesdayShort,
+    thursday: dashboardCopy.labels.thursdayShort,
+    friday: dashboardCopy.labels.fridayShort,
+    saturday: dashboardCopy.labels.saturdayShort,
+    sunday: dashboardCopy.labels.sundayShort,
   };
   const goalDays = goalData?.diasPublicacion
     ? goalData.diasPublicacion.map((day) => dayLabels[day] || day).join('/')
@@ -790,8 +786,8 @@ export function DashboardContent() {
   const reconcileMessage = resolveReconcileError(reconcileError);
 
   const slotConfig = [
-    { key: 'tue' as const, label: 'Mar' },
-    { key: 'fri' as const, label: 'Vie' },
+    { key: 'tue' as const, label: dashboardCopy.labels.tuesdayShort },
+    { key: 'fri' as const, label: dashboardCopy.labels.fridayShort },
   ];
 
   const slotStatus = (slot: 'tue' | 'fri') => {
@@ -805,31 +801,35 @@ export function DashboardContent() {
   const registerNeedsAttention = disciplineMissing > 0 ||
     (reconcileWeekly?.reconciliation.tue === 'missing_publish_event' || reconcileWeekly?.reconciliation.fri === 'missing_publish_event');
 
-  const drawerLabel = drawerSlot === 'tue' ? 'Martes' : drawerSlot === 'fri' ? 'Viernes' : '';
+  const drawerLabel = drawerSlot === 'tue' ? dashboardCopy.labels.tuesday : drawerSlot === 'fri' ? dashboardCopy.labels.friday : '';
   const drawerEvidence = drawerSlot ? reconcileWeekly?.youtubeEvidence[drawerSlot] : null;
   const drawerPublish = drawerSlot ? reconcileWeekly?.publishEvents[drawerSlot] : null;
   const drawerReconcile = drawerSlot ? reconcileWeekly?.reconciliation[drawerSlot] : null;
   const drawerHasAction = drawerReconcile === 'missing_publish_event';
 
   const plannedDays = useMemo(() => {
-    const map = { tue: 'Pendiente', fri: 'Pendiente' } as Record<'tue' | 'fri', string>;
+    const map = { tue: dashboardCopy.labels.pending, fri: dashboardCopy.labels.pending } as Record<'tue' | 'fri', string>;
     const planned = weeklyStatus?.plannedProductions || [];
     planned.forEach((item) => {
-      if (item.day === 'tuesday') map.tue = 'Planificado';
-      if (item.day === 'friday') map.fri = 'Planificado';
+      if (item.day === 'tuesday') map.tue = dashboardCopy.labels.planned;
+      if (item.day === 'friday') map.fri = dashboardCopy.labels.planned;
     });
     return map;
-  }, [weeklyStatus?.plannedProductions]);
+  }, [weeklyStatus?.plannedProductions, dashboardCopy.labels.pending, dashboardCopy.labels.planned]);
 
   const nextStepCopy = useMemo(() => {
     if (reconcileWeekly?.reconciliation.tue === 'missing_publish_event' || reconcileWeekly?.reconciliation.fri === 'missing_publish_event') {
-      return { label: 'Falta registrar publicaciones detectadas en YouTube', action: 'Registrar' };
+      return { label: dashboardCopy.messages.missingYoutubeRegistrations, action: dashboardCopy.actions.register };
     }
     if (disciplineMissing > 0) {
-      return { label: `Falta ${disciplineMissing} publicación${disciplineMissing > 1 ? 'es' : ''} esta semana`, action: 'Registrar' };
+      const publicationWord = disciplineMissing > 1 ? dashboardCopy.messages.publicationPlural : dashboardCopy.messages.publicationSingular;
+      return {
+        label: `${dashboardCopy.messages.missingPublicationsPrefix} ${disciplineMissing} ${publicationWord} ${dashboardCopy.messages.missingPublicationsSuffix}`,
+        action: dashboardCopy.actions.register,
+      };
     }
-    return { label: 'Semana completa. Planifica la próxima.', action: 'Planificar' };
-  }, [disciplineMissing, reconcileWeekly]);
+    return { label: dashboardCopy.messages.weekCompletedPlanNext, action: dashboardCopy.actions.plan };
+  }, [disciplineMissing, reconcileWeekly, dashboardCopy.messages, dashboardCopy.actions]);
 
   const activeProductions = productions.filter((production) => production.status !== 'published');
   const focusProduction = useMemo(() => {
@@ -861,7 +861,7 @@ export function DashboardContent() {
 
   const handleQuickPublish = async (targetDay: 'tuesday' | 'friday') => {
     if (!selectedChannelId) {
-      addToast('Selecciona un canal primero', 'error');
+      addToast(dashboardCopy.toasts.selectChannelFirst, 'error');
       return;
     }
     setQuickPublishSubmitting(true);
@@ -873,12 +873,12 @@ export function DashboardContent() {
       });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'No se pudo registrar la publicación');
+        throw new Error(data.error || dashboardCopy.toasts.registerPublishError);
       }
-      addToast('Publicación registrada', 'success');
+      addToast(dashboardCopy.toasts.scheduled, 'success');
       fetchData();
     } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al registrar publicación', 'error');
+      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.registerPublishError, 'error');
     } finally {
       setQuickPublishSubmitting(false);
     }
@@ -886,7 +886,7 @@ export function DashboardContent() {
 
   const handleRegisterFromYoutube = async (slot: 'tue' | 'fri') => {
     if (!selectedChannelId || !reconcileWeekly) {
-      addToast('Selecciona un canal primero', 'error');
+      addToast(dashboardCopy.toasts.selectChannelFirst, 'error');
       return;
     }
     const action = reconcileWeekly.suggestedActions.find((item) => item.slot === slot);
@@ -900,12 +900,12 @@ export function DashboardContent() {
       });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'No se pudo registrar la publicación');
+        throw new Error(data.error || dashboardCopy.toasts.registerPublishError);
       }
-      addToast('Publicación registrada desde YouTube', 'success');
+      addToast(dashboardCopy.toasts.registerFromYoutubeSuccess, 'success');
       fetchData();
     } catch (error) {
-      addToast(error instanceof Error ? error.message : 'Error al registrar publicación', 'error');
+      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.registerPublishError, 'error');
     } finally {
       setReconcileSubmitting(false);
     }
@@ -940,16 +940,16 @@ export function DashboardContent() {
   const nextAction = useMemo(() => {
     if (!focusProduction) {
       return {
-        label: 'No hay producciones activas. Crea la primera para empezar el pipeline.',
-        action: 'Crear contenido',
+        label: dashboardCopy.messages.noActiveProductions,
+        action: dashboardCopy.actions.createContent,
         onClick: () => setShowModal(true),
       };
     }
     if (focusProduction && focusChecklist) {
       if (!focusChecklist.scriptReady) {
         return {
-          label: 'Falta guion para avanzar la producción.',
-          action: 'Generar guion',
+          label: dashboardCopy.prompts.scriptMissing,
+          action: dashboardCopy.actions.generateScript,
           onClick: () => router.push(buildAiUrl('script_architect', {
             ideaId: focusProduction.idea_id ?? null,
             channelId: focusProduction.channel_id ?? null,
@@ -958,8 +958,8 @@ export function DashboardContent() {
       }
       if (!focusChecklist.seoReady) {
         return {
-          label: 'Falta SEO para preparar la publicación.',
-          action: 'Generar SEO',
+          label: dashboardCopy.prompts.seoMissing,
+          action: dashboardCopy.actions.generateSeo,
           onClick: () => router.push(buildAiUrl('titles_thumbs', {
             ideaId: focusProduction.idea_id ?? null,
             scriptId: focusProduction.script_id ?? null,
@@ -969,15 +969,15 @@ export function DashboardContent() {
       }
       if (!focusChecklist.thumbnailReady) {
         return {
-          label: 'Falta miniatura aprobada.',
-          action: 'Ir a miniaturas',
+          label: dashboardCopy.prompts.thumbnailMissing,
+          action: dashboardCopy.actions.goToThumbnails,
           onClick: () => router.push(`/thumbnails${focusProduction.channel_id ? `?channelId=${focusProduction.channel_id}` : ''}`),
         };
       }
       if (!focusChecklist.published) {
         return {
-          label: 'Listo para publicar. Registrá el enlace.',
-          action: 'Marcar publicado',
+          label: dashboardCopy.prompts.readyToPublish,
+          action: dashboardCopy.actions.markPublished,
           onClick: () => setPublishTarget(focusProduction),
         };
       }
@@ -986,9 +986,9 @@ export function DashboardContent() {
     return {
       label: nextStepCopy.label,
       action: nextStepCopy.action,
-      onClick: nextStepCopy.action === 'Registrar' ? handleDockRegister : handleDockPlan,
+      onClick: nextStepCopy.action === dashboardCopy.actions.register ? handleDockRegister : handleDockPlan,
     };
-  }, [focusProduction, focusChecklist, nextStepCopy, router, handleDockRegister, handleDockPlan]);
+  }, [focusProduction, focusChecklist, nextStepCopy, router, handleDockRegister, handleDockPlan, dashboardCopy.prompts, dashboardCopy.actions, dashboardCopy.messages.noActiveProductions]);
 
   const stageCtas = useMemo(() => {
     if (!focusProduction) return {};
@@ -1036,9 +1036,9 @@ export function DashboardContent() {
       })));
       clearProductionSelection();
       fetchData();
-      addToast('Producciones actualizadas', 'success');
+      addToast(dashboardCopy.toasts.updatedProductions, 'success');
     } catch {
-      addToast('Error al actualizar producciones', 'error');
+      addToast(dashboardCopy.toasts.updateProductionsError, 'error');
     }
   };
 
@@ -1051,9 +1051,9 @@ export function DashboardContent() {
       })));
       clearProductionSelection();
       fetchData();
-      addToast('Fecha objetivo actualizada', 'success');
+      addToast(dashboardCopy.toasts.updatedTargetDate, 'success');
     } catch {
-      addToast('Error al actualizar fecha objetivo', 'error');
+      addToast(dashboardCopy.toasts.updateTargetDateError, 'error');
     }
   };
 
@@ -1075,7 +1075,7 @@ export function DashboardContent() {
   };
 
   const handleTourNext = () => {
-    if (tourStep >= TOUR_STEPS.length - 1) {
+    if (tourStep >= tourSteps.length - 1) {
       handleTourClose();
       return;
     }
@@ -1090,9 +1090,9 @@ export function DashboardContent() {
   const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
   const publishMissing = publishChecklist
     ? [
-        !publishChecklist.scriptReady ? 'Guion' : null,
-        !publishChecklist.seoReady ? 'SEO' : null,
-        !publishChecklist.thumbnailReady ? 'Miniatura' : null,
+        !publishChecklist.scriptReady ? dashboardCopy.cards.scriptReady : null,
+        !publishChecklist.seoReady ? dashboardCopy.cards.seoApproved : null,
+        !publishChecklist.thumbnailReady ? dashboardCopy.cards.thumbnailApproved : null,
       ].filter(Boolean)
     : [];
   const filteredProductions = activeStage
@@ -1163,7 +1163,7 @@ export function DashboardContent() {
       });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Error al programar publicación');
+        throw new Error(data.error || dashboardCopy.toasts.scheduleError);
       }
       addToast(dashboardCopy.toasts.scheduled, 'success');
       setScheduleProductionId('');
@@ -1182,7 +1182,7 @@ export function DashboardContent() {
       });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Error al cancelar publicación');
+        throw new Error(data.error || dashboardCopy.toasts.cancelError);
       }
       addToast(dashboardCopy.toasts.canceled, 'success');
       fetchData();
@@ -1230,13 +1230,13 @@ export function DashboardContent() {
                   </div>
                   {weeklyError && (
                     <div className="flex flex-wrap items-center gap-3 text-xs text-red-300">
-                      <span>No se pudo evaluar la semana.</span>
+                      <span>{dashboardCopy.messages.weekEvaluationFailed}</span>
                       <button
                         type="button"
                         onClick={() => fetchData()}
                         className="text-yellow-300 hover:text-yellow-200 underline"
                       >
-                        Reintentar
+                        {dashboardCopy.common.retry}
                       </button>
                     </div>
                   )}
@@ -1287,8 +1287,8 @@ export function DashboardContent() {
                 transition={{ duration: 0.25 }}
               >
                 <div>
-                  <p className="text-sm text-slate-300">Plan semanal automático</p>
-                  <p className="text-xs text-slate-400">2 videos: Mar/Vie</p>
+                  <p className="text-sm text-slate-300">{dashboardCopy.cards.weeklyAutoPlanTitle}</p>
+                  <p className="text-xs text-slate-400">{dashboardCopy.cards.weeklyAutoPlanSubtitle}</p>
                 </div>
                 <motion.button
                   type="button"
@@ -1298,7 +1298,7 @@ export function DashboardContent() {
                   whileTap={{ scale: 0.98 }}
                   disabled={planSubmitting}
                 >
-                  {planSubmitting ? 'Generando...' : 'Generar plan semanal (2 videos: Mar/Vie)'}
+                  {planSubmitting ? dashboardCopy.cards.weeklyAutoPlanGenerating : dashboardCopy.cards.weeklyAutoPlanGenerate}
                 </motion.button>
               </motion.div>
             )}
@@ -1311,14 +1311,14 @@ export function DashboardContent() {
                 transition={{ duration: 0.25 }}
               >
                 <div>
-                  <p className="text-sm text-slate-300">Primeros pasos recomendados</p>
-                  <p className="text-xs text-slate-400">Conecta canal, genera ideas y arranca el pipeline.</p>
+                  <p className="text-sm text-slate-300">{dashboardCopy.cards.firstStepsTitle}</p>
+                  <p className="text-xs text-slate-400">{dashboardCopy.messages.startCardHint}</p>
                 </div>
                 <Link
                   href="/start"
                   className="inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-400 px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black"
                 >
-                  Ver guia
+                  {dashboardCopy.cards.viewGuide}
                   <ChevronRight className="w-4 h-4" />
                 </Link>
               </motion.div>
@@ -1332,21 +1332,21 @@ export function DashboardContent() {
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-yellow-400/90">Impacto</p>
-                  <p className="text-sm text-slate-300">Resumen de avance y valor generado.</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-yellow-400/90">{dashboardCopy.cards.impactTitle}</p>
+                  <p className="text-sm text-slate-300">{dashboardCopy.cards.impactSubtitle}</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Publicados</p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.impactPublished}</p>
                     <p className="mt-1 text-lg font-semibold text-white">{publishedTotal}</p>
                   </div>
                   <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Ahorro estimado</p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.impactEstimatedSavings}</p>
                     <p className="mt-1 text-lg font-semibold text-white">{estimatedHoursSaved}h</p>
                   </div>
                   <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Racha</p>
-                    <p className="mt-1 text-lg font-semibold text-white">{streakCurrent} / {streakBest} semanas</p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.impactStreak}</p>
+                    <p className="mt-1 text-lg font-semibold text-white">{streakCurrent} / {streakBest} {dashboardCopy.cards.impactWeeks}</p>
                   </div>
                 </div>
               </div>
@@ -1360,20 +1360,20 @@ export function DashboardContent() {
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-yellow-400/90">KPIs</p>
-                  <p className="text-sm text-slate-300">Conversion y cumplimiento semanal.</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-yellow-400/90">{dashboardCopy.cards.kpisTitle}</p>
+                  <p className="text-sm text-slate-300">{dashboardCopy.cards.kpisSubtitle}</p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Idea → Guion</p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.kpiIdeaToScript}</p>
                     <p className="mt-1 text-lg font-semibold text-white">{ideaToScriptRate}%</p>
                   </div>
                   <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Cumplimiento semanal</p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.kpiWeeklyCompletion}</p>
                     <p className="mt-1 text-lg font-semibold text-white">{weeklyCompletion}%</p>
                   </div>
                   <div className="rounded-lg border border-gray-800 bg-gray-900/40 px-4 py-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Activas</p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.kpiActive}</p>
                     <p className="mt-1 text-lg font-semibold text-white">{activeProductions.length}</p>
                   </div>
                 </div>
@@ -1418,9 +1418,9 @@ export function DashboardContent() {
                     type="button"
                     onClick={handleTourStart}
                     className="hidden sm:inline-flex items-center justify-center gap-2 rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-yellow-400/60"
-                    title="Guíame"
+                    title={dashboardCopy.common.guideMe}
                   >
-                    Guíame
+                    {dashboardCopy.common.guideMe}
                   </button>
                 </div>
               </div>
@@ -1428,10 +1428,10 @@ export function DashboardContent() {
 
             <div className="mb-6 flex items-center gap-2 overflow-x-auto whitespace-nowrap no-scrollbar">
               {([
-                { key: 'production', label: 'Producción' },
-                { key: 'calendar', label: 'Calendario' },
-                { key: 'backlog', label: 'Backlog' },
-                { key: 'integrations', label: 'Integraciones' },
+                { key: 'production', label: dashboardCopy.tabs.production },
+                { key: 'calendar', label: dashboardCopy.tabs.calendar },
+                { key: 'backlog', label: dashboardCopy.tabs.backlog },
+                { key: 'integrations', label: dashboardCopy.labels.integrations },
               ] as { key: DashboardTab; label: string }[]).map((tab) => (
                 <button
                   key={tab.key}
@@ -1489,11 +1489,11 @@ export function DashboardContent() {
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
                         <div>
                           <p className="text-xs text-slate-400">{dashboardCopy.weeklyStreak.current}</p>
-                          <p className="text-lg font-semibold text-white">🔥 {streakCurrent} semanas</p>
+                          <p className="text-lg font-semibold text-white">🔥 {streakCurrent} {dashboardCopy.cards.impactWeeks}</p>
                         </div>
                         <div className="text-center sm:text-right">
                           <p className="text-xs text-slate-400">{dashboardCopy.weeklyStreak.best}</p>
-                          <p className="text-lg font-semibold text-white">🏆 {streakBest} semanas</p>
+                          <p className="text-lg font-semibold text-white">🏆 {streakBest} {dashboardCopy.cards.impactWeeks}</p>
                         </div>
                       </div>
                       <div className="mt-4 flex items-center gap-2">
@@ -1519,9 +1519,9 @@ export function DashboardContent() {
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
-                            Esta semana
+                            {dashboardCopy.cards.thisWeek}
                           </div>
-                          <p className="text-xs text-slate-400 mt-1">Semana {disciplineWeekly?.week.weekKey ?? weekLabel} · 2 publicaciones</p>
+                          <p className="text-xs text-slate-400 mt-1">{dashboardCopy.cards.weekLabelPrefix} {disciplineWeekly?.week.weekKey ?? weekLabel} · {disciplineTarget} {dashboardCopy.cards.publications}</p>
                         </div>
                         <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${disciplineStyle.badge}`}>
                           <span className={`h-2 w-2 rounded-full ${disciplineStyle.dot}`} />
@@ -1530,16 +1530,16 @@ export function DashboardContent() {
                       </div>
                       <div className="mt-4 flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900/40 p-3">
                         <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Progreso</p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.progress}</p>
                           <p className="mt-1 text-2xl font-semibold text-white">
                             {disciplineCount}/{disciplineTarget}
                           </p>
-                          <p className="text-xs text-slate-400">Faltan {disciplineMissing}</p>
+                          <p className="text-xs text-slate-400">{dashboardCopy.cards.missing} {disciplineMissing}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Racha</p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.streak}</p>
                           <p className="mt-1 text-lg font-semibold text-white">🔥 {disciplineStreakCurrent}</p>
-                          <p className="text-xs text-slate-400">Mejor: {disciplineStreakBest}</p>
+                          <p className="text-xs text-slate-400">{dashboardCopy.cards.best}: {disciplineStreakBest}</p>
                         </div>
                       </div>
                       <div className="mt-4 grid grid-cols-2 gap-2">
@@ -1551,7 +1551,7 @@ export function DashboardContent() {
                               type="button"
                               onClick={() => openDrawerForSlot(slot.key)}
                               className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${status.tone}`}
-                              title="Ver detalle"
+                              title={dashboardCopy.cards.viewDetail}
                             >
                               <span className="flex items-center gap-2">
                                 <span className={`h-2 w-2 rounded-full ${status.dot}`} />
@@ -1568,18 +1568,18 @@ export function DashboardContent() {
                           onClick={() => setFocusOpen((current) => !current)}
                           className="w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300"
                         >
-                          {focusOpen ? 'Ocultar foco' : 'Mostrar foco'}
+                          {focusOpen ? dashboardCopy.cards.hideFocus : dashboardCopy.cards.showFocus}
                         </button>
                         {focusOpen && (
                           <div className="mt-3 space-y-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
                             <div>
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Buscar producción</label>
+                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.searchProduction}</label>
                               <div className="relative mt-2">
                                 <input
                                   value={focusSearch}
                                   onChange={(event) => handleFocusSearch(event.target.value)}
                                   list="focus-productions"
-                                  placeholder="Escribe un título"
+                                  placeholder={dashboardCopy.cards.typeTitle}
                                   className="w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 pr-8 text-xs text-slate-200"
                                 />
                                 {focusSearch && (
@@ -1587,7 +1587,7 @@ export function DashboardContent() {
                                     type="button"
                                     onClick={() => handleFocusSearch('')}
                                     className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                    aria-label="Limpiar búsqueda"
+                                    aria-label={dashboardCopy.cards.clearSearch}
                                   >
                                     ×
                                   </button>
@@ -1595,19 +1595,19 @@ export function DashboardContent() {
                               </div>
                             </div>
                             <div>
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Próximo paso</div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.nextStep}</div>
                               {focusProduction && (
                                 <div className="mt-1 text-xs text-slate-400">
                                   <p className="truncate">{focusProduction.title}</p>
                                   <p className="mt-1 flex flex-wrap items-center gap-2">
-                                    <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
+                                    <span>{focusProduction.channel_name ?? dashboardCopy.labels.noChannel}</span>
                                     <span className="text-slate-600">•</span>
                                     <span>{resolveStageLabel(focusProduction.status)}</span>
                                   </p>
                                 </div>
                               )}
                               {!focusProduction && (
-                                <p className="mt-2 text-xs text-slate-400">Aún no hay producciones activas.</p>
+                                <p className="mt-2 text-xs text-slate-400">{dashboardCopy.cards.noActiveProductionsYet}</p>
                               )}
                               <p className="mt-1 text-sm text-slate-200">{nextAction.label}</p>
                               <button
@@ -1619,13 +1619,13 @@ export function DashboardContent() {
                               </button>
                             </div>
                             <div>
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Verificado por YouTube</div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.labels.verifiedByYoutube}</div>
                               <div className="mt-2 flex items-center justify-between text-xs text-slate-300">
-                                <span>Mar</span>
+                                 <span>{dashboardCopy.labels.tuesdayShort}</span>
                                 <span>{slotStatus('tue').label}</span>
                               </div>
                               <div className="mt-1 flex items-center justify-between text-xs text-slate-300">
-                                <span>Vie</span>
+                                 <span>{dashboardCopy.labels.fridayShort}</span>
                                 <span>{slotStatus('fri').label}</span>
                               </div>
                               <button
@@ -1633,17 +1633,17 @@ export function DashboardContent() {
                                 onClick={() => openDrawerForSlot(nextSlot)}
                                 className="mt-2 w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                               >
-                                Abrir detalle
+                                 {dashboardCopy.cards.openDetail}
                               </button>
                             </div>
                             <div>
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Plan semanal</div>
+                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.weeklyPlan}</div>
                               <div className="mt-2 flex items-center justify-between text-xs text-slate-300">
-                                <span>Mar</span>
+                                 <span>{dashboardCopy.labels.tuesdayShort}</span>
                                 <span>{plannedDays.tue}</span>
                               </div>
                               <div className="mt-1 flex items-center justify-between text-xs text-slate-300">
-                                <span>Vie</span>
+                                 <span>{dashboardCopy.labels.fridayShort}</span>
                                 <span>{plannedDays.fri}</span>
                               </div>
                               <button
@@ -1651,7 +1651,7 @@ export function DashboardContent() {
                                 onClick={handleDockPlan}
                                 className="mt-2 w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                               >
-                                Ir a Calendario
+                                 {dashboardCopy.cards.goToCalendar}
                               </button>
                             </div>
                             <div className="grid grid-cols-3 gap-2">
@@ -1660,21 +1660,21 @@ export function DashboardContent() {
                                 onClick={() => setActiveTab('calendar')}
                                 className="rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
                               >
-                                Calendario
+                                {dashboardCopy.tabs.calendar}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setActiveTab('backlog')}
                                 className="rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
                               >
-                                Backlog
+                                {dashboardCopy.tabs.backlog}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setActiveTab('integrations')}
                                 className="rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
                               >
-                                Integraciones
+                                {dashboardCopy.labels.integrations}
                               </button>
                             </div>
                           </div>
@@ -1695,7 +1695,7 @@ export function DashboardContent() {
                           </div>
                           {weeklyStatus?.channel && (
                             <p className="text-xs text-slate-400 mt-1">
-                              {dashboardCopy.weeklyStatus.channel}: {weeklyStatus.channel.name}
+                                 {dashboardCopy.weeklyStatus.channel}: {weeklyStatus.channel.name}
                             </p>
                           )}
                         </div>
@@ -1751,14 +1751,14 @@ export function DashboardContent() {
                                 onClick={() => router.push(`/ai?profile=evergreen_ideas${selectedChannelId ? `&channelId=${selectedChannelId}` : ''}`)}
                                 className="rounded-lg bg-yellow-400 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
                               >
-                                Generar ideas
+                                 {dashboardCopy.actions.generate}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setShowModal(true)}
                                 className="rounded-lg border border-gray-700 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300"
                               >
-                                Crear manual
+                                 {dashboardCopy.actions.createContent}
                               </button>
                             </div>
                           </div>
@@ -1768,7 +1768,7 @@ export function DashboardContent() {
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-sm text-white font-medium">{idea.title}</p>
-                                  <p className="text-xs text-slate-400">Prioridad {idea.priority}</p>
+                                   <p className="text-xs text-slate-400">{dashboardCopy.cards.priority} {idea.priority}</p>
                                 </div>
                                 <span className="text-[10px] uppercase tracking-[0.2em] text-yellow-300">{idea.status}</span>
                               </div>
@@ -1789,7 +1789,7 @@ export function DashboardContent() {
                       title={activeStage ? dashboardCopy.pipeline.inStage : dashboardCopy.pipeline.active}
                       showCreateButton={false}
                       emptyActions={[
-                        { label: 'Crear producción', onClick: () => setShowModal(true) },
+                         { label: dashboardCopy.cards.createProduction, onClick: () => setShowModal(true) },
                         { label: 'Crono', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
                       ]}
                       selectedIds={selectedProductionIds}
@@ -1804,77 +1804,77 @@ export function DashboardContent() {
                   {activeTab === 'production' && (
                     <div className="hidden space-y-4 lg:block lg:sticky lg:top-24">
                       <div className="surface-card glow-hover p-4 sm:p-5">
-                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Checklist final</div>
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{dashboardCopy.cards.finalChecklist}</div>
                         {focusProduction ? (
                           <div className="mt-3 space-y-2 text-xs text-slate-300">
                             <div className="text-sm text-slate-200 font-semibold truncate">{focusProduction.title}</div>
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-                              <span className="uppercase tracking-[0.2em]">Estado</span>
+                              <span className="uppercase tracking-[0.2em]">{dashboardCopy.cards.status}</span>
                               <span className="rounded-full border border-gray-800 px-2 py-0.5 text-slate-200">
                                 {resolveStageLabel(focusProduction.status)}
                               </span>
                               <span className="text-slate-600">•</span>
-                              <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
+                              <span>{focusProduction.channel_name ?? dashboardCopy.labels.noChannel}</span>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-                              <span>Fecha objetivo:</span>
+                              <span>{dashboardCopy.cards.targetDate}:</span>
                               <span className="text-slate-200">
                                 {focusProduction.target_date
                                   ? formatDate(focusProduction.target_date)
-                                  : 'Sin fecha'}
+                                  : dashboardCopy.labels.noDate}
                               </span>
                               <span className="text-slate-600">•</span>
                               <span>
-                                Actualizado {formatDate(focusProduction.updated_at)}
+                                {dashboardCopy.cards.updated} {formatDate(focusProduction.updated_at)}
                               </span>
                             </div>
                             <div className="mt-2 space-y-2">
                               <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-2">
                                   {focusChecklist?.scriptReady ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <XCircle className="h-3 w-3 text-slate-500" />}
-                                  Guion listo
+                                  {dashboardCopy.cards.scriptReady}
                                 </span>
                                 {!focusChecklist?.scriptReady && (
                                   <Link
                                     href={`/ai?profile=script_architect${focusProduction?.idea_id ? `&ideaId=${focusProduction.idea_id}` : ''}${focusProduction?.channel_id ? `&channelId=${focusProduction.channel_id}` : ''}`}
                                     className="text-emerald-300 hover:text-emerald-200"
                                   >
-                                    Generar
+                                    {dashboardCopy.actions.generate}
                                   </Link>
                                 )}
                               </div>
                               <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-2">
                                   {focusChecklist?.seoReady ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <XCircle className="h-3 w-3 text-slate-500" />}
-                                  SEO aprobado
+                                  {dashboardCopy.cards.seoApproved}
                                 </span>
                                 {!focusChecklist?.seoReady && (
                                   <Link
                                     href={`/ai?profile=titles_thumbs${focusProduction?.idea_id ? `&ideaId=${focusProduction.idea_id}` : ''}${focusProduction?.script_id ? `&scriptId=${focusProduction.script_id}` : ''}${focusProduction?.channel_id ? `&channelId=${focusProduction.channel_id}` : ''}`}
                                     className="text-sky-300 hover:text-sky-200"
                                   >
-                                    Generar
+                                    {dashboardCopy.actions.generate}
                                   </Link>
                                 )}
                               </div>
                               <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-2">
                                   {focusChecklist?.thumbnailReady ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <XCircle className="h-3 w-3 text-slate-500" />}
-                                  Miniatura aprobada
+                                  {dashboardCopy.cards.thumbnailApproved}
                                 </span>
                                 {!focusChecklist?.thumbnailReady && (
                                   <Link
                                     href={`/thumbnails${focusProduction?.channel_id ? `?channelId=${focusProduction.channel_id}` : ''}`}
                                     className="text-yellow-300 hover:text-yellow-200"
                                   >
-                                    Ver
+                                    {dashboardCopy.actions.view}
                                   </Link>
                                 )}
                               </div>
                               <div className="flex items-center justify-between">
                                 <span className="flex items-center gap-2">
                                   {focusChecklist?.published ? <CheckCircle2 className="h-3 w-3 text-emerald-400" /> : <XCircle className="h-3 w-3 text-slate-500" />}
-                                  Publicado
+                                  {dashboardCopy.cards.published}
                                 </span>
                                 {!focusChecklist?.published && (
                                   <button
@@ -1882,7 +1882,7 @@ export function DashboardContent() {
                                     onClick={() => setPublishTarget(focusProduction)}
                                     className="text-yellow-300 hover:text-yellow-200"
                                   >
-                                    Marcar
+                                    {dashboardCopy.actions.markPublished}
                                   </button>
                                 )}
                               </div>
@@ -1890,21 +1890,21 @@ export function DashboardContent() {
                           </div>
                         ) : (
                           <div className="mt-3 space-y-3 text-xs text-slate-400">
-                            <p>No hay producciones activas.</p>
+                            <p>{dashboardCopy.cards.noActiveProductions}</p>
                             <div className="flex flex-col gap-2">
                               <button
                                 type="button"
                                 onClick={() => setShowModal(true)}
                                 className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
                               >
-                                Crear contenido
+                                {dashboardCopy.actions.createContent}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => router.push('/ideas?new=1')}
                                 className="w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                               >
-                                Crear idea
+                                {dashboardCopy.actions.createIdea}
                               </button>
                             </div>
                           </div>
@@ -1913,13 +1913,13 @@ export function DashboardContent() {
 
                       <div className="surface-card glow-hover p-4 sm:p-5">
                         <div>
-                          <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Buscar producción</label>
+                          <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.searchProduction}</label>
                           <div className="relative mt-2">
                             <input
                               value={focusSearch}
                               onChange={(event) => handleFocusSearch(event.target.value)}
                               list="focus-productions"
-                              placeholder="Escribe un título"
+                              placeholder={dashboardCopy.cards.typeTitle}
                               className="w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 pr-8 text-xs text-slate-200"
                             />
                             {focusSearch && (
@@ -1927,19 +1927,19 @@ export function DashboardContent() {
                                 type="button"
                                 onClick={() => handleFocusSearch('')}
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                aria-label="Limpiar búsqueda"
+                                aria-label={dashboardCopy.cards.clearSearch}
                               >
                                 ×
                               </button>
                             )}
                           </div>
                         </div>
-                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Próximo paso</div>
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{dashboardCopy.cards.nextStep}</div>
                         {focusProduction && (
                           <div className="mt-2 text-xs text-slate-400">
                             <p className="truncate">{focusProduction.title}</p>
                             <p className="mt-1 flex flex-wrap items-center gap-2">
-                              <span>{focusProduction.channel_name ?? 'Sin canal'}</span>
+                              <span>{focusProduction.channel_name ?? dashboardCopy.labels.noChannel}</span>
                               <span className="text-slate-600">•</span>
                               <span>{resolveStageLabel(focusProduction.status)}</span>
                             </p>
@@ -1956,7 +1956,7 @@ export function DashboardContent() {
                       </div>
 
                       <div className="surface-card glow-hover p-4 sm:p-5">
-                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Verificado por YouTube</div>
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{dashboardCopy.labels.verifiedByYoutube}</div>
                         <div className="mt-3 space-y-2 text-xs text-slate-300">
                           {slotConfig.map((slot) => {
                             const status = slotStatus(slot.key);
@@ -1976,19 +1976,19 @@ export function DashboardContent() {
                           onClick={() => openDrawerForSlot(nextSlot)}
                           className="mt-4 w-full rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                         >
-                          Abrir detalle
+                          {dashboardCopy.cards.openDetail}
                         </button>
                       </div>
 
                       <div className="surface-card glow-hover p-4 sm:p-5">
-                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Plan semanal</div>
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{dashboardCopy.cards.weeklyPlan}</div>
                         <div className="mt-3 space-y-2 text-xs text-slate-300">
                           <div className="flex items-center justify-between">
-                            <span>Mar</span>
+                            <span>{dashboardCopy.labels.tuesdayShort}</span>
                             <span>{plannedDays.tue}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span>Vie</span>
+                            <span>{dashboardCopy.labels.fridayShort}</span>
                             <span>{plannedDays.fri}</span>
                           </div>
                         </div>
@@ -1997,40 +1997,40 @@ export function DashboardContent() {
                           onClick={handleDockPlan}
                           className="mt-4 w-full rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                         >
-                          Ir a Calendario
+                          {dashboardCopy.cards.goToCalendar}
                         </button>
                       </div>
 
                       <div className="surface-card glow-hover p-4 sm:p-5">
-                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">Atajos</div>
+                        <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{dashboardCopy.cards.shortcuts}</div>
                         <div className="mt-3 grid grid-cols-2 gap-2">
                           <button
                             type="button"
                             onClick={() => setActiveTab('calendar')}
                             className="rounded-lg border border-gray-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
                           >
-                            Calendario
+                            {dashboardCopy.tabs.calendar}
                           </button>
                           <button
                             type="button"
                             onClick={() => setActiveTab('backlog')}
                             className="rounded-lg border border-gray-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
                           >
-                            Backlog
+                            {dashboardCopy.tabs.backlog}
                           </button>
                           <button
                             type="button"
                             onClick={() => setActiveTab('integrations')}
                             className="rounded-lg border border-gray-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
                           >
-                            Integraciones
+                            {dashboardCopy.labels.integrations}
                           </button>
                           <button
                             type="button"
                             onClick={handleDockRegister}
                             className="rounded-lg border border-yellow-400/40 bg-yellow-400/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-yellow-200"
                           >
-                            Registrar
+                            {dashboardCopy.actions.register}
                           </button>
                         </div>
                       </div>
@@ -2297,29 +2297,29 @@ export function DashboardContent() {
                 ? 'bg-yellow-400 text-black'
                 : 'border border-gray-700 text-slate-200'
             }`}
-            title="Registrar"
+            title={dashboardCopy.actionDock.register}
           >
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/15 text-[12px] font-bold leading-none">
               +
             </span>
-            <span className="min-w-0 truncate">Registrar</span>
+            <span className="min-w-0 truncate">{dashboardCopy.actionDock.register}</span>
           </button>
           <button
             type="button"
             onClick={handleDockPlan}
             className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
-            title="Planificar"
+            title={dashboardCopy.actionDock.plan}
           >
             <Sparkles className="h-4 w-4" />
-            <span className="min-w-0 truncate">Planificar</span>
+            <span className="min-w-0 truncate">{dashboardCopy.actionDock.plan}</span>
           </button>
           <button
             type="button"
             onClick={handleDockVerify}
             className="flex items-center justify-center gap-2 rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
-            title="YouTube"
+            title={dashboardCopy.actionDock.youtube}
           >
-            <span className="min-w-0 truncate">YouTube</span>
+            <span className="min-w-0 truncate">{dashboardCopy.actionDock.youtube}</span>
           </button>
         </div>
       </div>
@@ -2334,25 +2334,25 @@ export function DashboardContent() {
                 ? 'bg-yellow-400 text-black'
                 : 'border border-gray-700 text-slate-200 hover:border-yellow-400/50'
             }`}
-            title="Registrar publicación"
+            title={dashboardCopy.actionDock.registerPublication}
           >
-            Registrar
+            {dashboardCopy.actionDock.register}
           </button>
           <button
             type="button"
             onClick={handleDockPlan}
             className="rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-yellow-400/50"
-            title="Planificar semana"
+            title={dashboardCopy.actionDock.planWeek}
           >
-            Planificar semana
+            {dashboardCopy.actionDock.planWeek}
           </button>
           <button
             type="button"
             onClick={handleDockVerify}
             className="rounded-lg border border-gray-800 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300 hover:border-yellow-400/50"
-            title="Verificar YouTube"
+            title={dashboardCopy.actionDock.verifyYoutube}
           >
-            Verificar YouTube
+            {dashboardCopy.actionDock.verifyYoutube}
           </button>
         </div>
       </div>
@@ -2367,7 +2367,7 @@ export function DashboardContent() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">Detalle semanal</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">{dashboardCopy.drawer.weeklyDetail}</div>
                 <h3 className="mt-2 text-lg font-semibold text-white">{drawerLabel}</h3>
               </div>
               <button
@@ -2375,12 +2375,12 @@ export function DashboardContent() {
                 onClick={() => setDrawerOpen(false)}
                 className="text-xs text-slate-400"
               >
-                Cerrar
+                {dashboardCopy.drawer.close}
               </button>
             </div>
             <div className="mt-6 space-y-4">
               <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">YouTube</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">{dashboardCopy.drawer.youtube}</div>
                 {drawerEvidence?.matched ? (
                   <div className="mt-2 space-y-1 text-sm text-white">
                     <p className="font-medium">{drawerEvidence.video?.title}</p>
@@ -2391,19 +2391,19 @@ export function DashboardContent() {
                       rel="noopener noreferrer"
                       className="text-xs text-yellow-300"
                     >
-                      Ver en YouTube
+                      {dashboardCopy.drawer.openInYoutube}
                     </a>
                   </div>
                 ) : (
-                  <p className="mt-2 text-xs text-slate-400">Sin evidencia detectada</p>
+                  <p className="mt-2 text-xs text-slate-400">{dashboardCopy.drawer.noEvidence}</p>
                 )}
               </div>
               <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Publish event</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">{dashboardCopy.drawer.publishEvent}</div>
                 {drawerPublish?.matched ? (
-                  <p className="mt-2 text-sm text-white">Registrado · {drawerPublish.publishedAt}</p>
+                  <p className="mt-2 text-sm text-white">{dashboardCopy.drawer.registered} · {drawerPublish.publishedAt}</p>
                 ) : (
-                  <p className="mt-2 text-xs text-slate-400">Sin registro interno</p>
+                  <p className="mt-2 text-xs text-slate-400">{dashboardCopy.drawer.noInternalRecord}</p>
                 )}
               </div>
               <div className="flex flex-col gap-2">
@@ -2414,7 +2414,7 @@ export function DashboardContent() {
                     disabled={reconcileSubmitting}
                     className="rounded-lg bg-amber-400 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black"
                   >
-                    Registrar 1-click
+                    {dashboardCopy.drawer.registerOneClick}
                   </button>
                 )}
                 {drawerSlot && (
@@ -2424,7 +2424,7 @@ export function DashboardContent() {
                     disabled={quickPublishSubmitting}
                     className="rounded-lg border border-gray-800 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                   >
-                    Registrar manual
+                    {dashboardCopy.drawer.registerManual}
                   </button>
                 )}
               </div>
@@ -2436,6 +2436,8 @@ export function DashboardContent() {
       <OnboardingTour
         open={tourOpen}
         stepIndex={tourStep}
+        steps={tourSteps}
+        labels={dashboardCopy.tour}
         onClose={handleTourClose}
         onNext={handleTourNext}
         onBack={handleTourBack}
@@ -2512,19 +2514,19 @@ export function DashboardContent() {
             animate={{ scale: 1, opacity: 1 }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 id="publish-modal-title" className="text-2xl font-semibold text-white mb-3">Marcar como publicado</h3>
+            <h3 id="publish-modal-title" className="text-2xl font-semibold text-white mb-3">{dashboardCopy.publishModal.title}</h3>
             <p className="text-sm text-slate-300 mb-5">{publishTarget.title}</p>
             <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs text-yellow-200">
-              Pegá la URL del video publicado para cerrar el pipeline y registrar el enlace.
+              {dashboardCopy.publishModal.helper}
             </div>
             {publishMissing.length > 0 && (
               <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-200">
-                Faltan pasos: {publishMissing.join(', ')}
+                {dashboardCopy.publishModal.missingSteps}: {publishMissing.join(', ')}
               </div>
             )}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">URL publicado (opcional)</label>
+                <label className="block text-sm font-medium text-gray-300 mb-2">{dashboardCopy.publishModal.publishedUrlLabel}</label>
                   <input
                     type="url"
                     value={publishUrl}
@@ -2537,11 +2539,11 @@ export function DashboardContent() {
                       }
                     }}
                     className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
-                    placeholder="https://youtube.com/watch?v=..."
+                    placeholder={dashboardCopy.publishModal.publishedUrlPlaceholder}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">ID de plataforma (opcional)</label>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">{dashboardCopy.publishModal.platformIdLabel}</label>
                   <input
                     type="text"
                     value={publishPlatformId}
@@ -2566,7 +2568,7 @@ export function DashboardContent() {
                   whileTap={{ scale: 0.98 }}
                   disabled={publishSubmitting}
                 >
-                  Cancelar
+                  {dashboardCopy.publishModal.cancel}
                 </motion.button>
                 <motion.button
                   onClick={handlePublish}
@@ -2575,7 +2577,7 @@ export function DashboardContent() {
                   whileTap={{ scale: 0.98 }}
                   disabled={publishSubmitting || publishMissing.length > 0}
                 >
-                  {publishSubmitting ? 'Guardando...' : 'Marcar como publicado'}
+                  {publishSubmitting ? dashboardCopy.labels.saving : dashboardCopy.publishModal.confirm}
                 </motion.button>
               </div>
             </div>

@@ -3,7 +3,8 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { CheckCircle2, FileText, Film, Lightbulb, Smartphone, Scissors, Upload, Video } from 'lucide-react';
-import { COMPONENT_COPY } from '../content/components';
+import { useLocale } from '../contexts/LocaleContext';
+import { getComponentsCopy } from '../content/components';
 import { NEXT_ACTION_LABELS, PRODUCTION_STATUS_BADGES, SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 
 export interface Production {
@@ -67,7 +68,7 @@ const itemVariants = {
 };
 
 function getNextAction(prod: Production): string {
-    if (prod.status === 'scripting') return prod.script_status === 'draft' ? NEXT_ACTION_LABELS.scripting : COMPONENT_COPY.productionsList.reviewScript;
+    if (prod.status === 'scripting') return prod.script_status === 'draft' ? NEXT_ACTION_LABELS.scripting : 'review-script';
     if (prod.status in NEXT_ACTION_LABELS) {
         return NEXT_ACTION_LABELS[prod.status as keyof typeof NEXT_ACTION_LABELS];
     }
@@ -80,7 +81,7 @@ function getNextActionCta(prod: Production): { label: string; href: string; tone
         params.set('profile', 'script_architect');
         if (prod.idea_id) params.set('ideaId', prod.idea_id);
         if (prod.channel_id) params.set('channelId', prod.channel_id);
-        return { label: 'Generar guion', href: `/ai?${params.toString()}`, tone: 'text-emerald-300' };
+        return { label: 'generate-script', href: `/ai?${params.toString()}`, tone: 'text-emerald-300' };
     }
 
     if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < SEO_SCORE_MIN_READY)) {
@@ -89,12 +90,12 @@ function getNextActionCta(prod: Production): { label: string; href: string; tone
         if (prod.idea_id) params.set('ideaId', prod.idea_id);
         if (prod.script_id) params.set('scriptId', prod.script_id);
         if (prod.channel_id) params.set('channelId', prod.channel_id);
-        return { label: 'SEO + Títulos', href: `/ai?${params.toString()}`, tone: 'text-sky-300' };
+        return { label: 'seo-titles', href: `/ai?${params.toString()}`, tone: 'text-sky-300' };
     }
 
     if ((prod.status === 'editing' || prod.status === 'shorts' || prod.status === 'publishing') && prod.thumbnail_status !== 'approved') {
         const query = prod.channel_id ? `?channelId=${prod.channel_id}` : '';
-        return { label: 'Miniatura', href: `/thumbnails${query}`, tone: 'text-yellow-300' };
+        return { label: 'thumbnail', href: `/thumbnails${query}`, tone: 'text-yellow-300' };
     }
 
     return null;
@@ -105,7 +106,7 @@ export default function ProductionsList({
     onProductionClick,
     onMarkPublished,
     onCreateNew,
-    title = 'Contenidos activos',
+    title,
     filterLabel,
     onClearFilter,
     showCreateButton = true,
@@ -117,6 +118,9 @@ export default function ProductionsList({
     onBulkStatus,
     onBulkTargetDate,
 }: ProductionsListProps) {
+    const { locale } = useLocale();
+    const componentsCopy = getComponentsCopy(locale);
+    const resolvedTitle = title ?? componentsCopy.productionsList.activeTitle;
     return (
         <motion.div
             className="surface-card glow-hover overflow-hidden"
@@ -127,7 +131,7 @@ export default function ProductionsList({
             {/* Header */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-800 bg-gray-900/60">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{title}</span>
+                    <span className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">{resolvedTitle}</span>
                     {filterLabel && (
                         <button
                             type="button"
@@ -142,7 +146,7 @@ export default function ProductionsList({
                 <div className="flex flex-wrap items-center gap-2">
                     {selectedIds.length > 0 && (
                         <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{selectedIds.length} seleccionadas</span>
+                                    <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{selectedIds.length} {componentsCopy.productionsList.selectedCount}</span>
                             {onBulkTargetDate && (
                                 <input
                                     type="date"
@@ -155,28 +159,28 @@ export default function ProductionsList({
                                 onClick={() => onBulkStatus?.('recording')}
                                 className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
                             >
-                                Grabación
+                                {componentsCopy.productionsList.recording}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onBulkStatus?.('editing')}
                                 className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
                             >
-                                Edición
+                                {componentsCopy.productionsList.editing}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onBulkStatus?.('publishing')}
                                 className="rounded-lg bg-emerald-400 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-black"
                             >
-                                Publicar
+                                {componentsCopy.productionsList.publish}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => onClearSelection?.()}
                                 className="rounded-lg border border-gray-700 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200"
                             >
-                                Limpiar
+                                {componentsCopy.productionsList.clear}
                             </button>
                         </div>
                     )}
@@ -187,7 +191,7 @@ export default function ProductionsList({
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                         >
-                            {COMPONENT_COPY.productionsList.new}
+                            {componentsCopy.productionsList.new}
                         </motion.button>
                     )}
                 </div>
@@ -216,7 +220,7 @@ export default function ProductionsList({
                                 }
                             }
                         }}
-                        aria-label="Crear nuevo contenido"
+                        aria-label={componentsCopy.productionsList.createNewAria}
                         variants={itemVariants}
                         whileHover={{ scale: 1.01 }}
                     >
@@ -224,11 +228,11 @@ export default function ProductionsList({
                             <Film className="w-6 h-6" />
                         </span>
                             <span className="text-sm sm:text-base text-slate-300 block mb-1">
-                                {filterLabel ? COMPONENT_COPY.productionsList.emptyStage : COMPONENT_COPY.productionsList.emptyActive}
+                                {filterLabel ? componentsCopy.productionsList.emptyStage : componentsCopy.productionsList.emptyActive}
                             </span>
                         {showCreateButton && (
                             <span className="text-sm text-yellow-400 hover:underline font-semibold">
-                                {filterLabel ? COMPONENT_COPY.productionsList.changeFilter : COMPONENT_COPY.productionsList.createFirst}
+                                {filterLabel ? componentsCopy.productionsList.changeFilter : componentsCopy.productionsList.createFirst}
                             </span>
                         )}
                         {emptyActions.length > 0 && (
@@ -270,7 +274,7 @@ export default function ProductionsList({
                                         onProductionClick?.(prod);
                                     }
                                 }}
-                                aria-label={`Abrir contenido ${prod.title}`}
+                                aria-label={`${componentsCopy.productionsList.openContent} ${prod.title}`}
                                 role="button"
                                 tabIndex={0}
                                 variants={itemVariants}
@@ -287,7 +291,7 @@ export default function ProductionsList({
                                                 type="checkbox"
                                                 checked={selectedIds.includes(prod.id)}
                                                 onChange={() => onToggleSelection(prod.id)}
-                                                aria-label={`Seleccionar producción ${prod.title}`}
+                                                aria-label={`${componentsCopy.productionsList.selectProduction} ${prod.title}`}
                                                 className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
                                             />
                                         </label>
@@ -303,14 +307,14 @@ export default function ProductionsList({
                                 {/* Title */}
                                 <div className="flex-1 min-w-0">
                                     <span className="text-sm sm:text-base font-medium text-white truncate block">{prod.title}</span>
-                                    <span className="text-xs sm:text-sm text-slate-400 truncate block">{nextAction}</span>
+                                    <span className="text-xs sm:text-sm text-slate-400 truncate block">{nextAction === 'review-script' ? componentsCopy.productionsList.reviewScript : nextAction}</span>
                                     {cta && (
                                         <Link
                                             href={cta.href}
                                             onClick={(event) => event.stopPropagation()}
                                             className={`mt-1 inline-flex items-center text-xs ${cta.tone} hover:opacity-80`}
                                         >
-                                            {cta.label}
+                                            {cta.label === 'generate-script' ? componentsCopy.productionsList.generateScript : cta.label === 'seo-titles' ? componentsCopy.productionsList.seoTitles : cta.label === 'thumbnail' ? componentsCopy.productionsList.thumbnail : cta.label}
                                         </Link>
                                     )}
                                 </div>
@@ -324,7 +328,7 @@ export default function ProductionsList({
                                         }}
                                         className="text-xs px-3 py-2 rounded-lg border border-yellow-400/40 text-yellow-300 hover:border-yellow-400 hover:text-yellow-200"
                                     >
-                                        Marcar como publicado
+                                        {componentsCopy.productionsList.markPublished}
                                     </button>
                                 )}
 

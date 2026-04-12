@@ -14,7 +14,7 @@ export const scriptPipelineService = {
     await scriptsService.createThumbnail(authFetch, {
       title: input.title,
       scriptId: input.scriptId,
-      notes: 'Generado desde pipeline',
+      notes: 'Generated from pipeline',
     });
   },
 };

@@ -7,13 +7,17 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { GuestRoute } from '../components/ProtectedRoute';
 import Footer from '../components/Footer';
+import { useLocale } from '../contexts/LocaleContext';
+import { getAuthCopy } from '../content/auth';
 
 export default function VerifyEmailClient() {
+  const { locale } = useLocale();
+  const authCopy = getAuthCopy(locale);
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
   const initialStatus: 'loading' | 'error' = token ? 'loading' : 'error';
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(initialStatus);
-  const [message, setMessage] = useState(token ? '' : 'Token inválido');
+  const [message, setMessage] = useState(token ? '' : authCopy.verifyEmail.invalidToken);
 
   useEffect(() => {
     if (!token) {
@@ -29,20 +33,20 @@ export default function VerifyEmailClient() {
       .then(async (res) => {
         const data = await res.json();
         if (!mounted) return;
-        if (!res.ok) throw new Error(data.error || 'Error al verificar');
+        if (!res.ok) throw new Error(data.error || authCopy.verifyEmail.requestFailed);
         setStatus('success');
-        setMessage(data.message || 'Email verificado');
+        setMessage(data.message || authCopy.verifyEmail.successFallback);
       })
       .catch((err) => {
         if (!mounted) return;
         setStatus('error');
-        setMessage(err instanceof Error ? err.message : 'Error desconocido');
+        setMessage(err instanceof Error ? err.message : authCopy.common.unknownError);
       });
 
     return () => {
       mounted = false;
     };
-  }, [token]);
+  }, [token, authCopy.verifyEmail.requestFailed, authCopy.verifyEmail.successFallback, authCopy.common.unknownError]);
 
   return (
     <GuestRoute>
@@ -67,12 +71,12 @@ export default function VerifyEmailClient() {
                 priority
               />
             </motion.div>
-            <h1 className="text-3xl font-bold text-white">Verificación de email</h1>
-            <p className="text-gray-400 mt-2">Estamos procesando tu solicitud</p>
+            <h1 className="text-3xl font-bold text-white">{authCopy.verifyEmail.title}</h1>
+            <p className="text-gray-400 mt-2">{authCopy.verifyEmail.subtitle}</p>
 
             <div className="mt-6 bg-gray-900/50 border border-yellow-500/20 rounded-2xl p-6">
               {status === 'loading' && (
-                <div className="text-gray-300">Verificando...</div>
+                <div className="text-gray-300">{authCopy.verifyEmail.loading}</div>
               )}
               {status === 'success' && (
                 <div className="text-green-300">{message}</div>
@@ -84,7 +88,7 @@ export default function VerifyEmailClient() {
 
             <div className="mt-6 text-sm text-gray-400">
               <Link href="/login" className="text-yellow-400 hover:text-yellow-300 transition-colors">
-                Ir a login
+                {authCopy.verifyEmail.backToLogin}
               </Link>
             </div>
           </motion.div>

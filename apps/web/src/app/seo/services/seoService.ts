@@ -10,7 +10,7 @@ export const seoService = {
     const response = await authFetch(`/api/seo${query}`, { signal });
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      return { items: [], error: data?.error || 'Error al cargar SEO' };
+      return { items: [], error: data?.error || null };
     }
     const items = await parseJson<unknown[]>(response);
     return { items, error: null };
