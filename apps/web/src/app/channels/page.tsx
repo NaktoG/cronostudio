@@ -10,7 +10,8 @@ import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { CHANNELS_COPY } from '../content/pages/channels';
+import { useLocale } from '../contexts/LocaleContext';
+import { getChannelsCopy } from '../content/pages/channels';
 import useDialogFocus from '../hooks/useDialogFocus';
 import { formatDate } from '@/lib/dates';
 
@@ -25,6 +26,8 @@ interface Channel {
 
 export default function ChannelsPage() {
     const { isAuthenticated, user } = useAuth();
+    const { locale } = useLocale();
+    const channelsCopy = getChannelsCopy(locale);
     const authFetch = useAuthFetch();
     const [channels, setChannels] = useState<Channel[]>([]);
     const [loading, setLoading] = useState(true);
@@ -57,7 +60,7 @@ export default function ChannelsPage() {
             const response = await authFetch('/api/channels', { signal });
 
             if (!response.ok) {
-                throw new Error('Error al cargar canales');
+                throw new Error(channelsCopy.errors.load);
             }
 
             const data = await response.json();
@@ -65,12 +68,12 @@ export default function ChannelsPage() {
             setError(null);
         } catch (err) {
             if (signal?.aborted) return;
-            setError(err instanceof Error ? err.message : 'Error desconocido');
+            setError(err instanceof Error ? err.message : channelsCopy.errors.unknown);
         } finally {
             if (signal?.aborted) return;
             setLoading(false);
         }
-    }, [isAuthenticated, authFetch]);
+    }, [isAuthenticated, authFetch, channelsCopy.errors.load, channelsCopy.errors.unknown]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -129,7 +132,7 @@ export default function ChannelsPage() {
         const popup = window.open(connectUrl, 'youtube-oauth', 'width=520,height=700');
         if (!popup) {
             setIsConnecting(false);
-            addToast('No se pudo abrir la ventana de Google. Revisa el bloqueador de popups.', 'error');
+            addToast(channelsCopy.social.popupBlocked, 'error');
             return;
         }
         connectWindowRef.current = popup;
@@ -161,7 +164,7 @@ export default function ChannelsPage() {
                 const data = await statusRes.json();
                 if (data?.connected) {
                     stopConnecting();
-                    addToast('YouTube conectado', 'success');
+                    addToast(channelsCopy.social.connected, 'success');
                     setGuideContext('connected');
                     await fetchChannels();
                 }
@@ -172,7 +175,7 @@ export default function ChannelsPage() {
 
         connectTimeoutRef.current = window.setTimeout(() => {
             stopConnecting();
-            addToast('No se pudo completar la conexion. Reintenta.', 'error');
+            addToast(channelsCopy.social.connectFailed, 'error');
         }, 120000);
     };
 
@@ -191,10 +194,10 @@ export default function ChannelsPage() {
 
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Error al crear canal');
+                throw new Error(data.error || channelsCopy.errors.create);
             }
 
-            addToast(editingChannel ? 'Canal actualizado' : 'Canal creado', 'success');
+            addToast(editingChannel ? channelsCopy.actions.channelUpdated : channelsCopy.actions.channelCreated, 'success');
             setShowModal(false);
             setEditingChannel(null);
             setFormData({ name: '', youtubeChannelId: '' });
@@ -203,8 +206,8 @@ export default function ChannelsPage() {
             }
             await fetchChannels();
         } catch (err) {
-            addToast(err instanceof Error ? err.message : 'Error desconocido', 'error');
-            setError(err instanceof Error ? err.message : 'Error desconocido');
+            addToast(err instanceof Error ? err.message : channelsCopy.errors.unknown, 'error');
+            setError(err instanceof Error ? err.message : channelsCopy.errors.unknown);
         } finally {
             setSubmitting(false);
         }
@@ -217,17 +220,17 @@ export default function ChannelsPage() {
     };
 
     const handleDelete = async (channel: Channel) => {
-        if (!confirm(`Eliminar canal "${channel.name}"?`)) return;
+        if (!confirm(`${channelsCopy.errors.deleteConfirmPrefix} "${channel.name}"?`)) return;
         try {
             const response = await authFetch(`/api/channels?id=${channel.id}`, { method: 'DELETE' });
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Error al eliminar canal');
+                throw new Error(data.error || channelsCopy.errors.delete);
             }
-            addToast('Canal eliminado', 'success');
+            addToast(channelsCopy.actions.channelDeleted, 'success');
             await fetchChannels();
         } catch (err) {
-            addToast(err instanceof Error ? err.message : 'Error desconocido', 'error');
+            addToast(err instanceof Error ? err.message : channelsCopy.errors.unknown, 'error');
         }
     };
 
@@ -250,7 +253,7 @@ export default function ChannelsPage() {
                 <Header />
 
                 <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
-                    <h1 className="sr-only">{CHANNELS_COPY.title}</h1>
+                    <h1 className="sr-only">{channelsCopy.title}</h1>
                     {/* Header de sección */}
                     <motion.div
                         className="flex flex-col gap-4 mb-6 sm:mb-8 sm:flex-row sm:items-center sm:justify-between"
@@ -263,9 +266,9 @@ export default function ChannelsPage() {
                                 <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                     <Tv className="w-5 h-5" />
                                 </span>
-                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{CHANNELS_COPY.title}</h2>
+                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{channelsCopy.title}</h2>
                             </div>
-                            <p className="text-sm sm:text-base text-slate-300">{CHANNELS_COPY.subtitle}</p>
+                            <p className="text-sm sm:text-base text-slate-300">{channelsCopy.subtitle}</p>
                         </div>
 
                         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
@@ -278,7 +281,7 @@ export default function ChannelsPage() {
                                 whileTap={{ scale: 0.98 }}
                             >
                                 <Link2 className="w-4 h-4" />
-                                {isConnecting ? 'Conectando...' : 'Conectar YouTube'}
+                                {isConnecting ? channelsCopy.social.connecting : channelsCopy.social.connectYoutube}
                             </motion.button>
                             <motion.button
                                 onClick={() => setShowModal(true)}
@@ -291,7 +294,7 @@ export default function ChannelsPage() {
                                 whileTap={{ scale: 0.98 }}
                             >
                                 <Plus className="w-4 h-4" />
-                                {CHANNELS_COPY.create}
+                                {channelsCopy.create}
                             </motion.button>
                         </div>
                     </motion.div>
@@ -322,13 +325,13 @@ export default function ChannelsPage() {
                                     <div>
                                         <p className="text-sm font-semibold text-emerald-200">
                                             {guideContext === 'connected'
-                                                ? 'Canal conectado. Ya puedes empezar el flujo.'
-                                                : 'Canal creado. Siguiente paso: activar tu flujo.'}
+                                                ? channelsCopy.guide.connected
+                                                : channelsCopy.guide.created}
                                         </p>
                                         <ol className="mt-2 space-y-1 text-xs text-emerald-200/90">
-                                            <li>1) Selecciona el canal activo.</li>
-                                            <li>2) Abre AI Studio y genera ideas evergreen.</li>
-                                            <li>3) Continua con guion y SEO.</li>
+                                            <li>{channelsCopy.guide.step1}</li>
+                                            <li>{channelsCopy.guide.step2}</li>
+                                            <li>{channelsCopy.guide.step3}</li>
                                         </ol>
                                     </div>
                                     <div className="flex flex-col gap-2 sm:flex-row">
@@ -336,7 +339,7 @@ export default function ChannelsPage() {
                                             href="/ai"
                                             className="rounded-lg bg-emerald-400 px-4 py-2 text-xs font-semibold text-black"
                                         >
-                                            Ir a AI Studio
+                                            {channelsCopy.guide.goToAi}
                                         </Link>
                                         <button
                                             type="button"
@@ -348,7 +351,7 @@ export default function ChannelsPage() {
                                             }}
                                             className="rounded-lg border border-emerald-500/30 px-4 py-2 text-xs font-semibold text-emerald-200"
                                         >
-                                            Cerrar
+                                            {channelsCopy.guide.close}
                                         </button>
                                     </div>
                                 </div>
@@ -361,7 +364,7 @@ export default function ChannelsPage() {
                         <div className="flex items-center justify-center py-20">
                             <div className="flex flex-col items-center gap-4">
                                 <div className="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-                                <p className="text-gray-400">{CHANNELS_COPY.loading}</p>
+                                <p className="text-gray-400">{channelsCopy.loading}</p>
                             </div>
                         </div>
                     )}
@@ -378,8 +381,8 @@ export default function ChannelsPage() {
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
                             </div>
-                                <h3 className="text-xl font-semibold text-white mb-2">{CHANNELS_COPY.emptyTitle}</h3>
-                                <p className="text-gray-400 mb-6">{CHANNELS_COPY.emptySubtitle}</p>
+                                <h3 className="text-xl font-semibold text-white mb-2">{channelsCopy.emptyTitle}</h3>
+                                <p className="text-gray-400 mb-6">{channelsCopy.emptySubtitle}</p>
                                 <motion.button
                                     onClick={() => {
                                         setEditingChannel(null);
@@ -390,7 +393,7 @@ export default function ChannelsPage() {
                                     whileHover={{ scale: 1.02 }}
                                     whileTap={{ scale: 0.98 }}
                                 >
-                                    {CHANNELS_COPY.emptyAction}
+                                    {channelsCopy.emptyAction}
                                 </motion.button>
                             </motion.div>
                         )}
@@ -429,7 +432,7 @@ export default function ChannelsPage() {
                                                 ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
                                                 : 'border-amber-500/40 text-amber-300 bg-amber-500/10'
                                         }`}>
-                                            {channel.subscribers > 0 ? CHANNELS_COPY.statusConnected : CHANNELS_COPY.statusPending}
+                                            {channel.subscribers > 0 ? channelsCopy.statusConnected : channelsCopy.statusPending}
                                         </span>
                                     </div>
 
@@ -438,32 +441,32 @@ export default function ChannelsPage() {
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                             </svg>
-                                            {channel.subscribers?.toLocaleString() || 0} subs
+                                            {channel.subscribers?.toLocaleString() || 0} {channelsCopy.actions.subsSuffix}
                                         </div>
                                     </div>
 
                                     <div className="mt-4 pt-4 border-t border-gray-800 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                         <span className="text-xs text-gray-500">
-                                            {CHANNELS_COPY.createdAt} {formatDate(channel.created_at)}
+                                            {channelsCopy.createdAt} {formatDate(channel.created_at)}
                                         </span>
                                         <div className="flex flex-wrap items-center gap-3">
                                             <button
                                                 onClick={() => handleEdit(channel)}
                                                 className="text-xs text-slate-300 hover:text-white"
                                             >
-                                                {CHANNELS_COPY.edit}
+                                                {channelsCopy.edit}
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(channel)}
                                                 className="text-xs text-red-300 hover:text-red-200"
                                             >
-                                                {CHANNELS_COPY.delete}
+                                                {channelsCopy.delete}
                                             </button>
                                             <Link
                                                 href={`/analytics?channelId=${channel.id}`}
                                                 className="text-xs text-yellow-400 hover:text-yellow-300 transition-colors"
                                             >
-                                                {CHANNELS_COPY.viewAnalytics}
+                                                {channelsCopy.viewAnalytics}
                                             </Link>
                                         </div>
                                     </div>
@@ -498,13 +501,13 @@ export default function ChannelsPage() {
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <h3 id="channel-modal-title" className="text-2xl font-bold text-white mb-6">
-                                    {editingChannel ? CHANNELS_COPY.modalTitleEdit : CHANNELS_COPY.modalTitleCreate}
+                                    {editingChannel ? channelsCopy.modalTitleEdit : channelsCopy.modalTitleCreate}
                                 </h3>
 
                                 <form onSubmit={handleSubmit} className="space-y-5">
                                     <div>
                                         <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                                            {CHANNELS_COPY.form.name}
+                                            {channelsCopy.form.name}
                                         </label>
                                         <input
                                             id="name"
@@ -512,14 +515,14 @@ export default function ChannelsPage() {
                                             value={formData.name}
                                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                                            placeholder={CHANNELS_COPY.form.placeholderName}
+                                            placeholder={channelsCopy.form.placeholderName}
                                             required
                                         />
                                     </div>
 
                                     <div>
                                         <label htmlFor="youtubeChannelId" className="block text-sm font-medium text-gray-300 mb-2">
-                                            {CHANNELS_COPY.form.youtubeId}
+                                            {channelsCopy.form.youtubeId}
                                         </label>
                                         <input
                                             id="youtubeChannelId"
@@ -527,12 +530,12 @@ export default function ChannelsPage() {
                                             value={formData.youtubeChannelId}
                                             onChange={(e) => setFormData({ ...formData, youtubeChannelId: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent transition-all"
-                                            placeholder={CHANNELS_COPY.form.placeholderId}
+                                            placeholder={channelsCopy.form.placeholderId}
                                             required={!editingChannel}
                                             disabled={Boolean(editingChannel)}
                                         />
                                         <p className="mt-1 text-xs text-gray-500">
-                                            {CHANNELS_COPY.form.youtubeHelp}
+                                            {channelsCopy.form.youtubeHelp}
                                         </p>
                                     </div>
 
@@ -542,7 +545,7 @@ export default function ChannelsPage() {
                                             onClick={() => setShowModal(false)}
                                             className="flex-1 py-3 px-4 border border-gray-700 text-gray-300 font-medium rounded-lg hover:bg-gray-800 transition-colors"
                                         >
-                                            {CHANNELS_COPY.cancel}
+                                            {channelsCopy.cancel}
                                         </button>
                                         <motion.button
                                             type="submit"
@@ -557,10 +560,10 @@ export default function ChannelsPage() {
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                                     </svg>
-                                                    {editingChannel ? CHANNELS_COPY.submittingEdit : CHANNELS_COPY.submittingCreate}
+                                                    {editingChannel ? channelsCopy.submittingEdit : channelsCopy.submittingCreate}
                                                 </span>
                                             ) : (
-                                                editingChannel ? CHANNELS_COPY.submitEdit : CHANNELS_COPY.submitCreate
+                                                editingChannel ? channelsCopy.submitEdit : channelsCopy.submitCreate
                                             )}
                                         </motion.button>
                                     </div>

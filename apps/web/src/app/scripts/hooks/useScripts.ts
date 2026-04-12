@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { scriptsService } from '@/app/scripts/services/scriptsService';
 import { scriptPipelineService } from '@/app/scripts/services/scriptPipelineService';
-import { SCRIPTS_COPY } from '@/app/content/pages/scripts';
+import type { ScriptsCopy } from '@/app/content/pages/scripts';
 
 type AuthFetch = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 
@@ -29,9 +29,10 @@ type UseScriptsOptions = {
   isAuthenticated: boolean;
   authFetch: AuthFetch;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  scriptsCopy: ScriptsCopy;
 };
 
-export function useScripts({ isAuthenticated, authFetch, addToast }: UseScriptsOptions) {
+export function useScripts({ isAuthenticated, authFetch, addToast, scriptsCopy }: UseScriptsOptions) {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [ideaOptions, setIdeaOptions] = useState<IdeaOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,19 +51,19 @@ export function useScripts({ isAuthenticated, authFetch, addToast }: UseScriptsO
       }
       const result = await scriptsService.fetchScripts(authFetch, selectedChannel || undefined, signal);
       if (result.error) {
-        setListError(result.error);
+        setListError(result.error ?? scriptsCopy.errors.load);
       }
       setScripts(result.scripts as Script[]);
     } catch (err) {
       if (signal?.aborted) return;
       console.error('Error:', err);
-      addToast(SCRIPTS_COPY.toasts.error, 'error');
-      setListError(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error);
+      addToast(scriptsCopy.toasts.error, 'error');
+      setListError(err instanceof Error ? err.message : scriptsCopy.errors.load);
     } finally {
       if (signal?.aborted) return;
       setLoading(false);
     }
-  }, [isAuthenticated, authFetch, addToast, selectedChannel]);
+  }, [isAuthenticated, authFetch, addToast, selectedChannel, scriptsCopy.errors.load, scriptsCopy.toasts.error]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -127,16 +128,16 @@ export function useScripts({ isAuthenticated, authFetch, addToast }: UseScriptsO
       await Promise.all(selectedIds.map((id) => scriptsService.updateScriptStatus(authFetch, id, status)));
       clearSelection();
       await refreshScripts();
-      addToast(SCRIPTS_COPY.toasts.updated, 'success');
+      addToast(scriptsCopy.toasts.updated, 'success');
     } catch {
-      addToast(SCRIPTS_COPY.toasts.error, 'error');
+      addToast(scriptsCopy.toasts.error, 'error');
     }
-  }, [selectedIds, authFetch, clearSelection, refreshScripts, addToast]);
+  }, [selectedIds, authFetch, clearSelection, refreshScripts, addToast, scriptsCopy.toasts.updated, scriptsCopy.toasts.error]);
 
   const runPipeline = useCallback(async (script: Script) => {
     const channelId = selectedChannel;
     if (!channelId) {
-      addToast('Selecciona un canal para ejecutar el pipeline', 'error');
+      addToast(scriptsCopy.toasts.pipelineNeedsChannel, 'error');
       return;
     }
     if (pipelineLoading.includes(script.id)) return;
@@ -149,13 +150,13 @@ export function useScripts({ isAuthenticated, authFetch, addToast }: UseScriptsO
         title: script.title,
       });
       await refreshScripts();
-      addToast('Pipeline completado (SEO + miniatura)', 'success');
+      addToast(scriptsCopy.toasts.pipelineDone, 'success');
     } catch (err) {
-      addToast(err instanceof Error ? err.message : 'Error al ejecutar pipeline', 'error');
+      addToast(err instanceof Error ? err.message : scriptsCopy.toasts.pipelineError, 'error');
     } finally {
       setPipelineLoading((current) => current.filter((id) => id !== script.id));
     }
-  }, [authFetch, addToast, refreshScripts, selectedChannel, pipelineLoading]);
+  }, [authFetch, addToast, refreshScripts, selectedChannel, pipelineLoading, scriptsCopy.toasts.pipelineNeedsChannel, scriptsCopy.toasts.pipelineDone, scriptsCopy.toasts.pipelineError]);
 
   return {
     state: {

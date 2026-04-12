@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { seoService } from '@/app/seo/services/seoService';
 import { copyToClipboard } from '@/lib/clipboard';
 import { buildSeoClipboardPayload, SeoItem } from '@/app/seo/helpers/seoClipboard';
-import { SEO_COPY } from '@/app/content/pages/seo';
+import type { SeoCopy } from '@/app/content/pages/seo';
 
 type AuthFetch = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 
@@ -28,9 +28,10 @@ type UseSeoDataOptions = {
   isAuthenticated: boolean;
   authFetch: AuthFetch;
   addToast: (message: string, type: 'success' | 'error' | 'info') => void;
+  seoCopy: SeoCopy;
 };
 
-export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataOptions) {
+export function useSeoData({ isAuthenticated, authFetch, addToast, seoCopy }: UseSeoDataOptions) {
   const [seoData, setSeoData] = useState<SeoData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,18 +50,18 @@ export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataO
       }
       const result = await seoService.fetchSeo(authFetch, selectedChannel || undefined, signal);
       if (result.error) {
-        setError(result.error);
+        setError(result.error ?? seoCopy.errors.load);
       }
       setSeoData(result.items as SeoData[]);
     } catch (err) {
       if (signal?.aborted) return;
-      addToast(SEO_COPY.errors.load, 'error');
-      setError(err instanceof Error ? err.message : SEO_COPY.errors.load);
+      addToast(seoCopy.errors.load, 'error');
+      setError(err instanceof Error ? err.message : seoCopy.errors.load);
     } finally {
       if (signal?.aborted) return;
       setLoading(false);
     }
-  }, [isAuthenticated, authFetch, addToast, selectedChannel]);
+  }, [isAuthenticated, authFetch, addToast, selectedChannel, seoCopy.errors.load]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -147,11 +148,11 @@ export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataO
         tags: item.tags || [],
       })) as SeoItem[], type);
       await copyToClipboard(payload);
-      addToast(SEO_COPY.toasts.copied, 'success');
+      addToast(seoCopy.toasts.copied, 'success');
     } catch {
-      addToast(SEO_COPY.toasts.error, 'error');
+      addToast(seoCopy.toasts.error, 'error');
     }
-  }, [selectedItems, addToast]);
+  }, [selectedItems, addToast, seoCopy.toasts.copied, seoCopy.toasts.error]);
 
   const copyItem = useCallback(async (item: SeoData, type: 'title' | 'description' | 'tags') => {
     try {
@@ -159,11 +160,11 @@ export function useSeoData({ isAuthenticated, authFetch, addToast }: UseSeoDataO
         { id: item.id, title: item.optimized_title, description: item.description || '', tags: item.tags || [] },
       ] as SeoItem[], type);
       await copyToClipboard(payload);
-      addToast(SEO_COPY.toasts.copied, 'success');
+      addToast(seoCopy.toasts.copied, 'success');
     } catch {
-      addToast(SEO_COPY.toasts.error, 'error');
+      addToast(seoCopy.toasts.error, 'error');
     }
-  }, [addToast]);
+  }, [addToast, seoCopy.toasts.copied, seoCopy.toasts.error]);
 
   return {
     state: {

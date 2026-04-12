@@ -11,8 +11,9 @@ import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { THUMBNAILS_COPY } from '../content/pages/thumbnails';
-import { THUMBNAIL_STATUS_LABELS, THUMBNAIL_STATUS_BADGES } from '@/app/content/status/thumbnails';
+import { useLocale } from '../contexts/LocaleContext';
+import { getThumbnailsCopy } from '../content/pages/thumbnails';
+import { THUMBNAIL_STATUS_BADGES, getThumbnailStatusLabels } from '@/app/content/status/thumbnails';
 import useDialogFocus from '../hooks/useDialogFocus';
 
 const useOptimizedImages = Boolean(process.env.NEXT_PUBLIC_IMAGE_HOSTS);
@@ -46,15 +47,11 @@ interface Channel {
     name: string;
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    pending: { label: THUMBNAIL_STATUS_LABELS.pending, color: THUMBNAIL_STATUS_BADGES.pending },
-    designing: { label: THUMBNAIL_STATUS_LABELS.designing, color: THUMBNAIL_STATUS_BADGES.designing },
-    designed: { label: THUMBNAIL_STATUS_LABELS.designed, color: THUMBNAIL_STATUS_BADGES.designed },
-    approved: { label: THUMBNAIL_STATUS_LABELS.approved, color: THUMBNAIL_STATUS_BADGES.approved },
-};
-
 function ThumbnailsContent() {
     const { isAuthenticated } = useAuth();
+    const { locale } = useLocale();
+    const thumbnailsCopy = getThumbnailsCopy(locale);
+    const statusLabels = getThumbnailStatusLabels(locale);
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const router = useRouter();
@@ -93,18 +90,18 @@ function ThumbnailsContent() {
                 setListError(null);
             } else {
                 const data = await response.json().catch(() => null);
-                setListError(data?.error || THUMBNAILS_COPY.toasts.error);
+                setListError(data?.error || thumbnailsCopy.errors.load);
             }
         } catch (err) {
             if (signal?.aborted) return;
-            console.error('Error:', err);
-            addToast(THUMBNAILS_COPY.toasts.error, 'error');
-            setListError(err instanceof Error ? err.message : THUMBNAILS_COPY.toasts.error);
+            console.error('[thumbnails] request failed', err);
+            addToast(thumbnailsCopy.toasts.error, 'error');
+            setListError(err instanceof Error ? err.message : thumbnailsCopy.errors.load);
         } finally {
             if (signal?.aborted) return;
             setLoading(false);
         }
-    }, [isAuthenticated, authFetch, addToast, selectedChannel]);
+    }, [isAuthenticated, authFetch, addToast, selectedChannel, thumbnailsCopy.errors.load, thumbnailsCopy.toasts.error]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -125,7 +122,7 @@ function ThumbnailsContent() {
             }
         } catch (err) {
             if (signal?.aborted) return;
-            console.error('Error fetching channels:', err);
+            console.error('[thumbnails] channels fetch failed', err);
         }
     }, [isAuthenticated, authFetch]);
 
@@ -170,7 +167,7 @@ function ThumbnailsContent() {
             }
         } catch (err) {
             if (signal?.aborted) return;
-            console.error('Error fetching scripts:', err);
+            console.error('[thumbnails] scripts fetch failed', err);
         }
     }, [authFetch, selectedChannel]);
 
@@ -192,7 +189,7 @@ function ThumbnailsContent() {
             }
         } catch (err) {
             if (signal?.aborted) return;
-            console.error('Error fetching videos:', err);
+            console.error('[thumbnails] videos fetch failed', err);
         }
     }, [authFetch, selectedChannel]);
 
@@ -231,16 +228,16 @@ function ThumbnailsContent() {
             });
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || THUMBNAILS_COPY.errors.create);
+                throw new Error(data.error || thumbnailsCopy.errors.create);
             }
             setShowModal(false);
             setFormData({ title: '', notes: '', imageUrl: '', scriptId: '', videoId: '' });
             await fetchThumbnails();
             setError(null);
-            addToast(THUMBNAILS_COPY.toasts.created, 'success');
+            addToast(thumbnailsCopy.toasts.created, 'success');
         } catch (err) {
-            addToast(err instanceof Error ? err.message : THUMBNAILS_COPY.toasts.error, 'error');
-            setError(err instanceof Error ? err.message : THUMBNAILS_COPY.toasts.error);
+            addToast(err instanceof Error ? err.message : thumbnailsCopy.toasts.error, 'error');
+            setError(err instanceof Error ? err.message : thumbnailsCopy.toasts.error);
         } finally {
             setSubmitting(false);
         }
@@ -254,12 +251,12 @@ function ThumbnailsContent() {
             });
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || THUMBNAILS_COPY.errors.update);
+                throw new Error(data.error || thumbnailsCopy.errors.update);
             }
             await fetchThumbnails();
-            addToast(THUMBNAILS_COPY.statusUpdated, 'success');
+            addToast(thumbnailsCopy.statusUpdated, 'success');
         } catch (err) {
-            addToast(err instanceof Error ? err.message : THUMBNAILS_COPY.toasts.error, 'error');
+            addToast(err instanceof Error ? err.message : thumbnailsCopy.toasts.error, 'error');
         }
     };
 
@@ -278,24 +275,24 @@ function ThumbnailsContent() {
             await Promise.all(selectedIds.map((id) => updateStatus(id, status)));
             clearSelection();
         } catch {
-            addToast(THUMBNAILS_COPY.toasts.error, 'error');
+            addToast(thumbnailsCopy.toasts.error, 'error');
         }
     };
 
     const deleteThumbnail = async (id: string) => {
-        if (!confirm(THUMBNAILS_COPY.deleteConfirm)) return;
+        if (!confirm(thumbnailsCopy.deleteConfirm)) return;
         try {
             const response = await authFetch(`/api/thumbnails?id=${id}`, {
                 method: 'DELETE',
             });
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || THUMBNAILS_COPY.errors.delete);
+                throw new Error(data.error || thumbnailsCopy.errors.delete);
             }
             await fetchThumbnails();
-            addToast(THUMBNAILS_COPY.toasts.deleted, 'success');
+            addToast(thumbnailsCopy.toasts.deleted, 'success');
         } catch (err) {
-            addToast(err instanceof Error ? err.message : THUMBNAILS_COPY.toasts.error, 'error');
+            addToast(err instanceof Error ? err.message : thumbnailsCopy.toasts.error, 'error');
         }
     };
 
@@ -304,7 +301,7 @@ function ThumbnailsContent() {
             <div className="min-h-screen flex flex-col">
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
-                    <h1 className="sr-only">{THUMBNAILS_COPY.title}</h1>
+                    <h1 className="sr-only">{thumbnailsCopy.title}</h1>
                     <motion.div
                         className="flex flex-col gap-4 mb-6 sm:mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
@@ -316,14 +313,14 @@ function ThumbnailsContent() {
                                 <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                     <ImageIcon className="w-5 h-5" />
                                 </span>
-                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{THUMBNAILS_COPY.title}</h2>
+                                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{thumbnailsCopy.title}</h2>
                             </div>
-                            <p className="text-sm sm:text-base text-slate-300">{THUMBNAILS_COPY.subtitle}</p>
+                            <p className="text-sm sm:text-base text-slate-300">{thumbnailsCopy.subtitle}</p>
                         </div>
                         <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:flex-wrap sm:items-end">
                             {channels.length > 0 && (
                                 <div className="min-w-[220px]">
-                                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>
+                                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">{thumbnailsCopy.controls.channel}</label>
                                     <select
                                         value={selectedChannel}
                                         onChange={(event) => {
@@ -335,7 +332,7 @@ function ThumbnailsContent() {
                                         }}
                                         className="w-full px-4 py-2.5 bg-gray-900/70 border border-gray-800 rounded-lg text-sm text-white focus:ring-2 focus:ring-yellow-400"
                                     >
-                                        <option value="">Todos los canales</option>
+                                        <option value="">{thumbnailsCopy.controls.allChannels}</option>
                                         {channels.map((channel) => (
                                             <option key={channel.id} value={channel.id}>
                                                 {channel.name}
@@ -346,27 +343,27 @@ function ThumbnailsContent() {
                             )}
                             {selectedIds.length > 0 && (
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                    <span className="text-xs text-slate-400">{selectedIds.length} seleccionadas</span>
+                                    <span className="text-xs text-slate-400">{selectedIds.length} {thumbnailsCopy.controls.selectedCount}</span>
                                     <button
                                         type="button"
                                         onClick={() => updateSelectedStatus('approved')}
                                         className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
                                     >
-                                        Aprobar
+                                        {thumbnailsCopy.controls.approve}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => updateSelectedStatus('designing')}
                                         className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                                     >
-                                        Diseñar
+                                        {thumbnailsCopy.controls.designing}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={clearSelection}
                                         className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                                     >
-                                        Limpiar
+                                        {thumbnailsCopy.controls.clear}
                                     </button>
                                 </div>
                             )}
@@ -384,7 +381,7 @@ function ThumbnailsContent() {
                                 whileTap={{ scale: 0.98 }}
                             >
                                 <Plus className="w-4 h-4" />
-                                {THUMBNAILS_COPY.new}
+                                {thumbnailsCopy.new}
                             </motion.button>
                         </div>
                     </motion.div>
@@ -402,7 +399,7 @@ function ThumbnailsContent() {
                                     onClick={() => fetchThumbnails()}
                                     className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
                                 >
-                                    Reintentar
+                                    {thumbnailsCopy.controls.retry}
                                 </button>
                             </div>
                         </motion.div>
@@ -417,8 +414,8 @@ function ThumbnailsContent() {
                             <div className="w-20 h-20 mx-auto mb-6 bg-gray-900/60 border border-gray-800 rounded-full flex items-center justify-center text-yellow-400">
                                 <ImageIcon className="w-8 h-8" />
                             </div>
-                            <h3 className="text-xl font-semibold text-white mb-2">{THUMBNAILS_COPY.emptyTitle}</h3>
-                            <p className="text-slate-300 mb-6">{THUMBNAILS_COPY.emptySubtitle}</p>
+                            <h3 className="text-xl font-semibold text-white mb-2">{thumbnailsCopy.emptyTitle}</h3>
+                            <p className="text-slate-300 mb-6">{thumbnailsCopy.emptySubtitle}</p>
                             <motion.button
                                 onClick={() => {
                                     setError(null);
@@ -428,7 +425,7 @@ function ThumbnailsContent() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                             >
-                                {THUMBNAILS_COPY.create}
+                                {thumbnailsCopy.create}
                             </motion.button>
                         </motion.div>
                     ) : (
@@ -466,13 +463,13 @@ function ThumbnailsContent() {
                                                     type="checkbox"
                                                     checked={selectedIds.includes(thumb.id)}
                                                     onChange={() => toggleSelection(thumb.id)}
-                                                    aria-label={`Seleccionar miniatura ${thumb.title}`}
+                                                    aria-label={`${thumbnailsCopy.controls.selectPrefix} ${thumb.title}`}
                                                     className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
                                                 />
-                                                Seleccionar
+                                                {thumbnailsCopy.controls.select}
                                             </label>
-                                            <span className={`text-xs px-2 py-1 rounded ${STATUS_LABELS[thumb.status]?.color || 'bg-gray-600'} text-white`}>
-                                                {STATUS_LABELS[thumb.status]?.label || thumb.status}
+                                            <span className={`text-xs px-2 py-1 rounded ${THUMBNAIL_STATUS_BADGES[thumb.status as keyof typeof THUMBNAIL_STATUS_BADGES] || 'bg-gray-600'} text-white`}>
+                                                {statusLabels[thumb.status as keyof typeof statusLabels] || thumb.status}
                                             </span>
                                         </div>
                                         <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-yellow-400 transition-colors break-words">
@@ -487,10 +484,10 @@ function ThumbnailsContent() {
                                                 onChange={(e) => updateStatus(thumb.id, e.target.value)}
                                                 className="w-full text-xs bg-gray-800 border border-gray-700 rounded px-2 py-2 text-white sm:flex-1"
                                             >
-                                                <option value="pending">{THUMBNAILS_COPY.statuses.pending}</option>
-                                                <option value="designing">{THUMBNAILS_COPY.statuses.designing}</option>
-                                                <option value="designed">{THUMBNAILS_COPY.statuses.designed}</option>
-                                                <option value="approved">{THUMBNAILS_COPY.statuses.approved}</option>
+                                                <option value="pending">{thumbnailsCopy.statuses.pending}</option>
+                                                <option value="designing">{thumbnailsCopy.statuses.designing}</option>
+                                                <option value="designed">{thumbnailsCopy.statuses.designed}</option>
+                                                <option value="approved">{thumbnailsCopy.statuses.approved}</option>
                                             </select>
                                             {thumb.production_id && (
                                                 <button
@@ -506,14 +503,14 @@ function ThumbnailsContent() {
                                                     }}
                                                     className="text-xs text-yellow-300 hover:text-yellow-200 px-2"
                                                 >
-                                                    Ver producción
+                                                    {thumbnailsCopy.controls.viewProduction}
                                                 </button>
                                             )}
                                             <button
                                                 onClick={() => deleteThumbnail(thumb.id)}
                                                 className="text-red-400 hover:text-red-300 text-xs px-2"
                                             >
-                                                {THUMBNAILS_COPY.delete}
+                                                {thumbnailsCopy.delete}
                                             </button>
                                         </div>
                                     </div>
@@ -526,7 +523,7 @@ function ThumbnailsContent() {
                                         onClick={() => setVisibleCount(visibleCount < thumbnails.length ? thumbnails.length : 12)}
                                         className="text-xs px-4 py-2 rounded-full border border-gray-700 text-slate-300 hover:text-white"
                                     >
-                                        {visibleCount < thumbnails.length ? THUMBNAILS_COPY.list.showMore : THUMBNAILS_COPY.list.showLess}
+                                        {visibleCount < thumbnails.length ? thumbnailsCopy.list.showMore : thumbnailsCopy.list.showLess}
                                     </button>
                                 </div>
                             )}
@@ -556,7 +553,7 @@ function ThumbnailsContent() {
                                 exit={{ scale: 0.9 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 id="thumbnail-modal-title" className="text-2xl font-bold text-white mb-6">{THUMBNAILS_COPY.new}</h3>
+                                <h3 id="thumbnail-modal-title" className="text-2xl font-bold text-white mb-6">{thumbnailsCopy.new}</h3>
                                 {error && (
                                     <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
                                         {error}
@@ -574,57 +571,57 @@ function ThumbnailsContent() {
                                         ))}
                                     </datalist>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Script ID (opcional)</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{thumbnailsCopy.modal.scriptIdOptional}</label>
                                         <input
                                             type="text"
                                             value={formData.scriptId}
                                             onChange={(e) => setFormData({ ...formData, scriptId: e.target.value })}
                                             list="script-options"
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
-                                            placeholder="UUID del guion"
+                                            placeholder={thumbnailsCopy.modal.scriptIdPlaceholder}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Video ID (opcional)</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{thumbnailsCopy.modal.videoIdOptional}</label>
                                         <input
                                             type="text"
                                             value={formData.videoId}
                                             onChange={(e) => setFormData({ ...formData, videoId: e.target.value })}
                                             list="video-options"
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
-                                            placeholder="UUID del video"
+                                            placeholder={thumbnailsCopy.modal.videoIdPlaceholder}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">{THUMBNAILS_COPY.form.title}</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{thumbnailsCopy.form.title}</label>
                                         <input
                                             type="text"
                                             value={formData.title}
                                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
-                                            placeholder={THUMBNAILS_COPY.form.placeholderTitle}
+                                            placeholder={thumbnailsCopy.form.placeholderTitle}
                                             required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">{THUMBNAILS_COPY.form.notes}</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{thumbnailsCopy.form.notes}</label>
                                         <textarea
                                             value={formData.notes}
                                             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 h-24"
-                                            placeholder={THUMBNAILS_COPY.form.placeholderNotes}
+                                            placeholder={thumbnailsCopy.form.placeholderNotes}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">{THUMBNAILS_COPY.form.imageUrl}</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{thumbnailsCopy.form.imageUrl}</label>
                                         <input
                                             type="url"
                                             value={formData.imageUrl}
                                             onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
-                                            placeholder={THUMBNAILS_COPY.form.placeholderUrl}
+                                            placeholder={thumbnailsCopy.form.placeholderUrl}
                                         />
-                                        <p className="mt-1 text-xs text-slate-400">Podés dejarlo vacío y cargar la URL más tarde.</p>
+                                        <p className="mt-1 text-xs text-slate-400">{thumbnailsCopy.modal.imageUrlHelper}</p>
                                     </div>
                                     <div className="flex flex-col gap-3 pt-4 sm:flex-row">
                                         <button
@@ -635,10 +632,10 @@ function ThumbnailsContent() {
                                             }}
                                             className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
                                         >
-                                            {THUMBNAILS_COPY.cancel}
+                                            {thumbnailsCopy.cancel}
                                         </button>
                                         <button type="submit" disabled={submitting} className="flex-1 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-50">
-                                            {submitting ? THUMBNAILS_COPY.submittingCreate : THUMBNAILS_COPY.create}
+                                            {submitting ? thumbnailsCopy.submittingCreate : thumbnailsCopy.create}
                                         </button>
                                     </div>
                                 </form>

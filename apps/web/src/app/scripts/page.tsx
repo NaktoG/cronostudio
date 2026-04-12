@@ -10,29 +10,26 @@ import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
-import { SCRIPTS_COPY } from '../content/pages/scripts';
+import { useLocale } from '../contexts/LocaleContext';
+import { getScriptsCopy } from '../content/pages/scripts';
 import useDialogFocus from '../hooks/useDialogFocus';
 import Link from 'next/link';
 import { copyScriptToClipboard, downloadScriptMarkdown, exportScriptToPdf } from '@/lib/scripts/export';
 import { calculateScriptMetrics } from '@/lib/scripts/metrics';
-import { SCRIPT_STATUS_BADGES, SCRIPT_STATUS_LABELS } from '@/app/content/status/scripts';
+import { SCRIPT_STATUS_BADGES, getScriptStatusLabels } from '@/app/content/status/scripts';
 import { useChannels } from '@/app/hooks/useChannels';
 import { useScripts } from '@/app/scripts/hooks/useScripts';
 import type { Script } from '@/app/scripts/hooks/useScripts';
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    draft: { label: SCRIPT_STATUS_LABELS.draft, color: SCRIPT_STATUS_BADGES.draft },
-    review: { label: SCRIPT_STATUS_LABELS.review, color: SCRIPT_STATUS_BADGES.review },
-    approved: { label: SCRIPT_STATUS_LABELS.approved, color: SCRIPT_STATUS_BADGES.approved },
-    recorded: { label: SCRIPT_STATUS_LABELS.recorded, color: SCRIPT_STATUS_BADGES.recorded },
-};
-
 function ScriptsContent() {
     const { isAuthenticated } = useAuth();
+    const { locale } = useLocale();
+    const scriptsCopy = getScriptsCopy(locale);
+    const statusLabels = getScriptStatusLabels(locale);
     const authFetch = useAuthFetch();
     const { addToast } = useToast();
     const { channels } = useChannels({ isAuthenticated, authFetch });
-    const { state, actions } = useScripts({ isAuthenticated, authFetch, addToast });
+    const { state, actions } = useScripts({ isAuthenticated, authFetch, addToast, scriptsCopy });
     const { scripts, ideaOptions, loading, listError, selectedChannel, selectedIds, pipelineLoading } = state;
     const { setSelectedChannel, refreshScripts, toggleSelection, clearSelection, createOrUpdateScript, deleteScript: deleteScriptAction, updateSelectedStatus, runPipeline } = actions;
     const [ideaTitleInput, setIdeaTitleInput] = useState('');
@@ -94,10 +91,10 @@ function ScriptsContent() {
             setFormData({ title: '', intro: '', body: '', cta: '', outro: '', ideaId: '' });
             setIdeaTitleInput('');
             setError(null);
-            addToast(editingId ? SCRIPTS_COPY.toasts.updated : SCRIPTS_COPY.toasts.created, 'success');
+            addToast(editingId ? scriptsCopy.toasts.updated : scriptsCopy.toasts.created, 'success');
         } catch (err) {
-            addToast(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error, 'error');
-            setError(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error);
+            addToast(err instanceof Error ? err.message : scriptsCopy.toasts.error, 'error');
+            setError(err instanceof Error ? err.message : scriptsCopy.toasts.error);
         } finally {
             setSubmitting(false);
         }
@@ -119,9 +116,9 @@ function ScriptsContent() {
                 cta: formData.cta,
                 outro: formData.outro,
             });
-            addToast('Guion copiado', 'success');
+            addToast(scriptsCopy.toasts.copiedScript, 'success');
         } catch {
-            addToast('No se pudo copiar el guion', 'error');
+            addToast(scriptsCopy.toasts.copyScriptError, 'error');
         }
     };
 
@@ -130,9 +127,9 @@ function ScriptsContent() {
         const url = `${window.location.origin}/scripts?scriptId=${editingId}`;
         try {
             await navigator.clipboard.writeText(url);
-            addToast('Link copiado', 'success');
+            addToast(scriptsCopy.toasts.copiedLink, 'success');
         } catch {
-            addToast('No se pudo copiar el link', 'error');
+            addToast(scriptsCopy.toasts.copyLinkError, 'error');
         }
     };
 
@@ -156,7 +153,7 @@ function ScriptsContent() {
             outro: formData.outro,
         });
         if (!ok) {
-            addToast('No se pudo abrir la ventana de exportacion', 'error');
+            addToast(scriptsCopy.toasts.exportWindowError, 'error');
         }
     };
 
@@ -193,9 +190,9 @@ function ScriptsContent() {
         try {
             await deleteScriptAction(deleteTarget.id);
             setDeleteTarget(null);
-            addToast(SCRIPTS_COPY.toasts.deleted, 'success');
+            addToast(scriptsCopy.toasts.deleted, 'success');
         } catch (err) {
-            addToast(err instanceof Error ? err.message : SCRIPTS_COPY.toasts.error, 'error');
+            addToast(err instanceof Error ? err.message : scriptsCopy.toasts.error, 'error');
         }
     };
 
@@ -210,7 +207,7 @@ function ScriptsContent() {
             <div className="min-h-screen flex flex-col">
                 <Header />
                 <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full">
-                    <h1 className="sr-only">{SCRIPTS_COPY.title}</h1>
+                    <h1 className="sr-only">{scriptsCopy.title}</h1>
                     <motion.div
                         className="flex flex-col gap-4 mb-6 sm:mb-8 sm:flex-row sm:items-center sm:justify-between"
                         initial={{ opacity: 0, y: -20 }}
@@ -223,15 +220,15 @@ function ScriptsContent() {
                                     <span className="w-10 h-10 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
                                         <FileText className="w-5 h-5" />
                                     </span>
-                                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{SCRIPTS_COPY.title}</h2>
+                                    <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-white">{scriptsCopy.title}</h2>
                                 </div>
-                                <p className="text-sm sm:text-base text-slate-300">{SCRIPTS_COPY.subtitle}</p>
+                                <p className="text-sm sm:text-base text-slate-300">{scriptsCopy.subtitle}</p>
                             </div>
                         </div>
                         <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:flex-wrap sm:items-end">
                             {channels.length > 0 && (
                                 <div className="min-w-[220px]">
-                                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Canal</label>
+                                    <label className="block text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">{scriptsCopy.controls.channel}</label>
                                     <select
                                         value={selectedChannel}
                                         onChange={(event) => {
@@ -243,7 +240,7 @@ function ScriptsContent() {
                                         }}
                                         className="w-full px-4 py-2.5 bg-gray-900/70 border border-gray-800 rounded-lg text-sm text-white focus:ring-2 focus:ring-yellow-400"
                                     >
-                                        <option value="">Todos los canales</option>
+                                        <option value="">{scriptsCopy.controls.allChannels}</option>
                                         {channels.map((channel) => (
                                             <option key={channel.id} value={channel.id}>
                                                 {channel.name}
@@ -254,34 +251,34 @@ function ScriptsContent() {
                             )}
                             {selectedIds.length > 0 && (
                                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                                    <span className="text-xs text-slate-400">{selectedIds.length} seleccionados</span>
+                                    <span className="text-xs text-slate-400">{selectedIds.length} {scriptsCopy.controls.selectedCount}</span>
                                     <button
                                         type="button"
                                         onClick={() => updateSelectedStatus('review')}
                                         className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                                     >
-                                        A revisión
+                                        {scriptsCopy.controls.toReview}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => updateSelectedStatus('approved')}
                                         className="rounded-lg bg-emerald-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
                                     >
-                                        Aprobar
+                                        {scriptsCopy.controls.approve}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => updateSelectedStatus('recorded')}
                                         className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                                     >
-                                        Grabado
+                                        {scriptsCopy.controls.recorded}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={clearSelection}
                                         className="rounded-lg border border-gray-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
                                     >
-                                        Limpiar
+                                        {scriptsCopy.controls.clear}
                                     </button>
                                 </div>
                             )}
@@ -302,7 +299,7 @@ function ScriptsContent() {
                                 whileTap={{ scale: 0.98 }}
                             >
                                 <Plus className="w-4 h-4" />
-                                {SCRIPTS_COPY.new}
+                                {scriptsCopy.new}
                             </motion.button>
                         </div>
                     </motion.div>
@@ -320,7 +317,7 @@ function ScriptsContent() {
                                     onClick={() => refreshScripts()}
                                     className="text-xs font-semibold text-yellow-300 hover:text-yellow-200"
                                 >
-                                    Reintentar
+                                    {scriptsCopy.controls.retry}
                                 </button>
                             </div>
                         </motion.div>
@@ -335,8 +332,8 @@ function ScriptsContent() {
                             <div className="w-20 h-20 mx-auto mb-6 bg-gray-900/60 border border-gray-800 rounded-full flex items-center justify-center text-yellow-400">
                                 <FileText className="w-8 h-8" />
                             </div>
-                            <h3 className="text-xl font-semibold text-white mb-2">{SCRIPTS_COPY.emptyTitle}</h3>
-                            <p className="text-slate-300 mb-6">{SCRIPTS_COPY.emptySubtitle}</p>
+                            <h3 className="text-xl font-semibold text-white mb-2">{scriptsCopy.emptyTitle}</h3>
+                            <p className="text-slate-300 mb-6">{scriptsCopy.emptySubtitle}</p>
                             <motion.button
                                 onClick={() => {
                                     setEditingId(null);
@@ -349,7 +346,7 @@ function ScriptsContent() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                             >
-                                {SCRIPTS_COPY.create}
+                                {scriptsCopy.create}
                             </motion.button>
                         </motion.div>
                     ) : (
@@ -368,20 +365,20 @@ function ScriptsContent() {
                                                         type="checkbox"
                                                         checked={selectedIds.includes(script.id)}
                                                         onChange={() => toggleSelection(script.id)}
-                                                        aria-label={`Seleccionar guion ${script.title}`}
+                                                        aria-label={`${scriptsCopy.card.selectPrefix} ${script.title}`}
                                                         className="h-4 w-4 rounded border-gray-700 text-yellow-400 focus:ring-yellow-400"
                                                     />
-                                                    Seleccionar
+                                                    {scriptsCopy.card.select}
                                                 </label>
-                                                <span className={`text-xs px-2 py-1 rounded ${STATUS_LABELS[script.status]?.color || 'bg-gray-600'} text-white`}>
-                                                    {STATUS_LABELS[script.status]?.label || script.status}
+                                                <span className={`text-xs px-2 py-1 rounded ${SCRIPT_STATUS_BADGES[script.status as keyof typeof SCRIPT_STATUS_BADGES] || 'bg-gray-600'} text-white`}>
+                                                    {statusLabels[script.status as keyof typeof statusLabels] || script.status}
                                                 </span>
-                                                <span className="text-xs text-gray-500">{script.word_count} {SCRIPTS_COPY.wordCountLabel}</span>
-                                                <span className="text-xs text-yellow-400">⏱ ~{formatDuration(script.estimated_duration_seconds)}</span>
+                                                <span className="text-xs text-gray-500">{script.word_count} {scriptsCopy.wordCountLabel}</span>
+                                                <span className="text-xs text-yellow-400">{scriptsCopy.card.durationPrefix}{formatDuration(script.estimated_duration_seconds)}</span>
                                             </div>
                                             <h3 className="text-lg font-semibold text-white break-words">{script.title}</h3>
                                             {script.idea_title && (
-                                                <p className="text-sm text-gray-500 mt-1">{SCRIPTS_COPY.ideaPrefix} {script.idea_title}</p>
+                                                <p className="text-sm text-gray-500 mt-1">{scriptsCopy.ideaPrefix} {script.idea_title}</p>
                                             )}
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -391,27 +388,27 @@ function ScriptsContent() {
                                                 disabled={pipelineLoading.includes(script.id)}
                                                 className="text-sky-300 hover:text-sky-200 text-xs px-2 disabled:opacity-60"
                                             >
-                                                {pipelineLoading.includes(script.id) ? 'Pipeline...' : 'Pipeline Publicar'}
+                                                {pipelineLoading.includes(script.id) ? scriptsCopy.card.pipelineRunning : scriptsCopy.card.pipelinePublish}
                                             </button>
                                             <Link
                                                 href={`/ai?profile=retention_editor&scriptId=${script.id}${selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
                                                 className="inline-flex items-center gap-1 text-emerald-300 hover:text-emerald-200 text-xs px-2"
                                             >
                                                 <Sparkles className="w-3 h-3" />
-                                                Retención
+                                                {scriptsCopy.card.retention}
                                             </Link>
                                             <Link
                                                 href={`/ai?profile=titles_thumbs&scriptId=${script.id}${script.idea_id ? `&ideaId=${script.idea_id}` : ''}${selectedChannel ? `&channelId=${selectedChannel}` : ''}`}
                                                 className="inline-flex items-center gap-1 text-sky-300 hover:text-sky-200 text-xs px-2"
                                             >
                                                 <Sparkles className="w-3 h-3" />
-                                                SEO + Títulos
+                                                {scriptsCopy.card.seoTitles}
                                             </Link>
                                             <button onClick={() => openEdit(script)} className="px-3 py-1 text-sm text-yellow-400 hover:text-yellow-300">
-                                                {SCRIPTS_COPY.edit}
+                                                {scriptsCopy.edit}
                                             </button>
                                             <button onClick={() => setDeleteTarget(script)} className="px-3 py-1 text-sm text-red-400 hover:text-red-300">
-                                                {SCRIPTS_COPY.delete}
+                                                {scriptsCopy.delete}
                                             </button>
                                         </div>
                                     </div>
@@ -423,7 +420,7 @@ function ScriptsContent() {
                                         onClick={() => setVisibleCount(visibleCount < scripts.length ? scripts.length : 12)}
                                         className="text-xs px-4 py-2 rounded-full border border-gray-700 text-slate-300 hover:text-white"
                                     >
-                                        {visibleCount < scripts.length ? SCRIPTS_COPY.list.showMore : SCRIPTS_COPY.list.showLess}
+                                        {visibleCount < scripts.length ? scriptsCopy.list.showMore : scriptsCopy.list.showLess}
                                     </button>
                                 </div>
                             )}
@@ -454,7 +451,7 @@ function ScriptsContent() {
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <h3 id="script-modal-title" className="text-2xl font-bold text-white mb-6">
-                                    {editingId ? SCRIPTS_COPY.edit : SCRIPTS_COPY.new}
+                                    {editingId ? scriptsCopy.edit : scriptsCopy.new}
                                 </h3>
                                 {error && (
                                     <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
@@ -473,18 +470,18 @@ function ScriptsContent() {
                                         ))}
                                     </datalist>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Idea ID (opcional)</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{scriptsCopy.modal.ideaIdOptional}</label>
                                         <input
                                             type="text"
                                             value={formData.ideaId}
                                             onChange={(e) => setFormData({ ...formData, ideaId: e.target.value })}
                                             list="idea-options"
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
-                                            placeholder="UUID de la idea"
+                                            placeholder={scriptsCopy.modal.ideaIdPlaceholder}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">Idea (por título)</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{scriptsCopy.modal.ideaByTitle}</label>
                                         <input
                                             type="text"
                                             value={ideaTitleInput}
@@ -498,11 +495,11 @@ function ScriptsContent() {
                                             }}
                                             list="idea-title-options"
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400"
-                                            placeholder="Buscar por título"
+                                            placeholder={scriptsCopy.modal.ideaByTitlePlaceholder}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">{SCRIPTS_COPY.fields.title}</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{scriptsCopy.fields.title}</label>
                                         <input
                                             type="text"
                                             value={formData.title}
@@ -512,46 +509,46 @@ function ScriptsContent() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">{SCRIPTS_COPY.fields.intro}</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{scriptsCopy.fields.intro}</label>
                                         <textarea
                                             value={formData.intro}
                                             onChange={(e) => setFormData({ ...formData, intro: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 h-24"
-                                            placeholder={SCRIPTS_COPY.placeholders.intro}
+                                            placeholder={scriptsCopy.placeholders.intro}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">{SCRIPTS_COPY.fields.body}</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{scriptsCopy.fields.body}</label>
                                         <textarea
                                             value={formData.body}
                                             onChange={(e) => setFormData({ ...formData, body: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 h-40"
-                                            placeholder={SCRIPTS_COPY.placeholders.body}
+                                            placeholder={scriptsCopy.placeholders.body}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">{SCRIPTS_COPY.fields.cta}</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{scriptsCopy.fields.cta}</label>
                                         <textarea
                                             value={formData.cta}
                                             onChange={(e) => setFormData({ ...formData, cta: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 h-20"
-                                            placeholder={SCRIPTS_COPY.placeholders.cta}
+                                            placeholder={scriptsCopy.placeholders.cta}
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">{SCRIPTS_COPY.fields.outro}</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-2">{scriptsCopy.fields.outro}</label>
                                         <textarea
                                             value={formData.outro}
                                             onChange={(e) => setFormData({ ...formData, outro: e.target.value })}
                                             className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-yellow-400 h-20"
-                                            placeholder={SCRIPTS_COPY.placeholders.outro}
+                                            placeholder={scriptsCopy.placeholders.outro}
                                         />
                                     </div>
                                     <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Checklist rapido</p>
-                                                <p className="text-sm text-slate-300">Score: {scriptChecklist.score}%</p>
+                                                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{scriptsCopy.modal.quickChecklist}</p>
+                                                <p className="text-sm text-slate-300">{scriptsCopy.modal.scoreLabel}: {scriptChecklist.score}%</p>
                                                 <p className="text-xs text-slate-500">{scriptChecklist.wordCount} palabras · ~{scriptChecklist.estimatedSeconds}s</p>
                                             </div>
                                             <div className="flex flex-wrap items-center gap-2">
@@ -561,7 +558,7 @@ function ScriptsContent() {
                                                     className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
                                                 >
                                                     <Clipboard className="h-4 w-4" />
-                                                    Copiar guion
+                                                    {scriptsCopy.modal.copyScript}
                                                 </button>
                                                 <button
                                                     type="button"
@@ -569,36 +566,36 @@ function ScriptsContent() {
                                                     className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
                                                 >
                                                     <LinkIcon className="h-4 w-4" />
-                                                    Copiar link
+                                                    {scriptsCopy.modal.copyLink}
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={handleDownloadScript}
                                                     className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
                                                 >
-                                                    Descargar .md
+                                                    {scriptsCopy.modal.downloadMd}
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={handleExportPdf}
                                                     className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-xs text-slate-200 hover:border-yellow-500/40"
                                                 >
-                                                    Exportar PDF
+                                                    {scriptsCopy.modal.exportPdf}
                                                 </button>
                                             </div>
                                         </div>
                                         <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-300">
                                             <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.introReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
-                                                Intro {scriptChecklist.introReady ? 'ok' : 'pendiente'}
+                                                {scriptsCopy.modal.intro} {scriptChecklist.introReady ? scriptsCopy.modal.ok : scriptsCopy.modal.pending}
                                             </div>
                                             <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.bodyReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
-                                                Cuerpo {scriptChecklist.bodyReady ? 'ok' : 'pendiente'}
+                                                {scriptsCopy.modal.body} {scriptChecklist.bodyReady ? scriptsCopy.modal.ok : scriptsCopy.modal.pending}
                                             </div>
                                             <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.ctaReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
-                                                CTA {scriptChecklist.ctaReady ? 'ok' : 'pendiente'}
+                                                {scriptsCopy.modal.cta} {scriptChecklist.ctaReady ? scriptsCopy.modal.ok : scriptsCopy.modal.pending}
                                             </div>
                                             <div className={`rounded-lg border px-3 py-2 ${scriptChecklist.outroReady ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200' : 'border-gray-800 bg-gray-900/40'}`}>
-                                                Outro {scriptChecklist.outroReady ? 'ok' : 'pendiente'}
+                                                {scriptsCopy.modal.outro} {scriptChecklist.outroReady ? scriptsCopy.modal.ok : scriptsCopy.modal.pending}
                                             </div>
                                         </div>
                                     </div>
@@ -611,10 +608,10 @@ function ScriptsContent() {
                                             }}
                                             className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800"
                                         >
-                                            {SCRIPTS_COPY.cancel}
+                                            {scriptsCopy.cancel}
                                         </button>
                                         <button type="submit" disabled={submitting} className="flex-1 py-3 bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300 disabled:opacity-50">
-                                            {submitting ? (editingId ? SCRIPTS_COPY.submittingEdit : SCRIPTS_COPY.submittingCreate) : editingId ? SCRIPTS_COPY.submitEdit : SCRIPTS_COPY.submitCreate}
+                                            {submitting ? (editingId ? scriptsCopy.submittingEdit : scriptsCopy.submittingCreate) : editingId ? scriptsCopy.submitEdit : scriptsCopy.submitCreate}
                                         </button>
                                     </div>
                                 </form>
@@ -644,11 +641,11 @@ function ScriptsContent() {
                                 exit={{ scale: 0.9 }}
                                 onClick={(e) => e.stopPropagation()}
                             >
-                                <h3 id="script-delete-title" className="text-2xl font-bold text-white mb-3">{SCRIPTS_COPY.deleteTitle}</h3>
-                                <p className="text-sm text-gray-400 mb-6">{SCRIPTS_COPY.deleteWarning} <span className="text-white font-semibold">{deleteTarget.title}</span>. {SCRIPTS_COPY.deleteIrreversible}</p>
+                                <h3 id="script-delete-title" className="text-2xl font-bold text-white mb-3">{scriptsCopy.deleteTitle}</h3>
+                                <p className="text-sm text-gray-400 mb-6">{scriptsCopy.deleteWarning} <span className="text-white font-semibold">{deleteTarget.title}</span>. {scriptsCopy.deleteIrreversible}</p>
                                 <div className="flex flex-col gap-3 sm:flex-row">
-                                    <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">{SCRIPTS_COPY.cancel}</button>
-                                    <button onClick={deleteScript} className="flex-1 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500">{submitting ? SCRIPTS_COPY.deleting : SCRIPTS_COPY.delete}</button>
+                                    <button onClick={() => setDeleteTarget(null)} className="flex-1 py-3 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800">{scriptsCopy.cancel}</button>
+                                    <button onClick={deleteScript} className="flex-1 py-3 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-500">{submitting ? scriptsCopy.deleting : scriptsCopy.delete}</button>
                                 </div>
                             </motion.div>
                         </motion.div>
