@@ -109,7 +109,7 @@ function withCspHeaders(response: NextResponse, nonce: string) {
   return response;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const origin = request.headers.get('origin');
   const pathname = request.nextUrl.pathname;
   const isProduction = process.env.NODE_ENV === 'production';
