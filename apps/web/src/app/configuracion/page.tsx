@@ -421,7 +421,7 @@ export default function ConfiguracionPage() {
   };
 
   const eliminarCuenta = async () => {
-    if (textoConfirmacion.trim().toUpperCase() !== 'ELIMINAR') {
+    if (textoConfirmacion.trim().toUpperCase() !== settingsCopy.danger.confirmWord) {
       setErrorGeneral(settingsCopy.danger.confirmError);
       return;
     }
