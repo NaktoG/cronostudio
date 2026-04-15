@@ -18,6 +18,13 @@ const SETTINGS_COPY_BY_LOCALE = {
       saveError: 'No pudimos guardar los cambios',
       saveErrorFallback: 'Error al guardar el perfil',
     },
+    preferences: {
+      section: 'Preferencias',
+      helper: 'Personaliza idioma y experiencia de tu cuenta.',
+      language: 'Idioma de la app',
+      languageEs: 'Espanol',
+      languageEn: 'Ingles',
+    },
     security: {
       section: 'Seguridad',
       currentPassword: 'Contrasena actual',
@@ -93,6 +100,11 @@ const SETTINGS_COPY_BY_LOCALE = {
       sendError: 'No pudimos enviar el correo',
       sendErrorFallback: 'No pudimos enviar el correo de recuperacion',
     },
+    session: {
+      section: 'Sesion',
+      helper: 'Gestiona tu acceso a CronoStudio desde aqui.',
+      logout: 'Cerrar sesion',
+    },
     danger: {
       section: 'Eliminar cuenta',
       helper: 'Esta accion eliminara todos tus datos. No se puede deshacer.',
@@ -120,6 +132,13 @@ const SETTINGS_COPY_BY_LOCALE = {
       loadErrorFallback: 'Could not fetch your information. Try again later.',
       saveError: 'Could not save changes',
       saveErrorFallback: 'Error saving profile',
+    },
+    preferences: {
+      section: 'Preferences',
+      helper: 'Customize language and account experience.',
+      language: 'App language',
+      languageEs: 'Spanish',
+      languageEn: 'English',
     },
     security: {
       section: 'Security',
@@ -195,6 +214,11 @@ const SETTINGS_COPY_BY_LOCALE = {
       sent: 'We sent an email with recovery instructions',
       sendError: 'Could not send email',
       sendErrorFallback: 'Could not send recovery email',
+    },
+    session: {
+      section: 'Session',
+      helper: 'Manage your CronoStudio access from here.',
+      logout: 'Log out',
     },
     danger: {
       section: 'Delete account',

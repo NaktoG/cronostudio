@@ -6,7 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { HelpCircle, LogOut, Menu, Settings, ShieldCheck, X } from 'lucide-react';
+import { HelpCircle, Menu, Settings, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { NAV_ITEMS } from '../content/navigation';
 import { useLocale } from '@/app/contexts/LocaleContext';
@@ -15,7 +15,7 @@ import NotificationCenter from './NotificationCenter';
 
 export default function Header() {
   const pathname = usePathname();
-  const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { t } = useLocale();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const reduceMotion = useReducedMotion();
@@ -133,31 +133,18 @@ export default function Header() {
                   {t('header.guide')}
                 </motion.button>
                 <NotificationCenter />
-                <LocaleSwitcher />
                 <Link href="/configuracion" className="hidden sm:block">
                   <motion.div
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-yellow-500/50 transition-all"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-900/50 border border-gray-800 hover:border-yellow-500/50 transition-all text-slate-200"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
-                      <span className="text-yellow-400 font-semibold text-sm">{user?.name?.charAt(0).toUpperCase()}</span>
-                    </div>
-                    <p className="text-base font-medium text-white">{user?.name}</p>
                     <Settings className="w-4 h-4 text-slate-400" />
+                    <span className="text-sm font-medium">{t('header.myAccount')}</span>
                   </motion.div>
                 </Link>
-                <motion.button
-                  onClick={logout}
-                  className="hidden sm:inline-flex px-4 py-2 text-sm text-slate-300 hover:text-yellow-400 border border-gray-700 rounded-lg hover:border-yellow-500/50 transition-all items-center gap-2"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <LogOut className="w-4 h-4" />
-                  {t('navigation.logout')}
-                </motion.button>
               </div>
             ) : !isLandingRoute ? (
               <div className="hidden sm:flex items-center gap-3">
@@ -267,6 +254,16 @@ export default function Header() {
                       </div>
                     )}
                     {isAuthenticated && (
+                      <Link
+                        href="/configuracion"
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm text-slate-300 hover:text-yellow-400 hover:bg-gray-800/50"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        <Settings className="w-5 h-5" />
+                        <span className="font-medium">{t('header.myAccount')}</span>
+                      </Link>
+                    )}
+                    {isAuthenticated && (
                       <button
                         type="button"
                         onClick={() => {
@@ -298,19 +295,6 @@ export default function Header() {
                       );
                     })}
                   </div>
-                  {isAuthenticated && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        logout();
-                      }}
-                      className="mt-4 flex items-center gap-2 px-4 py-3 rounded-lg border border-gray-800 text-slate-200 hover:text-yellow-400 hover:border-yellow-500/40"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      {t('navigation.logout')}
-                    </button>
-                  )}
                 </motion.div>
               </motion.div>
             )}

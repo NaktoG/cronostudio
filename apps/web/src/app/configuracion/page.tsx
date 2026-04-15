@@ -47,7 +47,7 @@ interface OAuthSettings {
 
 export default function ConfiguracionPage() {
   const { logout, user } = useAuth();
-  const { locale } = useLocale();
+  const { locale, setLocale } = useLocale();
   const settingsCopy = getSettingsCopy(locale);
   const authFetch = useAuthFetch();
   const router = useRouter();
@@ -478,6 +478,22 @@ export default function ConfiguracionPage() {
       </section>
 
       <section className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-xl font-semibold text-white mb-4">{settingsCopy.preferences.section}</h2>
+        <p className="text-sm text-gray-400 mb-4">{settingsCopy.preferences.helper}</p>
+        <div className="max-w-xs">
+          <label className="text-sm text-gray-400">{settingsCopy.preferences.language}</label>
+          <select
+            value={locale}
+            onChange={(event) => setLocale(event.target.value as 'es' | 'en')}
+            className="w-full mt-1 rounded-lg bg-gray-900/60 border border-gray-800 px-3 py-2 text-white focus:border-yellow-400 focus:outline-none"
+          >
+            <option value="es">{settingsCopy.preferences.languageEs}</option>
+            <option value="en">{settingsCopy.preferences.languageEn}</option>
+          </select>
+        </div>
+      </section>
+
+      <section className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6">
         <h2 className="text-xl font-semibold text-white mb-4">{settingsCopy.security.section}</h2>
         <div className="grid gap-4 md:grid-cols-3">
           <div>
@@ -767,6 +783,18 @@ export default function ConfiguracionPage() {
           {settingsCopy.recovery.send}
         </motion.button>
         {mensajeRecuperacion && <p className="text-sm text-green-400 mt-3">{mensajeRecuperacion}</p>}
+      </section>
+
+      <section className="bg-gray-900/60 border border-gray-800 rounded-2xl p-6">
+        <h2 className="text-xl font-semibold text-white mb-4">{settingsCopy.session.section}</h2>
+        <p className="text-sm text-gray-400 mb-4">{settingsCopy.session.helper}</p>
+        <motion.button
+          onClick={logout}
+          className="px-5 py-2.5 bg-gray-200 text-black font-semibold rounded-lg hover:bg-white"
+          whileHover={{ scale: 1.02 }}
+        >
+          {settingsCopy.session.logout}
+        </motion.button>
       </section>
 
       <section className="bg-red-950/40 border border-red-900 rounded-2xl p-6">
