@@ -527,7 +527,7 @@ function AiStudioContent() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col overflow-x-hidden">
         <Header />
         <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 pb-24 lg:pb-12 w-full">
           <h1 className="sr-only">Crono</h1>

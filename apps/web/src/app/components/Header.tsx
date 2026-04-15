@@ -6,11 +6,12 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { HelpCircle, LogOut, Menu, Settings, X } from 'lucide-react';
+import { HelpCircle, LogOut, Menu, Settings, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { NAV_ITEMS } from '../content/navigation';
 import { useLocale } from '@/app/contexts/LocaleContext';
 import LocaleSwitcher from './LocaleSwitcher';
+import NotificationCenter from './NotificationCenter';
 
 export default function Header() {
   const pathname = usePathname();
@@ -19,6 +20,10 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const reduceMotion = useReducedMotion();
   const mounted = typeof window !== 'undefined';
+  const isLandingRoute = pathname === '/' || pathname === '/inicio';
+  const navItems = user?.role === 'super_admin'
+    ? [...NAV_ITEMS, { href: '/admin', labelKey: 'navigation.admin', icon: ShieldCheck }]
+    : NAV_ITEMS;
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -81,7 +86,7 @@ export default function Header() {
           {/* Desktop Nav */}
           {isAuthenticated && (
             <nav className="hidden lg:flex items-center gap-1">
-              {NAV_ITEMS.map((item) => {
+              {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
                 return (
@@ -106,9 +111,12 @@ export default function Header() {
             {/* User / Auth */}
             <div className="flex items-center gap-2 sm:gap-3">
               {!isLoading && !isAuthenticated && (
-                <div className="hidden md:inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-yellow-300">
-                  {t('header.creativeStudio')}
-                </div>
+                <>
+                  <LocaleSwitcher variant="select" />
+                  <div className="hidden md:inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-yellow-300">
+                    {t('header.creativeStudio')}
+                  </div>
+                </>
               )}
             {isLoading ? (
               <div className="w-24 h-10 bg-gray-800 rounded-lg animate-pulse" />
@@ -124,6 +132,7 @@ export default function Header() {
                   <HelpCircle className="w-4 h-4" />
                   {t('header.guide')}
                 </motion.button>
+                <NotificationCenter />
                 <LocaleSwitcher />
                 <Link href="/configuracion" className="hidden sm:block">
                   <motion.div
@@ -177,14 +186,16 @@ export default function Header() {
             )}
 
             {/* Mobile Menu Button */}
-            <motion.button
-              className="lg:hidden p-2 text-slate-300 hover:text-yellow-400 rounded-lg hover:bg-gray-800/50"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
-              whileTap={{ scale: 0.95 }}
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </motion.button>
+            {(isAuthenticated || !isLandingRoute) && (
+              <motion.button
+                className="lg:hidden p-2 text-slate-300 hover:text-yellow-400 rounded-lg hover:bg-gray-800/50"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+                whileTap={{ scale: 0.95 }}
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </motion.button>
+            )}
           </div>
         </div>
 
@@ -268,7 +279,7 @@ export default function Header() {
                         <span className="font-medium">{t('header.guide')}</span>
                       </button>
                     )}
-                    {NAV_ITEMS.map((item) => {
+                    {navItems.map((item) => {
                       const isActive = pathname === item.href;
                       const Icon = item.icon;
                       return (
