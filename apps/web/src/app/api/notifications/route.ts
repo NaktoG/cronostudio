@@ -117,12 +117,12 @@ async function createWindowReminders(
         'targetDate', p.target_date::text,
         'status', p.status,
         'minutesBefore', $4,
-        'timezone', $7
+        'timezone', $7::text
       ) AS metadata,
       (
         (p.target_date::timestamp)
         + make_interval(hours => $5::int, mins => $6::int)
-      ) AT TIME ZONE $7 AS scheduled_for,
+      ) AT TIME ZONE $7::text AS scheduled_for,
       format(
         '%s:%s:%s:%s',
         $2,
