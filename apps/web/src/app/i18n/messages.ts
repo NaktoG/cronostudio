@@ -50,6 +50,7 @@ export const messages: Record<Locale, Messages> = {
       remind3h: 'Avisar 3h antes',
       remind30m: 'Avisar 30m antes',
       publishHourUtc: 'Hora objetivo UTC',
+      timezone: 'Zona horaria',
     },
     shortcuts: {
       title: 'Atajos',
@@ -113,6 +114,7 @@ export const messages: Record<Locale, Messages> = {
       remind3h: 'Notify 3h before',
       remind30m: 'Notify 30m before',
       publishHourUtc: 'Target hour UTC',
+      timezone: 'Timezone',
     },
     shortcuts: {
       title: 'Shortcuts',

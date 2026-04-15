@@ -13,6 +13,7 @@ const prefsSchema = z.object({
   reminder30m: z.boolean(),
   defaultHourUtc: z.number().int().min(0).max(23),
   defaultMinuteUtc: z.number().int().min(0).max(59),
+  timezone: z.string().min(3).max(64),
 });
 
 type NotificationPreferences = {
@@ -23,6 +24,7 @@ type NotificationPreferences = {
   reminder30m: boolean;
   defaultHourUtc: number;
   defaultMinuteUtc: number;
+  timezone: string;
 };
 
 const DEFAULT_PREFS: NotificationPreferences = {
@@ -33,6 +35,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
   reminder30m: true,
   defaultHourUtc: 18,
   defaultMinuteUtc: 0,
+  timezone: 'UTC',
 };
 
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
@@ -64,6 +67,10 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     }
 
     const prefs = parsed.data;
+    if (!isValidTimeZone(prefs.timezone)) {
+      return withSecurityHeaders(NextResponse.json({ error: 'Timezone invalida' }, { status: 400 }));
+    }
+
     const updated = await query(
       `INSERT INTO app_notification_preferences (
          user_id,
@@ -73,8 +80,9 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
          reminder_3h,
          reminder_30m,
          default_hour_utc,
-         default_minute_utc
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         default_minute_utc,
+         timezone
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        ON CONFLICT (user_id)
        DO UPDATE SET
          enabled = EXCLUDED.enabled,
@@ -84,8 +92,9 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
          reminder_30m = EXCLUDED.reminder_30m,
          default_hour_utc = EXCLUDED.default_hour_utc,
          default_minute_utc = EXCLUDED.default_minute_utc,
+         timezone = EXCLUDED.timezone,
          updated_at = NOW()
-       RETURNING enabled, in_app_enabled, reminder_24h, reminder_3h, reminder_30m, default_hour_utc, default_minute_utc`,
+       RETURNING enabled, in_app_enabled, reminder_24h, reminder_3h, reminder_30m, default_hour_utc, default_minute_utc, timezone`,
       [
         userId,
         prefs.enabled,
@@ -95,6 +104,7 @@ export const PUT = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
         prefs.reminder30m,
         prefs.defaultHourUtc,
         prefs.defaultMinuteUtc,
+        prefs.timezone,
       ]
     );
 
@@ -115,11 +125,12 @@ async function getOrCreatePreferences(userId: string): Promise<NotificationPrefe
        reminder_3h,
        reminder_30m,
        default_hour_utc,
-       default_minute_utc
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       default_minute_utc,
+       timezone
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      ON CONFLICT (user_id)
      DO UPDATE SET user_id = EXCLUDED.user_id
-     RETURNING enabled, in_app_enabled, reminder_24h, reminder_3h, reminder_30m, default_hour_utc, default_minute_utc`,
+     RETURNING enabled, in_app_enabled, reminder_24h, reminder_3h, reminder_30m, default_hour_utc, default_minute_utc, timezone`,
     [
       userId,
       DEFAULT_PREFS.enabled,
@@ -129,9 +140,19 @@ async function getOrCreatePreferences(userId: string): Promise<NotificationPrefe
       DEFAULT_PREFS.reminder30m,
       DEFAULT_PREFS.defaultHourUtc,
       DEFAULT_PREFS.defaultMinuteUtc,
+      DEFAULT_PREFS.timezone,
     ]
   );
   return toResponse(result.rows[0]);
+}
+
+function isValidTimeZone(timezone: string): boolean {
+  try {
+    Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function toResponse(row: Record<string, unknown>): NotificationPreferences {
@@ -143,5 +164,6 @@ function toResponse(row: Record<string, unknown>): NotificationPreferences {
     reminder30m: Boolean(row.reminder_30m),
     defaultHourUtc: Number(row.default_hour_utc),
     defaultMinuteUtc: Number(row.default_minute_utc),
+    timezone: typeof row.timezone === 'string' ? row.timezone : 'UTC',
   };
 }

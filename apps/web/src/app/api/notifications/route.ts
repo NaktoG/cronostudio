@@ -12,6 +12,7 @@ type NotificationPreferences = {
   reminder30m: boolean;
   defaultHourUtc: number;
   defaultMinuteUtc: number;
+  timezone: string;
 };
 
 const DEFAULT_PREFS: NotificationPreferences = {
@@ -22,6 +23,7 @@ const DEFAULT_PREFS: NotificationPreferences = {
   reminder30m: true,
   defaultHourUtc: 18,
   defaultMinuteUtc: 0,
+  timezone: 'UTC',
 };
 
 export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
@@ -114,12 +116,13 @@ async function createWindowReminders(
         'productionTitle', p.title,
         'targetDate', p.target_date::text,
         'status', p.status,
-        'minutesBefore', $4
+        'minutesBefore', $4,
+        'timezone', $7
       ) AS metadata,
       (
         (p.target_date::timestamp)
         + make_interval(hours => $5::int, mins => $6::int)
-      ) AT TIME ZONE 'UTC' AS scheduled_for,
+      ) AT TIME ZONE $7 AS scheduled_for,
       format(
         '%s:%s:%s:%s',
         $2,
@@ -151,6 +154,7 @@ async function createWindowReminders(
       minutesBefore,
       preferences.defaultHourUtc,
       preferences.defaultMinuteUtc,
+      preferences.timezone,
     ]
   );
 }
@@ -165,11 +169,12 @@ async function getOrCreatePreferences(userId: string): Promise<NotificationPrefe
        reminder_3h,
        reminder_30m,
        default_hour_utc,
-       default_minute_utc
-     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       default_minute_utc,
+       timezone
+     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      ON CONFLICT (user_id)
      DO UPDATE SET user_id = EXCLUDED.user_id
-     RETURNING enabled, in_app_enabled, reminder_24h, reminder_3h, reminder_30m, default_hour_utc, default_minute_utc`,
+     RETURNING enabled, in_app_enabled, reminder_24h, reminder_3h, reminder_30m, default_hour_utc, default_minute_utc, timezone`,
     [
       userId,
       DEFAULT_PREFS.enabled,
@@ -179,6 +184,7 @@ async function getOrCreatePreferences(userId: string): Promise<NotificationPrefe
       DEFAULT_PREFS.reminder30m,
       DEFAULT_PREFS.defaultHourUtc,
       DEFAULT_PREFS.defaultMinuteUtc,
+      DEFAULT_PREFS.timezone,
     ]
   );
 
@@ -191,5 +197,6 @@ async function getOrCreatePreferences(userId: string): Promise<NotificationPrefe
     reminder30m: Boolean(row.reminder_30m),
     defaultHourUtc: Number(row.default_hour_utc),
     defaultMinuteUtc: Number(row.default_minute_utc),
+    timezone: typeof row.timezone === 'string' ? row.timezone : 'UTC',
   };
 }

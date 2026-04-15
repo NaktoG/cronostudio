@@ -28,7 +28,21 @@ type NotificationPreferences = {
   reminder30m: boolean;
   defaultHourUtc: number;
   defaultMinuteUtc: number;
+  timezone: string;
 };
+
+const COMMON_TIMEZONES = [
+  'UTC',
+  'Europe/Madrid',
+  'Europe/London',
+  'America/Argentina/Buenos_Aires',
+  'America/Mexico_City',
+  'America/Bogota',
+  'America/Lima',
+  'America/Santiago',
+  'America/New_York',
+  'America/Los_Angeles',
+] as const;
 
 export default function NotificationCenter() {
   const authFetch = useAuthFetch();
@@ -147,6 +161,15 @@ export default function NotificationCenter() {
   }, [open, preferences, loadPreferences]);
 
   const visibleItems = useMemo(() => items.slice(0, 8), [items]);
+
+  const timezoneOptions = useMemo(() => {
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const base: string[] = [...COMMON_TIMEZONES];
+    if (detected && !base.includes(detected)) {
+      base.unshift(detected);
+    }
+    return Array.from(new Set(base));
+  }, []);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -286,6 +309,23 @@ export default function NotificationCenter() {
                     className="w-16 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-right text-xs text-slate-200"
                     disabled={savingPreferences || !preferences.enabled}
                   />
+                </label>
+                <label className="flex items-center justify-between gap-3 text-xs text-slate-300">
+                  <span>{t('header.timezone')}</span>
+                  <select
+                    value={preferences.timezone}
+                    onChange={(event) => {
+                      const next = { ...preferences, timezone: event.target.value };
+                      setPreferences(next);
+                      void savePreferences(next);
+                    }}
+                    className="max-w-[180px] rounded border border-gray-700 bg-gray-900 px-2 py-1 text-xs text-slate-200"
+                    disabled={savingPreferences || !preferences.enabled}
+                  >
+                    {timezoneOptions.map((tz) => (
+                      <option key={tz} value={tz}>{tz}</option>
+                    ))}
+                  </select>
                 </label>
               </div>
             )}
