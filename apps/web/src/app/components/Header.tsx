@@ -159,7 +159,7 @@ export default function Header() {
                   {t('navigation.logout')}
                 </motion.button>
               </div>
-            ) : (
+            ) : !isLandingRoute ? (
               <div className="hidden sm:flex items-center gap-3">
                 <Link href="/login">
                   <motion.button
@@ -183,7 +183,7 @@ export default function Header() {
                   </motion.button>
                 </Link>
               </div>
-            )}
+            ) : null}
 
             {/* Mobile Menu Button */}
             {(isAuthenticated || !isLandingRoute) && (

@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withSecurityHeaders, getAuthUser } from '@/middleware/auth';
 import { PostgresUserRepository } from '@/infrastructure/repositories/PostgresUserRepository';
+import { getRefreshCookie } from '@/lib/authCookies';
 
 const userRepository = new PostgresUserRepository();
 
 export async function GET(request: NextRequest) {
   const payload = await getAuthUser(request);
   if (!payload) {
-    return withSecurityHeaders(NextResponse.json({ error: 'No autorizado' }, { status: 401 }));
+    return withSecurityHeaders(
+      NextResponse.json({ user: null, canRefresh: Boolean(getRefreshCookie(request)) })
+    );
   }
 
   const user = await userRepository.findById(payload.userId);
