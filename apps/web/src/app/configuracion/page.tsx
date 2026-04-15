@@ -591,8 +591,8 @@ export default function ConfiguracionPage() {
                   <Link2 className="h-4 w-4" />
                 </span>
               </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span>{settingsCopy.oauth.recommended} {recommendedRedirect || '...'}</span>
+              <div className="mt-2 flex flex-wrap items-start gap-2 text-xs text-slate-500">
+                <span className="break-all max-w-full">{settingsCopy.oauth.recommended} {recommendedRedirect || '...'}</span>
                 <button
                   type="button"
                   onClick={copiarRedirectRecomendado}

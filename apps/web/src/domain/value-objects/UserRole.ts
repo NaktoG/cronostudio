@@ -1,7 +1,7 @@
 // domain/value-objects/UserRole.ts
 // User role value object to support RBAC
 
-export const USER_ROLES = ['owner', 'collaborator', 'automation'] as const;
+export const USER_ROLES = ['owner', 'collaborator', 'automation', 'super_admin'] as const;
 
 export type UserRole = typeof USER_ROLES[number];
 

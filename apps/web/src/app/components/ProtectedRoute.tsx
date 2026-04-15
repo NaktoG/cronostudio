@@ -3,25 +3,39 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
+import type { User } from '@/domain/entities/User';
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
     fallback?: React.ReactNode;
+    allowedRoles?: User['role'][];
+    unauthorizedRedirect?: string;
 }
 
 /**
  * Componente para proteger rutas que requieren autenticación
  * Redirige a /login si el usuario no está autenticado
  */
-export default function ProtectedRoute({ children, fallback }: ProtectedRouteProps) {
-    const { isAuthenticated, isLoading } = useAuth();
+export default function ProtectedRoute({
+    children,
+    fallback,
+    allowedRoles,
+    unauthorizedRedirect = '/dashboard',
+}: ProtectedRouteProps) {
+    const { user, isAuthenticated, isLoading } = useAuth();
     const router = useRouter();
+    const isAuthorized = !allowedRoles || (user ? allowedRoles.includes(user.role) : false);
 
     useEffect(() => {
         if (!isLoading && !isAuthenticated) {
             router.push('/');
+            return;
         }
-    }, [isAuthenticated, isLoading, router]);
+
+        if (!isLoading && isAuthenticated && !isAuthorized) {
+            router.push(unauthorizedRedirect);
+        }
+    }, [isAuthenticated, isLoading, isAuthorized, router, unauthorizedRedirect]);
 
     if (isLoading) {
         return fallback || (
@@ -36,6 +50,10 @@ export default function ProtectedRoute({ children, fallback }: ProtectedRoutePro
 
     if (!isAuthenticated) {
         return null; // Se redirige en el useEffect
+    }
+
+    if (!isAuthorized) {
+        return null;
     }
 
     return <>{children}</>;
