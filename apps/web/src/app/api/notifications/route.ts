@@ -121,7 +121,8 @@ async function createWindowReminders(
       ) AS metadata,
       (
         (p.target_date::timestamp)
-        + make_interval(hours => $5::int, mins => $6::int)
+        + ($5::int * INTERVAL '1 hour')
+        + ($6::int * INTERVAL '1 minute')
       ) AT TIME ZONE $7::text AS scheduled_for,
       format(
         '%s:%s:%s:%s',
@@ -136,13 +137,13 @@ async function createWindowReminders(
       AND p.status <> 'published'
       AND (
         (
-          ((p.target_date::timestamp) + make_interval(hours => $5::int, mins => $6::int))
-          - make_interval(mins => $4::int)
+          ((p.target_date::timestamp) + ($5::int * INTERVAL '1 hour') + ($6::int * INTERVAL '1 minute'))
+          - ($4::int * INTERVAL '1 minute')
         ) <= NOW()
       )
       AND (
         (
-          ((p.target_date::timestamp) + make_interval(hours => $5::int, mins => $6::int))
+          ((p.target_date::timestamp) + ($5::int * INTERVAL '1 hour') + ($6::int * INTERVAL '1 minute'))
           + INTERVAL '90 minutes'
         ) >= NOW()
       )
