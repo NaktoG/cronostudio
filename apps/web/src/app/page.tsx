@@ -16,6 +16,7 @@ import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
 import OnboardingTour from './components/dashboard/OnboardingTour';
 import DashboardContextCards from './components/dashboard/DashboardContextCards';
+import DashboardWeeklyStatusCard from './components/dashboard/DashboardWeeklyStatusCard';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
 import { useLocale } from './contexts/LocaleContext';
 import { IMPACT_METRICS } from '@/app/content/metrics';
@@ -317,7 +318,6 @@ export function DashboardContent() {
   };
 
   const resolveStageLabel = (status: string) => stageLabels[status as keyof PipelineStats] ?? status;
-  const weeklyStyle = weeklyStatus ? WEEKLY_STATUS_STYLES[weeklyStatus.status] : WEEKLY_STATUS_STYLES.OK;
   const nextConditionText = weeklyStatus?.nextCondition?.label ?? dashboardCopy.weeklyStatus.noNext;
   const nextConditionDue = weeklyStatus?.nextCondition?.dueAt
     ? formatDateTime(weeklyStatus.nextCondition.dueAt)
@@ -1167,38 +1167,12 @@ export function DashboardContent() {
                       </div>
                     </motion.div>
 
-                    <motion.div
-                      className="surface-card glow-hover p-4 sm:p-5"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="text-center sm:text-left">
-                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
-                            {dashboardCopy.weeklyStatus.title}
-                          </div>
-                          {weeklyStatus?.channel && (
-                            <p className="text-xs text-slate-400 mt-1">
-                                 {dashboardCopy.weeklyStatus.channel}: {weeklyStatus.channel.name}
-                            </p>
-                          )}
-                        </div>
-                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${weeklyStyle.badge} self-center sm:self-auto`}>
-                          <span className={`h-2 w-2 rounded-full ${weeklyStyle.dot}`} />
-                          {weeklyStatus?.status ?? 'OK'}
-                        </span>
-                      </div>
-                      <div className="mt-4 space-y-2">
-                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">
-                          {dashboardCopy.weeklyStatus.next}
-                        </div>
-                        <p className={`text-sm ${weeklyStyle.text}`}>{nextConditionText}</p>
-                        {nextConditionDue && (
-                          <p className="text-xs text-slate-400">{nextConditionDue}</p>
-                        )}
-                      </div>
-                    </motion.div>
+                    <DashboardWeeklyStatusCard
+                      dashboardCopy={dashboardCopy}
+                      weeklyStatus={weeklyStatus}
+                      nextConditionText={nextConditionText}
+                      nextConditionDue={nextConditionDue}
+                    />
 
                     <PriorityActions
                       actions={priorityActions}
