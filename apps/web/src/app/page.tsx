@@ -33,6 +33,7 @@ import type { Channel, DashboardTab, DisciplineWeekly, PipelineStats, PriorityAc
 import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/status/weekly';
 import useDialogFocus from './hooks/useDialogFocus';
 import { useDashboardDataLoader } from './hooks/useDashboardDataLoader';
+import { extractYouTubeId, useDashboardActions } from './hooks/useDashboardActions';
 
 export function DashboardContent() {
   const { isAuthenticated, logout } = useAuth();
@@ -204,123 +205,46 @@ export function DashboardContent() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [showModal, publishTarget]);
 
-  const handleCreate = async () => {
-    if (!newTitle.trim()) return;
-    try {
-      const res = await authFetch('/api/productions', {
-        method: 'POST',
-        body: JSON.stringify({ title: newTitle }),
-      });
-      if (res.ok) {
-        setNewTitle('');
-        setShowModal(false);
-        fetchData();
-      addToast(dashboardCopy.toasts.created, 'success');
-      } else {
-      addToast(dashboardCopy.toasts.createFailed, 'error');
-      }
-    } catch (e) {
-      addToast(dashboardCopy.toasts.createError, 'error');
-      console.error('[dashboard] update failed', e);
-    }
-  };
-
-  const handlePublish = async () => {
-    if (!publishTarget) return;
-    if (publishMissing.length > 0) {
-      addToast(`Completa: ${publishMissing.join(', ')}`, 'error');
-      return;
-    }
-    setPublishSubmitting(true);
-    try {
-      const response = await authFetch('/api/productions/publish', {
-        method: 'POST',
-        body: JSON.stringify({
-          productionId: publishTarget.id,
-          publishedUrl: publishUrl.trim() || null,
-          platformId: publishPlatformId.trim() || null,
-        }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.publishMarkError);
-      }
-      setPublishTarget(null);
-      setPublishUrl('');
-      setPublishPlatformId('');
-      setPublishPlatformTouched(false);
-      fetchData();
-      addToast(dashboardCopy.toasts.publishMarked, 'success');
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.publishMarkError, 'error');
-    } finally {
-      setPublishSubmitting(false);
-    }
-  };
-
-  const extractYouTubeId = (value: string) => {
-    if (!value) return '';
-    try {
-      const url = new URL(value);
-      const id = url.searchParams.get('v');
-      if (id) return id;
-      if (url.hostname.includes('youtu.be')) {
-        return url.pathname.replace('/', '').trim();
-      }
-      return '';
-    } catch {
-      return '';
-    }
-  };
-
-  const handleGeneratePlan = async () => {
-    if (!selectedChannelId) {
-      addToast(dashboardCopy.toasts.selectChannelFirst, 'error');
-      return;
-    }
-    setPlanSubmitting(true);
-    try {
-      const isoYear = weeklyStatus?.week.isoYear ?? fallbackIso.isoYear;
-      const isoWeek = weeklyStatus?.week.isoWeek ?? fallbackIso.isoWeek;
-      const params = new URLSearchParams({
-        channelId: selectedChannelId,
-        isoYear: String(isoYear),
-        isoWeek: String(isoWeek),
-      });
-      const response = await authFetch(`/api/weekly-plan/generate?${params.toString()}`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.generatePlanError);
-      }
-      addToast(dashboardCopy.toasts.planGenerated, 'success');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.generatePlanError, 'error');
-    } finally {
-      setPlanSubmitting(false);
-    }
-  };
-
-  const handleChannelChange = (value: string) => {
-    setSelectedChannelId(value);
-    if (typeof window !== 'undefined') {
-      if (value) {
-        window.localStorage.setItem('cronostudio.channelId', value);
-      } else {
-        window.localStorage.removeItem('cronostudio.channelId');
-      }
-    }
-    const params = new URLSearchParams(searchParams?.toString() ?? '');
-    if (value) {
-      params.set('channelId', value);
-    } else {
-      params.delete('channelId');
-    }
-    const query = params.toString();
-    router.replace(query ? `/?${query}` : '/');
-  };
+  const {
+    handleCreate,
+    handlePublish,
+    handleGeneratePlan,
+    handleChannelChange,
+    handleQuickPublish,
+    handleRegisterFromYoutube,
+    handleSchedule,
+    handleUnschedule,
+  } = useDashboardActions({
+    authFetch,
+    addToast,
+    dashboardCopy,
+    fetchData: () => fetchData(),
+    selectedChannelId,
+    weeklyStatus,
+    fallbackIso,
+    reconcileWeekly,
+    searchParamsKey,
+    searchParams,
+    router,
+    newTitle,
+    publishTarget,
+    publishMissing,
+    publishUrl,
+    publishPlatformId,
+    setSelectedChannelId,
+    setNewTitle,
+    setShowModal,
+    setPublishTarget,
+    setPublishUrl,
+    setPublishPlatformId,
+    setPublishPlatformTouched,
+    setPublishSubmitting,
+    setPlanSubmitting,
+    setQuickPublishSubmitting,
+    setReconcileSubmitting,
+    setScheduleProductionId,
+    setScheduleDate,
+  });
 
   const resolveStageLabel = (status: string) => stageLabels[status as keyof PipelineStats] ?? status;
   const nextConditionText = weeklyStatus?.nextCondition?.label ?? dashboardCopy.weeklyStatus.noNext;
@@ -451,57 +375,6 @@ export function DashboardContent() {
     return `/ai?${search.toString()}`;
   };
 
-  const handleQuickPublish = async (targetDay: 'tuesday' | 'friday') => {
-    if (!selectedChannelId) {
-      addToast(dashboardCopy.toasts.selectChannelFirst, 'error');
-      return;
-    }
-    setQuickPublishSubmitting(true);
-    try {
-      const response = await authFetch('/api/discipline/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelId: selectedChannelId, targetDay }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.registerPublishError);
-      }
-      addToast(dashboardCopy.toasts.scheduled, 'success');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.registerPublishError, 'error');
-    } finally {
-      setQuickPublishSubmitting(false);
-    }
-  };
-
-  const handleRegisterFromYoutube = async (slot: 'tue' | 'fri') => {
-    if (!selectedChannelId || !reconcileWeekly) {
-      addToast(dashboardCopy.toasts.selectChannelFirst, 'error');
-      return;
-    }
-    const action = reconcileWeekly.suggestedActions.find((item) => item.slot === slot);
-    if (!action) return;
-    setReconcileSubmitting(true);
-    try {
-      const response = await authFetch('/api/discipline/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(action.payload),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.registerPublishError);
-      }
-      addToast(dashboardCopy.toasts.registerFromYoutubeSuccess, 'success');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.registerPublishError, 'error');
-    } finally {
-      setReconcileSubmitting(false);
-    }
-  };
 
   const openDrawerForSlot = (slot: 'tue' | 'fri') => {
     setDrawerSlot(slot);
@@ -746,42 +619,7 @@ export function DashboardContent() {
     });
   }, [selectedDate]);
 
-  const handleSchedule = async () => {
-    if (!scheduleProductionId || !scheduleDate) return;
-    try {
-      const response = await authFetch(`/api/productions?id=${scheduleProductionId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ targetDate: scheduleDate }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.scheduleError);
-      }
-      addToast(dashboardCopy.toasts.scheduled, 'success');
-      setScheduleProductionId('');
-      setScheduleDate('');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.scheduleError, 'error');
-    }
-  };
-
-  const handleUnschedule = async (productionId: string) => {
-    try {
-      const response = await authFetch(`/api/productions?id=${productionId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ targetDate: null }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.cancelError);
-      }
-      addToast(dashboardCopy.toasts.canceled, 'success');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.cancelError, 'error');
-    }
-  };
+  const handleScheduleSubmit = () => handleSchedule(scheduleProductionId, scheduleDate);
 
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden">
@@ -1446,7 +1284,7 @@ export function DashboardContent() {
                         <div className="flex flex-col gap-2 sm:flex-row">
                           <button
                             type="button"
-                            onClick={handleSchedule}
+                            onClick={handleScheduleSubmit}
                             className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-sm font-semibold text-black hover:bg-yellow-300"
                           >
                             {dashboardCopy.calendar.scheduleAction}
