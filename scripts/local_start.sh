@@ -3,17 +3,29 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 infra_env="$repo_root/infra/docker/.env"
+infra_env_example="$repo_root/infra/docker/.env.example"
 web_env="$repo_root/apps/web/.env.local"
+web_env_example="$repo_root/apps/web/.env.example"
 compose_file="$repo_root/infra/docker/docker-compose.yml"
 
 if [[ ! -f "$infra_env" ]]; then
-  echo "Falta $infra_env. Copia infra/docker/.env.example a infra/docker/.env" >&2
-  exit 1
+  if [[ ! -f "$infra_env_example" ]]; then
+    echo "Falta $infra_env_example. No se puede generar $infra_env" >&2
+    exit 1
+  fi
+
+  cp "$infra_env_example" "$infra_env"
+  echo "==> Creado $infra_env desde .env.example"
 fi
 
 if [[ ! -f "$web_env" ]]; then
-  echo "Falta $web_env. Copia apps/web/.env.example a apps/web/.env.local" >&2
-  exit 1
+  if [[ ! -f "$web_env_example" ]]; then
+    echo "Falta $web_env_example. No se puede generar $web_env" >&2
+    exit 1
+  fi
+
+  cp "$web_env_example" "$web_env"
+  echo "==> Creado $web_env desde .env.example"
 fi
 
 echo "==> Levantando infraestructura"

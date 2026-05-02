@@ -8,8 +8,8 @@ services:
       POSTGRES_INITDB_ARGS: "-c password_encryption=scram-sha-256"
       # Usamos variables del archivo env, o defaults explicítos
       POSTGRES_DB: ${POSTGRES_DB:-cronostudio}
-      POSTGRES_USER: ${POSTGRES_USER:-crono}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crono}
+      POSTGRES_USER: ${POSTGRES_USER:-cronostudio}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cronostudio}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -17,7 +17,7 @@ services:
     networks:
       - cronostudio-net
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crono} -d ${POSTGRES_DB:-cronostudio}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cronostudio} -d ${POSTGRES_DB:-cronostudio}" ]
       interval: 10s
       timeout: 5s
       retries: 5

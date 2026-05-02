@@ -145,24 +145,16 @@ Ver [SECURITY.md](docs/SECURITY.md).
    git clone https://github.com/NaktoG/cronostudio.git
    cd cronostudio
    ```
-2. **Infra (modo prod-like)**
+2. **Setup local (recomendado)**
    ```bash
-   ./scripts/local_up.sh
+   make start
    ```
-3. **Entorno**
+3. **Alternativa manual**
    ```bash
    cp infra/docker/.env.example infra/docker/.env
    cp apps/web/.env.example apps/web/.env.local
-   ```
-4. **Migraciones**
-   ```bash
    ./scripts/migrate.sh
-   ```
-5. **Dev**
-   ```bash
-   cd apps/web
-   npm install
-   npm run dev
+   cd apps/web && npm install && npm run dev
    ```
 
 ---

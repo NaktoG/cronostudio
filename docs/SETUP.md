@@ -92,19 +92,15 @@ QA recomendado:
 **⚠️ IMPORTANTE:** NUNCA commitear `infra/docker/.env` ni `apps/web/.env.local` si contienen credenciales reales y recuerda que en producción no existen valores de respaldo: cada variable crítica debe establecerse explícitamente.
 **⚠️ IMPORTANTE:** No usar `docker compose down -v` en local salvo reset intencional; borra usuarios y datos.
 
-### 3. Levantar infraestructura (Postgres + Redis)
+### 3. Levantar infraestructura (Postgres + Redis + Mailpit)
 
 ```bash
-cd infra/docker
-docker compose up -d
-docker ps
+./scripts/local_up.sh
 ```
 
-Verificar que los containers están en estado `Up`:
+Verificar que los contenedores están en estado `Up`:
 - `cronostudio-postgres`
 - `cronostudio-redis` (rate limit)
-
-Opcional (SMTP local):
 - `cronostudio-mailpit` (UI en http://localhost:8025, SMTP en 127.0.0.1:1025)
 
 ### 3.1 Ejecutar migraciones de base de datos
@@ -132,7 +128,7 @@ npm install
 
 #### Postgres está corriendo:
 ```bash
-docker exec cronostudio-postgres psql -U postgres -c "SELECT 1;"
+docker exec cronostudio-postgres psql -U cronostudio -d cronostudio -c "SELECT 1;"
 ```
 Resultado esperado: `1` (confirma conexión OK).
 
@@ -188,7 +184,7 @@ cronostudio/
 ### Inicio rapido (todo automatico)
 
 ```bash
-./scripts/local_start.sh
+make start
 ```
 
 Para detener todo:
