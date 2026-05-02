@@ -6,9 +6,9 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { HelpCircle, Menu, Settings, ShieldCheck, X } from 'lucide-react';
+import { ChevronRight, HelpCircle, Menu, Settings, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { NAV_ITEMS } from '../content/navigation';
+import { NAV_GROUPS, NAV_ITEMS } from '../content/navigation';
 import { useLocale } from '@/app/contexts/LocaleContext';
 import LocaleSwitcher from './LocaleSwitcher';
 import NotificationCenter from './NotificationCenter';
@@ -18,6 +18,7 @@ export default function Header() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { t } = useLocale();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
   const mounted = typeof window !== 'undefined';
   const isLandingRoute = pathname === '/' || pathname === '/inicio';
@@ -85,7 +86,7 @@ export default function Header() {
 
           {/* Desktop Nav */}
           {isAuthenticated && (
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-4">
               {navItems.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
@@ -103,6 +104,50 @@ export default function Header() {
                       <span>{t(item.labelKey)}</span>
                     </motion.div>
                   </Link>
+                );
+              })}
+
+              {NAV_GROUPS.map((group) => {
+                const isOpen = activeDropdown === group.titleKey;
+                return (
+                  <div key={group.titleKey} className="relative">
+                    <button
+                      onClick={() => setActiveDropdown(isOpen ? null : group.titleKey)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isOpen ? 'bg-yellow-400/10 text-yellow-400' : 'text-slate-300 hover:text-white hover:bg-gray-800/50'
+                      }`}
+                    >
+                      <span>{t(group.titleKey)}</span>
+                      <ChevronRight className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                    </button>
+
+                    {isOpen && (
+                      <motion.div
+                        className="absolute left-0 top-full mt-1 w-48 rounded-lg bg-gray-950 border border-gray-800 shadow-xl z-20"
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                      >
+                        {group.items.map((item) => {
+                          const Icon = item.icon;
+                          const active = pathname === item.href;
+                          return (
+                            <Link key={item.href} href={item.href}>
+                              <motion.div
+                                className={`flex items-center gap-2 px-4 py-2 text-sm ${
+                                  active ? 'bg-yellow-400/10 text-yellow-400' : 'text-slate-300 hover:bg-gray-800/50 hover:text-white'
+                                }`}
+                                whileHover={{ x: 4 }}
+                              >
+                                <Icon className="w-4 h-4" />
+                                <span>{t(item.labelKey)}</span>
+                              </motion.div>
+                            </Link>
+                          );
+                        })}
+                      </motion.div>
+                    )}
+                  </div>
                 );
               })}
             </nav>
