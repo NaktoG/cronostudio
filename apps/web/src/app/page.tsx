@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter, Wand2, XCircle, Youtube, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -18,6 +18,8 @@ import OnboardingTour from './components/dashboard/OnboardingTour';
 import DashboardContextCards from './components/dashboard/DashboardContextCards';
 import DashboardWeeklyStatusCard from './components/dashboard/DashboardWeeklyStatusCard';
 import DashboardWeekDisciplineCard from './components/dashboard/DashboardWeekDisciplineCard';
+import DashboardIntegrationsPanel from './components/dashboard/DashboardIntegrationsPanel';
+import DashboardReconcileDrawer from './components/dashboard/DashboardReconcileDrawer';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
 import { useLocale } from './contexts/LocaleContext';
 import { IMPACT_METRICS } from '@/app/content/metrics';
@@ -1534,40 +1536,7 @@ export function DashboardContent() {
 
                   </div>
 
-                  <motion.div className={`space-y-4 ${activeTab === 'integrations' ? '' : 'hidden'}`} data-tour="integrations">
-                    <motion.div
-                      className="surface-card glow-hover p-4 sm:p-6"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4 text-center sm:text-left">{dashboardCopy.social.title}</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3">
-                        {dashboardCopy.social.items.map((item) => {
-                          const iconMap: Record<string, ReactNode> = {
-                            Instagram: <Instagram className="w-4 h-4" />,
-                            TikTok: <Music2 className="w-4 h-4" />,
-                            LinkedIn: <Linkedin className="w-4 h-4" />,
-                            X: <Twitter className="w-4 h-4" />,
-                          };
-                          return (
-                            <div key={item.name} className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-3 sm:px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
-                                  {iconMap[item.name]}
-                                </span>
-                                <div>
-                                  <p className="text-sm font-semibold text-white">{item.name}</p>
-                                  <p className="text-xs text-slate-400">{item.description}</p>
-                                </div>
-                              </div>
-                              <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">{dashboardCopy.social.connect}</button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  </motion.div>
+                  <DashboardIntegrationsPanel dashboardCopy={dashboardCopy} activeTab={activeTab} />
                 </div>
               </div>
             )}
@@ -1644,81 +1613,21 @@ export function DashboardContent() {
         </div>
       </div>
 
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setDrawerOpen(false)} />
-          <div
-            className={`absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-gray-800 bg-gray-950 p-6 lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:max-h-none lg:w-[min(92vw,420px)] lg:rounded-none lg:border-l ${
-              reduceMotion ? '' : 'transition-transform duration-300'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">{dashboardCopy.drawer.weeklyDetail}</div>
-                <h3 className="mt-2 text-lg font-semibold text-white">{drawerLabel}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                className="text-xs text-slate-400"
-              >
-                {dashboardCopy.drawer.close}
-              </button>
-            </div>
-            <div className="mt-6 space-y-4">
-              <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">{dashboardCopy.drawer.youtube}</div>
-                {drawerEvidence?.matched ? (
-                  <div className="mt-2 space-y-1 text-sm text-white">
-                    <p className="font-medium">{drawerEvidence.video?.title}</p>
-                    <p className="text-xs text-slate-400">{drawerEvidence.video?.publishedAt}</p>
-                    <a
-                      href={drawerEvidence.video?.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-yellow-300"
-                    >
-                      {dashboardCopy.drawer.openInYoutube}
-                    </a>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xs text-slate-400">{dashboardCopy.drawer.noEvidence}</p>
-                )}
-              </div>
-              <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">{dashboardCopy.drawer.publishEvent}</div>
-                {drawerPublish?.matched ? (
-                  <p className="mt-2 text-sm text-white">{dashboardCopy.drawer.registered} · {drawerPublish.publishedAt}</p>
-                ) : (
-                  <p className="mt-2 text-xs text-slate-400">{dashboardCopy.drawer.noInternalRecord}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                {drawerHasAction && (
-                  <button
-                    type="button"
-                    onClick={() => drawerSlot && handleRegisterFromYoutube(drawerSlot)}
-                    disabled={reconcileSubmitting}
-                    className="rounded-lg bg-amber-400 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black"
-                  >
-                    {dashboardCopy.drawer.registerOneClick}
-                  </button>
-                )}
-                {drawerSlot && (
-                  <button
-                    type="button"
-                    onClick={() => handleQuickPublish(drawerSlot === 'tue' ? 'tuesday' : 'friday')}
-                    disabled={quickPublishSubmitting}
-                    className="rounded-lg border border-gray-800 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
-                  >
-                    {dashboardCopy.drawer.registerManual}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DashboardReconcileDrawer
+        open={drawerOpen}
+        reduceMotion={Boolean(reduceMotion)}
+        dashboardCopy={dashboardCopy}
+        drawerLabel={drawerLabel}
+        drawerEvidence={drawerEvidence}
+        drawerPublish={drawerPublish}
+        drawerHasAction={drawerHasAction}
+        drawerSlot={drawerSlot}
+        reconcileSubmitting={reconcileSubmitting}
+        quickPublishSubmitting={quickPublishSubmitting}
+        onClose={() => setDrawerOpen(false)}
+        onRegisterFromYoutube={handleRegisterFromYoutube}
+        onQuickPublish={handleQuickPublish}
+      />
 
       <OnboardingTour
         open={tourOpen}
