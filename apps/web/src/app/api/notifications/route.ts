@@ -34,7 +34,11 @@ export const GET = rateLimit(API_RATE_LIMIT)(async (request: NextRequest) => {
     }
 
     const preferences = await getOrCreatePreferences(userId);
-    await createCalendarReminders(userId, preferences);
+    try {
+      await createCalendarReminders(userId, preferences);
+    } catch (error) {
+      logger.warn('notifications.reminders.seed_failed', { userId, error: String(error) });
+    }
 
     const { searchParams } = new URL(request.url);
     const limitParam = Number.parseInt(searchParams.get('limit') ?? '10', 10);
