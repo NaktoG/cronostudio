@@ -21,73 +21,11 @@ import { IMPACT_METRICS } from '@/app/content/metrics';
 import { useToast } from './contexts/ToastContext';
 import { getDashboardCopy, getStageLabels } from './content/dashboard';
 import { getLandingCopy } from './content/landing';
-import { generatePriorityActions, getChecklistStatus, type PriorityAction } from './content/dashboardUtils';
+import { generatePriorityActions, getChecklistStatus } from './content/dashboardUtils';
+import type { Channel, DashboardTab, DisciplineWeekly, PipelineStats, PriorityAction, WeeklyGoalResponse, WeeklyStatus, YoutubeReconcileWeekly } from './content/dashboardTypes';
 import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/status/weekly';
 import useDialogFocus from './hooks/useDialogFocus';
-
-interface PipelineStats {
-  idea: number;
-  scripting: number;
-  recording: number;
-  editing: number;
-  shorts: number;
-  publishing: number;
-  published: number;
-}
-
-interface WeeklyStatus {
-  status: 'OK' | 'EN_RIESGO' | 'FALLIDA';
-  nextCondition: { label: string; dueAt: string; missing: string[] } | null;
-  channel: { id: string; name: string } | null;
-  channelSource: 'explicit' | 'default';
-  goal: { targetVideos: number; diasPublicacion: string[]; horaCorte: string };
-  week: { isoYear: number; isoWeek: number; startDate: string; endDate: string };
-  publishedCount: number;
-  publishedThisWeek?: { id: string; title: string; publishedAt: string }[];
-  planGenerated?: boolean;
-  plannedProductions?: { id: string; title: string; day: string | null; status: string }[];
-  currentStreak?: number;
-  bestStreak?: number;
-  last4Weeks?: { isoYear: number; isoWeek: number; status: 'OK' | 'EN_RIESGO' | 'FALLIDA' }[];
-  tasks: PriorityAction[];
-}
-
-interface DisciplineWeekly {
-  status: 'OK' | 'EN_RIESGO' | 'FALLIDA' | 'CUMPLIDA';
-  channel: { id: string; name: string; source: 'explicit' | 'default' };
-  week: { isoYear: number; isoWeek: number; startDate: string; endDate: string; weekKey: string };
-  scoreboard: { count: number; target: number };
-  deadlines: { tuesday: string | null; friday: string | null };
-  streak: { current: number; best: number };
-}
-
-interface YoutubeReconcileWeekly {
-  isoYear: number;
-  isoWeek: number;
-  youtubeChannelId: string | null;
-  internalChannelId: string | null;
-  expectedSlots: Array<{ key: 'tue' | 'fri'; date: string | null; windowStart: string | null; windowEnd: string | null }>;
-  youtubeEvidence: Record<'tue' | 'fri', { matched: boolean; video: { videoId: string; title: string; publishedAt: string; url: string } | null }>;
-  publishEvents: Record<'tue' | 'fri', { matched: boolean; eventId: string | null; publishedAt: string | null }>;
-  reconciliation: Record<'tue' | 'fri', 'ok' | 'missing_publish_event' | 'missing_youtube_video' | 'mismatch'>;
-  suggestedActions: Array<{ type: string; slot: 'tue' | 'fri'; payload: Record<string, unknown> }>;
-}
-
-type DashboardTab = 'production' | 'calendar' | 'backlog' | 'integrations';
-
-interface WeeklyGoalResponse {
-  goal: { targetVideos: number; diasPublicacion: string[]; horaCorte: string };
-  channel: { id: string; name: string } | null;
-  channelSource: 'explicit' | 'default';
-  isoYear: number;
-  isoWeek: number;
-  source: 'stored' | 'default';
-}
-
-interface Channel {
-  id: string;
-  name: string;
-}
+import { useDashboardDataLoader } from './hooks/useDashboardDataLoader';
 
 export function DashboardContent() {
   const { isAuthenticated, logout } = useAuth();
@@ -203,204 +141,35 @@ export function DashboardContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [drawerOpen]);
 
-  const fetchChannels = useCallback(async (signal?: AbortSignal) => {
-    try {
-      if (!isAuthenticated) {
-        setChannels([]);
-        return;
-      }
-      const response = await authFetch('/api/channels', { signal });
-      if (response.ok) {
-        const data = await response.json();
-        const list = Array.isArray(data) ? data : [];
-        setChannels(list);
-        if (list.length === 0) {
-          setSelectedChannelId('');
-          if (typeof window !== 'undefined') {
-            window.localStorage.removeItem('cronostudio.channelId');
-          }
-          return;
-        }
-
-        const hasSelected = selectedChannelId
-          ? list.some((channel: { id: string }) => channel.id === selectedChannelId)
-          : false;
-        if (!selectedChannelId || !hasSelected) {
-          const defaultId = list[0].id;
-          setSelectedChannelId(defaultId);
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem('cronostudio.channelId', defaultId);
-          }
-          const params = new URLSearchParams(searchParamsKey);
-          params.set('channelId', defaultId);
-          const query = params.toString();
-          router.replace(query ? `/?${query}` : '/');
-        }
-      }
-    } catch {
-      if (signal?.aborted) return;
-      setChannels([]);
-    }
-  }, [isAuthenticated, authFetch, router, searchParamsKey, selectedChannelId]);
-
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const isoYear = fallbackIso.isoYear;
-      const isoWeek = fallbackIso.isoWeek;
-      const resolvedChannelId = selectedChannelId || '';
-
-      const params = new URLSearchParams({
-        isoYear: String(isoYear),
-        isoWeek: String(isoWeek),
-      });
-      if (resolvedChannelId) {
-        params.set('channelId', resolvedChannelId);
-      }
-      const query = `?${params.toString()}`;
-
-      const weeklyRequests = resolvedChannelId
-        ? [
-            authFetch(`/api/weekly-status${query}`, { signal }),
-            authFetch(`/api/weekly-goals${query}`, { signal }),
-            authFetch(`/api/discipline/weekly${query}`, { signal }),
-          ]
-        : [
-            Promise.resolve(new Response(null, { status: 204 })),
-            Promise.resolve(new Response(null, { status: 204 })),
-            Promise.resolve(new Response(null, { status: 204 })),
-          ];
-
-      const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes] = await Promise.all([
-        authFetch('/api/productions?stats=true', { signal }),
-        authFetch('/api/ideas', { signal }),
-        authFetch('/api/automation-runs', { signal }),
-        ...weeklyRequests,
-      ]);
-
-      const responses = [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes];
-      if (responses.some((res) => res.status === 401)) {
-        logout();
-        addToast(dashboardCopy.toasts.sessionExpired, 'error');
-        return;
-      }
-
-      if (productionsRes.ok) {
-        const data = await productionsRes.json();
-        setProductions(data.productions || []);
-        if (data.pipeline) {
-          setPipelineStats({
-            idea: data.pipeline.idea || 0,
-            scripting: data.pipeline.scripting || 0,
-            recording: data.pipeline.recording || 0,
-            editing: data.pipeline.editing || 0,
-            shorts: data.pipeline.shorts || 0,
-            publishing: data.pipeline.publishing || 0,
-            published: data.pipeline.published || 0,
-          });
-        }
-      }
-
-      if (ideasRes.ok) {
-        const ideasData = await ideasRes.json();
-        const ideasList = Array.isArray(ideasData) ? ideasData : [];
-        setIdeas(ideasList.map((idea: { id: string; title: string; status: string; priority: number }) => idea));
-      }
-      if (runsRes.ok) {
-        const runsData = await runsRes.json();
-        setRuns(Array.isArray(runsData) ? runsData : []);
-      } else {
-        setRuns([]);
-      }
-
-      if (weeklyRes.ok && weeklyRes.status !== 204) {
-        const weeklyData: WeeklyStatus = await weeklyRes.json();
-        setWeeklyStatus(weeklyData);
-        setWeeklyActions(Array.isArray(weeklyData.tasks) ? weeklyData.tasks : []);
-        setWeeklyError(null);
-      } else if (weeklyRes.ok) {
-        setWeeklyStatus(null);
-        setWeeklyActions([]);
-        setWeeklyError(null);
-      } else {
-        const errorData = await weeklyRes.json().catch(() => null);
-        setWeeklyError(errorData?.error || dashboardCopy.toasts.weeklyStatusError);
-        setWeeklyStatus(null);
-        setWeeklyActions([]);
-      }
-
-      if (weeklyGoalsRes.ok && weeklyGoalsRes.status !== 204) {
-        const goalsData: WeeklyGoalResponse = await weeklyGoalsRes.json();
-        setWeeklyGoal(goalsData);
-      } else {
-        setWeeklyGoal(null);
-      }
-
-      if (disciplineRes.ok && disciplineRes.status !== 204) {
-        const disciplineData: DisciplineWeekly = await disciplineRes.json();
-        setDisciplineWeekly(disciplineData);
-      } else {
-        setDisciplineWeekly(null);
-      }
-
-      if (resolvedChannelId) {
-        authFetch(`/api/integrations/youtube/reconcile/weekly${query}`, { signal })
-          .then(async (reconcileRes) => {
-            if (signal?.aborted) return;
-            if (reconcileRes.ok && reconcileRes.status !== 204) {
-              const reconcileData: YoutubeReconcileWeekly = await reconcileRes.json();
-              setReconcileWeekly(reconcileData);
-              setReconcileError(null);
-              return;
-            }
-            setReconcileWeekly(null);
-            if (reconcileRes.status !== 204) {
-              const errorData = await reconcileRes.json().catch(() => null);
-              if (reconcileRes.status === 401 && errorData?.error === 'youtube_auth_invalid') {
-                setReconcileError(errorData.error);
-                return;
-              }
-              if (reconcileRes.status === 401) {
-                logout();
-                addToast(dashboardCopy.toasts.sessionExpired, 'error');
-                return;
-              }
-              setReconcileError(errorData?.error || 'youtube_error');
-            } else {
-              setReconcileError(null);
-            }
-          })
-          .catch(() => {
-            if (signal?.aborted) return;
-            setReconcileWeekly(null);
-            setReconcileError('youtube_error');
-          });
-      }
-    } catch (e) {
-      if (signal?.aborted) return;
-      console.error('[dashboard] request failed', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [authFetch, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, addToast, logout, dashboardCopy.toasts.sessionExpired, dashboardCopy.toasts.weeklyStatusError]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      autoFetchKeyRef.current = '';
-      setLoading(false);
-      return;
-    }
-
-    const autoFetchKey = `${selectedChannelId || 'none'}:${fallbackIso.isoYear}:${fallbackIso.isoWeek}`;
-    if (autoFetchKeyRef.current === autoFetchKey) {
-      return;
-    }
-    autoFetchKeyRef.current = autoFetchKey;
-
-    const controller = new AbortController();
-    fetchChannels(controller.signal);
-    fetchData(controller.signal);
-    return () => controller.abort();
-  }, [isAuthenticated, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, fetchChannels, fetchData]);
+  const { fetchData } = useDashboardDataLoader({
+    isAuthenticated,
+    authFetch,
+    selectedChannelId,
+    setSelectedChannelId,
+    searchParamsKey,
+    router,
+    fallbackIso,
+    logout,
+    addToast,
+    toasts: {
+      sessionExpired: dashboardCopy.toasts.sessionExpired,
+      weeklyStatusError: dashboardCopy.toasts.weeklyStatusError,
+    },
+    setChannels,
+    setProductions,
+    setPipelineStats,
+    setIdeas,
+    setRuns,
+    setWeeklyStatus,
+    setWeeklyActions,
+    setWeeklyError,
+    setWeeklyGoal,
+    setDisciplineWeekly,
+    setReconcileWeekly,
+    setReconcileError,
+    setLoading,
+    autoFetchKeyRef,
+  });
 
   useEffect(() => {
     if (!isAuthenticated) return;
