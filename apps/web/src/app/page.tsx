@@ -14,14 +14,15 @@ import PriorityActions from './components/PriorityActions';
 import ProductionPipeline from './components/ProductionPipeline';
 import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
+import OnboardingTour from './components/dashboard/OnboardingTour';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
 import { useLocale } from './contexts/LocaleContext';
 import { IMPACT_METRICS } from '@/app/content/metrics';
 import { useToast } from './contexts/ToastContext';
 import { getDashboardCopy, getStageLabels } from './content/dashboard';
 import { getLandingCopy } from './content/landing';
+import { generatePriorityActions, getChecklistStatus, type PriorityAction } from './content/dashboardUtils';
 import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/status/weekly';
-import { SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 import useDialogFocus from './hooks/useDialogFocus';
 
 interface PipelineStats {
@@ -32,16 +33,6 @@ interface PipelineStats {
   shorts: number;
   publishing: number;
   published: number;
-}
-
-interface PriorityAction {
-  id: string;
-  type: 'idea' | 'script' | 'seo' | 'thumbnail' | 'short' | 'publish';
-  title: string;
-  productionTitle: string;
-  productionId: string;
-  urgency: 'high' | 'medium' | 'low';
-  href?: string;
 }
 
 interface WeeklyStatus {
@@ -96,180 +87,6 @@ interface WeeklyGoalResponse {
 interface Channel {
   id: string;
   name: string;
-}
-
-function generatePriorityActions(productions: Production[], dashboardCopy: ReturnType<typeof getDashboardCopy>): PriorityAction[] {
-  const actions: PriorityAction[] = [];
-  for (const prod of productions) {
-    if (prod.status === 'scripting' && (!prod.script_status || prod.script_status === 'draft')) {
-      actions.push({ id: prod.id, type: 'script', title: dashboardCopy.priorityActions.script, productionTitle: prod.title, productionId: prod.id, urgency: 'high' });
-    }
-    if ((prod.status === 'editing' || prod.status === 'shorts') && (!prod.thumbnail_status || prod.thumbnail_status === 'pending')) {
-      actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: dashboardCopy.priorityActions.thumbnail, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
-    }
-    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < SEO_SCORE_MIN_READY)) {
-      actions.push({ id: `${prod.id}-seo`, type: 'seo', title: dashboardCopy.priorityActions.seo, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
-    }
-    if (prod.status === 'shorts' && prod.shorts_count === 0) {
-      actions.push({ id: `${prod.id}-short`, type: 'short', title: dashboardCopy.priorityActions.shorts, productionTitle: prod.title, productionId: prod.id, urgency: 'low' });
-    }
-  }
-  const urgencyOrder = { high: 0, medium: 1, low: 2 };
-  return actions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]).slice(0, 5);
-}
-
-function getChecklistStatus(production: Production) {
-  const scriptReady = production.script_status && production.script_status !== 'draft';
-  const seoReady = typeof production.seo_score === 'number' && production.seo_score >= SEO_SCORE_MIN_READY;
-  const thumbnailReady = production.thumbnail_status === 'approved';
-  const published = production.status === 'published';
-
-  return {
-    scriptReady,
-    seoReady,
-    thumbnailReady,
-    published,
-  };
-}
-
-function OnboardingTour({
-  open,
-  stepIndex,
-  steps,
-  labels,
-  onClose,
-  onNext,
-  onBack,
-  reduceMotion,
-}: {
-  open: boolean;
-  stepIndex: number;
-  steps: ReadonlyArray<{ id: string; title: string; description: string }>;
-  labels: { quickGuide: string; back: string; close: string; next: string; finish: string };
-  onClose: () => void;
-  onNext: () => void;
-  onBack: () => void;
-  reduceMotion: boolean;
-}) {
-  const [anchorTick, setAnchorTick] = useState(0);
-  const step = steps[stepIndex];
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-
-  const anchorRect = useMemo(() => {
-    if (!open || !step) return null;
-    void anchorTick;
-    const anchor = document.querySelector(`[data-tour="${step.id}"]`);
-    return anchor ? anchor.getBoundingClientRect() : null;
-  }, [open, step, anchorTick]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleResize = () => setAnchorTick((prev) => prev + 1);
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', handleResize, true);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleResize, true);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const focusable = dialogRef.current?.querySelector<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    focusable?.focus();
-  }, [open, stepIndex]);
-
-  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    if (!focusable || focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = document.activeElement as HTMLElement | null;
-    if (event.shiftKey) {
-      if (active === first) {
-        event.preventDefault();
-        last.focus();
-      }
-    } else if (active === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
-  if (!open || !step) return null;
-
-  const highlightStyle = anchorRect
-    ? {
-        top: anchorRect.top + window.scrollY - 6,
-        left: anchorRect.left + window.scrollX - 6,
-        width: anchorRect.width + 12,
-        height: anchorRect.height + 12,
-      }
-    : null;
-
-  return (
-    <div className="fixed inset-0 z-[70]">
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      {highlightStyle && (
-        <div
-          className="absolute rounded-xl border border-yellow-400/70 shadow-[0_0_0_4px_rgba(250,204,21,0.15)]"
-          style={highlightStyle}
-        />
-      )}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tour-step-title"
-        className={`absolute w-[min(90vw,360px)] rounded-xl border border-gray-800 bg-gray-950/95 p-4 text-white shadow-xl ${reduceMotion ? '' : 'transition-all duration-300'}`}
-        ref={dialogRef}
-        onKeyDown={handleDialogKeyDown}
-        style={
-          anchorRect
-            ? {
-                top: anchorRect.bottom + window.scrollY + 12,
-                left: Math.max(12, Math.min(anchorRect.left + window.scrollX, window.innerWidth - 372)),
-              }
-            : { top: '20%', left: '50%', transform: 'translateX(-50%)' }
-        }
-      >
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">{labels.quickGuide}</div>
-        <h4 id="tour-step-title" className="mt-2 text-lg font-semibold">{step.title}</h4>
-        <p className="mt-2 text-sm text-slate-300">{step.description}</p>
-        <div className="mt-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onBack}
-            disabled={stepIndex === 0}
-            className="text-xs text-slate-400 disabled:opacity-40"
-          >
-            {labels.back}
-          </button>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onClose} className="text-xs text-slate-400">
-              {labels.close}
-            </button>
-            <button
-              type="button"
-              onClick={onNext}
-              className="rounded-md bg-yellow-400 px-3 py-1 text-xs font-semibold text-black"
-            >
-              {stepIndex === steps.length - 1 ? labels.finish : labels.next}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export function DashboardContent() {
