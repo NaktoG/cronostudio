@@ -1,4 +1,4 @@
-.PHONY: setup env-up infra-up migrate web-install start stop status clean help
+.PHONY: setup env-up infra-up migrate web-install start stop status clean verify-assistant help
 
 setup: env-up infra-up migrate web-install
 	@echo "Setup local completado. Ejecuta 'make start' para iniciar Next.js."
@@ -27,6 +27,9 @@ status:
 clean:
 	@./scripts/local_reset.sh
 
+verify-assistant:
+	@./scripts/verify_assistant_api.sh
+
 help:
 	@echo "Comandos disponibles:"
 	@echo "  make setup      # Copia env, levanta infra, migra e instala web"
@@ -34,3 +37,4 @@ help:
 	@echo "  make stop       # Detener servicios"
 	@echo "  make status     # Estado local"
 	@echo "  make clean      # Reset local"
+	@echo "  make verify-assistant # Verifica API assistant"
