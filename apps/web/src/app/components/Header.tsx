@@ -8,7 +8,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { HelpCircle, Menu, Settings, ShieldCheck, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { NAV_ITEMS } from '../content/navigation';
+import { NAV_GROUPS, NAV_PRIMARY_ITEMS } from '../content/navigation';
 import { useLocale } from '@/app/contexts/LocaleContext';
 import LocaleSwitcher from './LocaleSwitcher';
 import NotificationCenter from './NotificationCenter';
@@ -21,9 +21,10 @@ export default function Header() {
   const reduceMotion = useReducedMotion();
   const mounted = typeof window !== 'undefined';
   const isLandingRoute = pathname === '/' || pathname === '/inicio';
-  const navItems = user?.role === 'super_admin'
-    ? [...NAV_ITEMS, { href: '/admin', labelKey: 'navigation.admin', icon: ShieldCheck }]
-    : NAV_ITEMS;
+  const primaryItems = user?.role === 'super_admin'
+    ? [...NAV_PRIMARY_ITEMS, { href: '/admin', labelKey: 'navigation.admin', icon: ShieldCheck }]
+    : NAV_PRIMARY_ITEMS;
+  const groupedItems = NAV_GROUPS;
 
   useEffect(() => {
     if (!mobileMenuOpen) return;
@@ -85,8 +86,8 @@ export default function Header() {
 
           {/* Desktop Nav */}
           {isAuthenticated && (
-            <nav className="hidden lg:flex items-center gap-1">
-              {navItems.map((item) => {
+            <nav className="hidden lg:flex items-center gap-2">
+              {primaryItems.map((item) => {
                 const isActive = pathname === item.href;
                 const Icon = item.icon;
                 return (
@@ -105,6 +106,34 @@ export default function Header() {
                   </Link>
                 );
               })}
+              {groupedItems.map((group) => (
+                <div key={group.titleKey} className="ml-1 border-l border-gray-800 pl-2">
+                  <div className="px-2 pb-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                    {t(group.titleKey)}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {group.items.map((item) => {
+                      const isActive = pathname === item.href;
+                      const Icon = item.icon;
+                      return (
+                        <Link key={item.href} href={item.href}>
+                          <motion.div
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                                ? 'bg-yellow-400/10 text-yellow-400'
+                                : 'text-slate-300 hover:text-white hover:bg-gray-800/50'
+                              }`}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <Icon className="w-4 h-4" />
+                            <span>{t(item.labelKey)}</span>
+                          </motion.div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </nav>
           )}
 
@@ -177,7 +206,7 @@ export default function Header() {
               <motion.button
                 className="lg:hidden p-2 text-slate-300 hover:text-yellow-400 rounded-lg hover:bg-gray-800/50"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                aria-label={mobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+                aria-label={mobileMenuOpen ? t('header.closeMenu') : t('header.openMenu')}
                 whileTap={{ scale: 0.95 }}
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -208,7 +237,7 @@ export default function Header() {
                     <button
                       type="button"
                       onClick={() => setMobileMenuOpen(false)}
-                      aria-label="Cerrar menú"
+                      aria-label={t('header.closeMenu')}
                       className="text-slate-400"
                     >
                       <X className="w-5 h-5" />
@@ -276,7 +305,7 @@ export default function Header() {
                         <span className="font-medium">{t('header.guide')}</span>
                       </button>
                     )}
-                    {navItems.map((item) => {
+                    {primaryItems.map((item) => {
                       const isActive = pathname === item.href;
                       const Icon = item.icon;
                       return (
@@ -294,6 +323,29 @@ export default function Header() {
                         </Link>
                       );
                     })}
+                    {groupedItems.map((group) => (
+                      <div key={group.titleKey} className="mt-2">
+                        <div className="px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-slate-500">{t(group.titleKey)}</div>
+                        {group.items.map((item) => {
+                          const isActive = pathname === item.href;
+                          const Icon = item.icon;
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all text-sm ${isActive
+                                  ? 'bg-yellow-400/10 text-yellow-400'
+                                  : 'text-slate-300 hover:text-yellow-400 hover:bg-gray-800/50'
+                                }`}
+                              onClick={() => setMobileMenuOpen(false)}
+                            >
+                              <Icon className="w-5 h-5" />
+                              <span className="font-medium">{t(item.labelKey)}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
                 </motion.div>
               </motion.div>
