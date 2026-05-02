@@ -24,6 +24,8 @@ import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/statu
 import { SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 import useDialogFocus from './hooks/useDialogFocus';
 import { usePriorityActions } from '@/app/hooks/usePriorityActions';
+import { useImpactMetrics } from '@/app/hooks/useImpactMetrics';
+import { useProductionsPanel } from '@/app/hooks/useProductionsPanel';
 import type { PipelineStats } from '@/app/components/DashboardStats';
 const DashboardStats = dynamic(() => import('./components/DashboardStats'), {
   ssr: false,
@@ -31,6 +33,21 @@ const DashboardStats = dynamic(() => import('./components/DashboardStats'), {
 });
 
 const PriorityActionsPanel = dynamic(() => import('./components/PriorityActionsPanel'), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
+});
+
+const ImpactPanel = dynamic(() => import('./components/ImpactPanel'), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
+});
+
+const ProductionsPanel = dynamic(() => import('./components/ProductionsPanel'), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
+});
+
+const AutomationRunsPanel = dynamic(() => import('./components/AutomationRunsPanel'), {
   ssr: false,
   loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
 });
@@ -768,6 +785,11 @@ export function DashboardContent() {
   const disciplineStreakBest = disciplineWeekly?.streak.best ?? 0;
   const publishedTotal = pipelineStats.published || 0;
   const estimatedHoursSaved = publishedTotal * IMPACT_METRICS.hoursSavedPerVideo;
+  const { impactCards } = useImpactMetrics({
+    publishedTotal,
+    streakCurrent: weeklyStatus?.currentStreak ?? 0,
+    streakBest: weeklyStatus?.bestStreak ?? 0,
+  });
   const ideaToScriptRate = pipelineStats.idea > 0
     ? Math.round((pipelineStats.scripting / pipelineStats.idea) * 100)
     : 0;
@@ -1768,25 +1790,26 @@ export function DashboardContent() {
                       </div>
                     </motion.div>
                   ) : (
-                    <ProductionsList
-                      productions={filteredProductions}
-                      selectedProductionId={focusedProductionId}
-                      onProductionClick={(production) => setFocusedProductionId(production.id)}
-                      onMarkPublished={(production) => setPublishTarget(production)}
-                      onCreateNew={() => setShowModal(true)}
+                    <ProductionsPanel
+                      activeStage={activeStage}
                       filterLabel={activeStage ? stageLabels[activeStage] : null}
                       onClearFilter={() => setActiveStage(null)}
                       title={activeStage ? dashboardCopy.pipeline.inStage : dashboardCopy.pipeline.active}
-                      showCreateButton={false}
-                      emptyActions={[
-                         { label: dashboardCopy.cards.createProduction, onClick: () => setShowModal(true) },
-                        { label: 'Crono', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
-                      ]}
+                      productions={filteredProductions}
                       selectedIds={selectedProductionIds}
                       onToggleSelection={toggleProductionSelection}
                       onClearSelection={clearProductionSelection}
                       onBulkStatus={bulkUpdateProductions}
                       onBulkTargetDate={bulkUpdateTargetDate}
+                      onProductionClick={(production) => setFocusedProductionId(production.id)}
+                      onMarkPublished={(production) => setPublishTarget(production)}
+                      onCreateNew={() => setShowModal(true)}
+                      showCreateButton={false}
+                      emptyActions={[
+                         { label: dashboardCopy.cards.createProduction, onClick: () => setShowModal(true) },
+                        { label: 'Crono', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
+                      ]}
+                      activeTab={activeTab}
                     />
                   )}
                   </div>
