@@ -1,16 +1,7 @@
 import { SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 import type { Production } from '@/app/components/ProductionsList';
 import type { getDashboardCopy } from '@/app/content/dashboard';
-
-export interface PriorityAction {
-  id: string;
-  type: 'idea' | 'script' | 'seo' | 'thumbnail' | 'short' | 'publish';
-  title: string;
-  productionTitle: string;
-  productionId: string;
-  urgency: 'high' | 'medium' | 'low';
-  href?: string;
-}
+import type { PriorityAction } from '@/app/content/dashboardTypes';
 
 export function generatePriorityActions(
   productions: Production[],
