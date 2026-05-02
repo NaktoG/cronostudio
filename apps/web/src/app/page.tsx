@@ -20,6 +20,8 @@ import DashboardWeeklyStatusCard from './components/dashboard/DashboardWeeklySta
 import DashboardWeekDisciplineCard from './components/dashboard/DashboardWeekDisciplineCard';
 import DashboardIntegrationsPanel from './components/dashboard/DashboardIntegrationsPanel';
 import DashboardReconcileDrawer from './components/dashboard/DashboardReconcileDrawer';
+import CreateProductionModal from './components/dashboard/CreateProductionModal';
+import PublishProductionModal from './components/dashboard/PublishProductionModal';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
 import { useLocale } from './contexts/LocaleContext';
 import { IMPACT_METRICS } from '@/app/content/metrics';
@@ -1641,145 +1643,43 @@ export function DashboardContent() {
       />
       <Footer />
 
-      {/* Modal */}
-      {showModal && (
-        <motion.div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={() => setShowModal(false)}
-        >
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dashboard-modal-title"
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg max-h-[85dvh] overflow-y-auto"
-            ref={modalRef}
-            tabIndex={-1}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="dashboard-modal-title" className="text-2xl font-semibold text-white mb-5">{dashboardCopy.modal.title}</h3>
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder={dashboardCopy.modal.placeholder}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-lg text-white placeholder-gray-500 focus:border-yellow-500 focus:outline-none mb-5"
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            />
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <motion.button
-                onClick={() => setShowModal(false)}
-                className="flex-1 px-5 py-3 text-base border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {dashboardCopy.modal.cancel}
-              </motion.button>
-              <motion.button
-                onClick={handleCreate}
-                className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {dashboardCopy.modal.create}
-              </motion.button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      <CreateProductionModal
+        open={showModal}
+        dashboardCopy={dashboardCopy}
+        newTitle={newTitle}
+        modalRef={modalRef}
+        onClose={() => setShowModal(false)}
+        onChangeTitle={setNewTitle}
+        onCreate={handleCreate}
+      />
 
-      {publishTarget && (
-        <motion.div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={() => setPublishTarget(null)}
-        >
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="publish-modal-title"
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg"
-            ref={publishRef}
-            tabIndex={-1}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="publish-modal-title" className="text-2xl font-semibold text-white mb-3">{dashboardCopy.publishModal.title}</h3>
-            <p className="text-sm text-slate-300 mb-5">{publishTarget.title}</p>
-            <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs text-yellow-200">
-              {dashboardCopy.publishModal.helper}
-            </div>
-            {publishMissing.length > 0 && (
-              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-200">
-                {dashboardCopy.publishModal.missingSteps}: {publishMissing.join(', ')}
-              </div>
-            )}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{dashboardCopy.publishModal.publishedUrlLabel}</label>
-                  <input
-                    type="url"
-                    value={publishUrl}
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      setPublishUrl(next);
-                      if (!publishPlatformTouched) {
-                        const extracted = extractYouTubeId(next);
-                        setPublishPlatformId(extracted);
-                      }
-                    }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
-                    placeholder={dashboardCopy.publishModal.publishedUrlPlaceholder}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">{dashboardCopy.publishModal.platformIdLabel}</label>
-                  <input
-                    type="text"
-                    value={publishPlatformId}
-                    onChange={(event) => {
-                      setPublishPlatformId(event.target.value);
-                      setPublishPlatformTouched(true);
-                    }}
-                    onBlur={() => {
-                      if (!publishUrl && publishPlatformId.trim()) {
-                        setPublishUrl(`https://www.youtube.com/watch?v=${publishPlatformId.trim()}`);
-                      }
-                    }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
-                    placeholder="YouTube videoId"
-                  />
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <motion.button
-                  onClick={() => setPublishTarget(null)}
-                  className="flex-1 px-5 py-3 text-base border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={publishSubmitting}
-                >
-                  {dashboardCopy.publishModal.cancel}
-                </motion.button>
-                <motion.button
-                  onClick={handlePublish}
-                  className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={publishSubmitting || publishMissing.length > 0}
-                >
-                  {publishSubmitting ? dashboardCopy.labels.saving : dashboardCopy.publishModal.confirm}
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      <PublishProductionModal
+        publishTarget={publishTarget}
+        dashboardCopy={dashboardCopy}
+        publishRef={publishRef}
+        publishMissing={publishMissing}
+        publishUrl={publishUrl}
+        publishPlatformId={publishPlatformId}
+        publishSubmitting={publishSubmitting}
+        onClose={() => setPublishTarget(null)}
+        onPublish={handlePublish}
+        onChangeUrl={(next) => {
+          setPublishUrl(next);
+          if (!publishPlatformTouched) {
+            const extracted = extractYouTubeId(next);
+            setPublishPlatformId(extracted);
+          }
+        }}
+        onChangePlatformId={(next) => {
+          setPublishPlatformId(next);
+          setPublishPlatformTouched(true);
+        }}
+        onPlatformIdBlur={() => {
+          if (!publishUrl && publishPlatformId.trim()) {
+            setPublishUrl(`https://www.youtube.com/watch?v=${publishPlatformId.trim()}`);
+          }
+        }}
+      />
     </div>
   );
 }
