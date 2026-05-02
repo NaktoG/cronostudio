@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter, Wand2, XCircle, Youtube, Zap } from 'lucide-react';
@@ -23,16 +24,12 @@ import { getLandingCopy } from './content/landing';
 import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/status/weekly';
 import { SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 import useDialogFocus from './hooks/useDialogFocus';
+import type { PipelineStats } from '@/app/components/DashboardStats';
+const DashboardStats = dynamic(() => import('./components/DashboardStats'), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
+});
 
-interface PipelineStats {
-  idea: number;
-  scripting: number;
-  recording: number;
-  editing: number;
-  shorts: number;
-  publishing: number;
-  published: number;
-}
 
 interface PriorityAction {
   id: string;
