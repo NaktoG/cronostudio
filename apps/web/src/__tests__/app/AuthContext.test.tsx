@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from '@/app/contexts/AuthContext';
 
@@ -14,6 +14,11 @@ function AuthProbe() {
 }
 
 describe('AuthContext', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(global.fetch).mockReset();
+  });
+
   it('does not authenticate from localStorage when /api/auth/me fails', async () => {
     const fetchMock = vi.mocked(global.fetch);
     fetchMock
@@ -42,11 +47,17 @@ describe('AuthContext', () => {
 
   it('authenticates when /api/auth/me succeeds', async () => {
     const fetchMock = vi.mocked(global.fetch);
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      status: 200,
-      json: async () => ({ user: { id: 'user-2', email: 'valid@example.com', name: 'Valid', role: 'owner' } }),
-    } as Response);
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ user: { id: 'user-2', email: 'valid@example.com', name: 'Valid', role: 'owner' } }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ user: { id: 'user-2', email: 'valid@example.com', name: 'Valid', role: 'owner' } }),
+      } as Response);
 
     render(
       <AuthProvider>
