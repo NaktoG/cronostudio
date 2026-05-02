@@ -108,9 +108,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 const meResponse = await fetch('/api/auth/me', {
                     credentials: 'include',
                 });
-                if (meResponse.ok) {
-                    const data = await meResponse.json();
-                    saveSession(data.user);
+                const meData = await meResponse.json().catch(() => ({}));
+                if (meResponse.ok && meData?.user) {
+                    saveSession(meData.user);
+                    return;
+                }
+
+                const canRefresh = Boolean(meData?.canRefresh);
+                if (!canRefresh) {
+                    clearSession();
                     return;
                 }
 

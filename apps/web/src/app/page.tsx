@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter, Wand2, XCircle, Youtube, Zap } from 'lucide-react';
 import Link from 'next/link';
@@ -14,263 +14,26 @@ import PriorityActions from './components/PriorityActions';
 import ProductionPipeline from './components/ProductionPipeline';
 import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
+import OnboardingTour from './components/dashboard/OnboardingTour';
+import DashboardContextCards from './components/dashboard/DashboardContextCards';
+import DashboardWeeklyStatusCard from './components/dashboard/DashboardWeeklyStatusCard';
+import DashboardWeekDisciplineCard from './components/dashboard/DashboardWeekDisciplineCard';
+import DashboardIntegrationsPanel from './components/dashboard/DashboardIntegrationsPanel';
+import DashboardReconcileDrawer from './components/dashboard/DashboardReconcileDrawer';
+import CreateProductionModal from './components/dashboard/CreateProductionModal';
+import PublishProductionModal from './components/dashboard/PublishProductionModal';
 import { useAuth, useAuthFetch } from './contexts/AuthContext';
 import { useLocale } from './contexts/LocaleContext';
 import { IMPACT_METRICS } from '@/app/content/metrics';
 import { useToast } from './contexts/ToastContext';
 import { getDashboardCopy, getStageLabels } from './content/dashboard';
 import { getLandingCopy } from './content/landing';
+import { generatePriorityActions, getChecklistStatus } from './content/dashboardUtils';
+import type { Channel, DashboardTab, DisciplineWeekly, PipelineStats, PriorityAction, WeeklyGoalResponse, WeeklyStatus, YoutubeReconcileWeekly } from './content/dashboardTypes';
 import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/status/weekly';
-import { SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 import useDialogFocus from './hooks/useDialogFocus';
-
-interface PipelineStats {
-  idea: number;
-  scripting: number;
-  recording: number;
-  editing: number;
-  shorts: number;
-  publishing: number;
-  published: number;
-}
-
-interface PriorityAction {
-  id: string;
-  type: 'idea' | 'script' | 'seo' | 'thumbnail' | 'short' | 'publish';
-  title: string;
-  productionTitle: string;
-  productionId: string;
-  urgency: 'high' | 'medium' | 'low';
-  href?: string;
-}
-
-interface WeeklyStatus {
-  status: 'OK' | 'EN_RIESGO' | 'FALLIDA';
-  nextCondition: { label: string; dueAt: string; missing: string[] } | null;
-  channel: { id: string; name: string } | null;
-  channelSource: 'explicit' | 'default';
-  goal: { targetVideos: number; diasPublicacion: string[]; horaCorte: string };
-  week: { isoYear: number; isoWeek: number; startDate: string; endDate: string };
-  publishedCount: number;
-  publishedThisWeek?: { id: string; title: string; publishedAt: string }[];
-  planGenerated?: boolean;
-  plannedProductions?: { id: string; title: string; day: string | null; status: string }[];
-  currentStreak?: number;
-  bestStreak?: number;
-  last4Weeks?: { isoYear: number; isoWeek: number; status: 'OK' | 'EN_RIESGO' | 'FALLIDA' }[];
-  tasks: PriorityAction[];
-}
-
-interface DisciplineWeekly {
-  status: 'OK' | 'EN_RIESGO' | 'FALLIDA' | 'CUMPLIDA';
-  channel: { id: string; name: string; source: 'explicit' | 'default' };
-  week: { isoYear: number; isoWeek: number; startDate: string; endDate: string; weekKey: string };
-  scoreboard: { count: number; target: number };
-  deadlines: { tuesday: string | null; friday: string | null };
-  streak: { current: number; best: number };
-}
-
-interface YoutubeReconcileWeekly {
-  isoYear: number;
-  isoWeek: number;
-  youtubeChannelId: string | null;
-  internalChannelId: string | null;
-  expectedSlots: Array<{ key: 'tue' | 'fri'; date: string | null; windowStart: string | null; windowEnd: string | null }>;
-  youtubeEvidence: Record<'tue' | 'fri', { matched: boolean; video: { videoId: string; title: string; publishedAt: string; url: string } | null }>;
-  publishEvents: Record<'tue' | 'fri', { matched: boolean; eventId: string | null; publishedAt: string | null }>;
-  reconciliation: Record<'tue' | 'fri', 'ok' | 'missing_publish_event' | 'missing_youtube_video' | 'mismatch'>;
-  suggestedActions: Array<{ type: string; slot: 'tue' | 'fri'; payload: Record<string, unknown> }>;
-}
-
-type DashboardTab = 'production' | 'calendar' | 'backlog' | 'integrations';
-
-interface WeeklyGoalResponse {
-  goal: { targetVideos: number; diasPublicacion: string[]; horaCorte: string };
-  channel: { id: string; name: string } | null;
-  channelSource: 'explicit' | 'default';
-  isoYear: number;
-  isoWeek: number;
-  source: 'stored' | 'default';
-}
-
-interface Channel {
-  id: string;
-  name: string;
-}
-
-function generatePriorityActions(productions: Production[], dashboardCopy: ReturnType<typeof getDashboardCopy>): PriorityAction[] {
-  const actions: PriorityAction[] = [];
-  for (const prod of productions) {
-    if (prod.status === 'scripting' && (!prod.script_status || prod.script_status === 'draft')) {
-      actions.push({ id: prod.id, type: 'script', title: dashboardCopy.priorityActions.script, productionTitle: prod.title, productionId: prod.id, urgency: 'high' });
-    }
-    if ((prod.status === 'editing' || prod.status === 'shorts') && (!prod.thumbnail_status || prod.thumbnail_status === 'pending')) {
-      actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: dashboardCopy.priorityActions.thumbnail, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
-    }
-    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < SEO_SCORE_MIN_READY)) {
-      actions.push({ id: `${prod.id}-seo`, type: 'seo', title: dashboardCopy.priorityActions.seo, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
-    }
-    if (prod.status === 'shorts' && prod.shorts_count === 0) {
-      actions.push({ id: `${prod.id}-short`, type: 'short', title: dashboardCopy.priorityActions.shorts, productionTitle: prod.title, productionId: prod.id, urgency: 'low' });
-    }
-  }
-  const urgencyOrder = { high: 0, medium: 1, low: 2 };
-  return actions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]).slice(0, 5);
-}
-
-function getChecklistStatus(production: Production) {
-  const scriptReady = production.script_status && production.script_status !== 'draft';
-  const seoReady = typeof production.seo_score === 'number' && production.seo_score >= SEO_SCORE_MIN_READY;
-  const thumbnailReady = production.thumbnail_status === 'approved';
-  const published = production.status === 'published';
-
-  return {
-    scriptReady,
-    seoReady,
-    thumbnailReady,
-    published,
-  };
-}
-
-function OnboardingTour({
-  open,
-  stepIndex,
-  steps,
-  labels,
-  onClose,
-  onNext,
-  onBack,
-  reduceMotion,
-}: {
-  open: boolean;
-  stepIndex: number;
-  steps: ReadonlyArray<{ id: string; title: string; description: string }>;
-  labels: { quickGuide: string; back: string; close: string; next: string; finish: string };
-  onClose: () => void;
-  onNext: () => void;
-  onBack: () => void;
-  reduceMotion: boolean;
-}) {
-  const [anchorTick, setAnchorTick] = useState(0);
-  const step = steps[stepIndex];
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-
-  const anchorRect = useMemo(() => {
-    if (!open || !step) return null;
-    void anchorTick;
-    const anchor = document.querySelector(`[data-tour="${step.id}"]`);
-    return anchor ? anchor.getBoundingClientRect() : null;
-  }, [open, step, anchorTick]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleResize = () => setAnchorTick((prev) => prev + 1);
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('scroll', handleResize, true);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('scroll', handleResize, true);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const focusable = dialogRef.current?.querySelector<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    focusable?.focus();
-  }, [open, stepIndex]);
-
-  const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    if (!focusable || focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    const active = document.activeElement as HTMLElement | null;
-    if (event.shiftKey) {
-      if (active === first) {
-        event.preventDefault();
-        last.focus();
-      }
-    } else if (active === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
-  if (!open || !step) return null;
-
-  const highlightStyle = anchorRect
-    ? {
-        top: anchorRect.top + window.scrollY - 6,
-        left: anchorRect.left + window.scrollX - 6,
-        width: anchorRect.width + 12,
-        height: anchorRect.height + 12,
-      }
-    : null;
-
-  return (
-    <div className="fixed inset-0 z-[70]">
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      {highlightStyle && (
-        <div
-          className="absolute rounded-xl border border-yellow-400/70 shadow-[0_0_0_4px_rgba(250,204,21,0.15)]"
-          style={highlightStyle}
-        />
-      )}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tour-step-title"
-        className={`absolute w-[min(90vw,360px)] rounded-xl border border-gray-800 bg-gray-950/95 p-4 text-white shadow-xl ${reduceMotion ? '' : 'transition-all duration-300'}`}
-        ref={dialogRef}
-        onKeyDown={handleDialogKeyDown}
-        style={
-          anchorRect
-            ? {
-                top: anchorRect.bottom + window.scrollY + 12,
-                left: Math.max(12, Math.min(anchorRect.left + window.scrollX, window.innerWidth - 372)),
-              }
-            : { top: '20%', left: '50%', transform: 'translateX(-50%)' }
-        }
-      >
-        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-300">{labels.quickGuide}</div>
-        <h4 id="tour-step-title" className="mt-2 text-lg font-semibold">{step.title}</h4>
-        <p className="mt-2 text-sm text-slate-300">{step.description}</p>
-        <div className="mt-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onBack}
-            disabled={stepIndex === 0}
-            className="text-xs text-slate-400 disabled:opacity-40"
-          >
-            {labels.back}
-          </button>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onClose} className="text-xs text-slate-400">
-              {labels.close}
-            </button>
-            <button
-              type="button"
-              onClick={onNext}
-              className="rounded-md bg-yellow-400 px-3 py-1 text-xs font-semibold text-black"
-            >
-              {stepIndex === steps.length - 1 ? labels.finish : labels.next}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { useDashboardDataLoader } from './hooks/useDashboardDataLoader';
+import { extractYouTubeId, useDashboardActions } from './hooks/useDashboardActions';
 
 export function DashboardContent() {
   const { isAuthenticated, logout } = useAuth();
@@ -386,204 +149,35 @@ export function DashboardContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [drawerOpen]);
 
-  const fetchChannels = useCallback(async (signal?: AbortSignal) => {
-    try {
-      if (!isAuthenticated) {
-        setChannels([]);
-        return;
-      }
-      const response = await authFetch('/api/channels', { signal });
-      if (response.ok) {
-        const data = await response.json();
-        const list = Array.isArray(data) ? data : [];
-        setChannels(list);
-        if (list.length === 0) {
-          setSelectedChannelId('');
-          if (typeof window !== 'undefined') {
-            window.localStorage.removeItem('cronostudio.channelId');
-          }
-          return;
-        }
-
-        const hasSelected = selectedChannelId
-          ? list.some((channel: { id: string }) => channel.id === selectedChannelId)
-          : false;
-        if (!selectedChannelId || !hasSelected) {
-          const defaultId = list[0].id;
-          setSelectedChannelId(defaultId);
-          if (typeof window !== 'undefined') {
-            window.localStorage.setItem('cronostudio.channelId', defaultId);
-          }
-          const params = new URLSearchParams(searchParamsKey);
-          params.set('channelId', defaultId);
-          const query = params.toString();
-          router.replace(query ? `/?${query}` : '/');
-        }
-      }
-    } catch {
-      if (signal?.aborted) return;
-      setChannels([]);
-    }
-  }, [isAuthenticated, authFetch, router, searchParamsKey, selectedChannelId]);
-
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const isoYear = fallbackIso.isoYear;
-      const isoWeek = fallbackIso.isoWeek;
-      const resolvedChannelId = selectedChannelId || '';
-
-      const params = new URLSearchParams({
-        isoYear: String(isoYear),
-        isoWeek: String(isoWeek),
-      });
-      if (resolvedChannelId) {
-        params.set('channelId', resolvedChannelId);
-      }
-      const query = `?${params.toString()}`;
-
-      const weeklyRequests = resolvedChannelId
-        ? [
-            authFetch(`/api/weekly-status${query}`, { signal }),
-            authFetch(`/api/weekly-goals${query}`, { signal }),
-            authFetch(`/api/discipline/weekly${query}`, { signal }),
-          ]
-        : [
-            Promise.resolve(new Response(null, { status: 204 })),
-            Promise.resolve(new Response(null, { status: 204 })),
-            Promise.resolve(new Response(null, { status: 204 })),
-          ];
-
-      const [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes] = await Promise.all([
-        authFetch('/api/productions?stats=true', { signal }),
-        authFetch('/api/ideas', { signal }),
-        authFetch('/api/automation-runs', { signal }),
-        ...weeklyRequests,
-      ]);
-
-      const responses = [productionsRes, ideasRes, runsRes, weeklyRes, weeklyGoalsRes, disciplineRes];
-      if (responses.some((res) => res.status === 401)) {
-        logout();
-        addToast(dashboardCopy.toasts.sessionExpired, 'error');
-        return;
-      }
-
-      if (productionsRes.ok) {
-        const data = await productionsRes.json();
-        setProductions(data.productions || []);
-        if (data.pipeline) {
-          setPipelineStats({
-            idea: data.pipeline.idea || 0,
-            scripting: data.pipeline.scripting || 0,
-            recording: data.pipeline.recording || 0,
-            editing: data.pipeline.editing || 0,
-            shorts: data.pipeline.shorts || 0,
-            publishing: data.pipeline.publishing || 0,
-            published: data.pipeline.published || 0,
-          });
-        }
-      }
-
-      if (ideasRes.ok) {
-        const ideasData = await ideasRes.json();
-        const ideasList = Array.isArray(ideasData) ? ideasData : [];
-        setIdeas(ideasList.map((idea: { id: string; title: string; status: string; priority: number }) => idea));
-      }
-      if (runsRes.ok) {
-        const runsData = await runsRes.json();
-        setRuns(Array.isArray(runsData) ? runsData : []);
-      } else {
-        setRuns([]);
-      }
-
-      if (weeklyRes.ok && weeklyRes.status !== 204) {
-        const weeklyData: WeeklyStatus = await weeklyRes.json();
-        setWeeklyStatus(weeklyData);
-        setWeeklyActions(Array.isArray(weeklyData.tasks) ? weeklyData.tasks : []);
-        setWeeklyError(null);
-      } else if (weeklyRes.ok) {
-        setWeeklyStatus(null);
-        setWeeklyActions([]);
-        setWeeklyError(null);
-      } else {
-        const errorData = await weeklyRes.json().catch(() => null);
-        setWeeklyError(errorData?.error || dashboardCopy.toasts.weeklyStatusError);
-        setWeeklyStatus(null);
-        setWeeklyActions([]);
-      }
-
-      if (weeklyGoalsRes.ok && weeklyGoalsRes.status !== 204) {
-        const goalsData: WeeklyGoalResponse = await weeklyGoalsRes.json();
-        setWeeklyGoal(goalsData);
-      } else {
-        setWeeklyGoal(null);
-      }
-
-      if (disciplineRes.ok && disciplineRes.status !== 204) {
-        const disciplineData: DisciplineWeekly = await disciplineRes.json();
-        setDisciplineWeekly(disciplineData);
-      } else {
-        setDisciplineWeekly(null);
-      }
-
-      if (resolvedChannelId) {
-        authFetch(`/api/integrations/youtube/reconcile/weekly${query}`, { signal })
-          .then(async (reconcileRes) => {
-            if (signal?.aborted) return;
-            if (reconcileRes.ok && reconcileRes.status !== 204) {
-              const reconcileData: YoutubeReconcileWeekly = await reconcileRes.json();
-              setReconcileWeekly(reconcileData);
-              setReconcileError(null);
-              return;
-            }
-            setReconcileWeekly(null);
-            if (reconcileRes.status !== 204) {
-              const errorData = await reconcileRes.json().catch(() => null);
-              if (reconcileRes.status === 401 && errorData?.error === 'youtube_auth_invalid') {
-                setReconcileError(errorData.error);
-                return;
-              }
-              if (reconcileRes.status === 401) {
-                logout();
-                addToast(dashboardCopy.toasts.sessionExpired, 'error');
-                return;
-              }
-              setReconcileError(errorData?.error || 'youtube_error');
-            } else {
-              setReconcileError(null);
-            }
-          })
-          .catch(() => {
-            if (signal?.aborted) return;
-            setReconcileWeekly(null);
-            setReconcileError('youtube_error');
-          });
-      }
-    } catch (e) {
-      if (signal?.aborted) return;
-      console.error('[dashboard] request failed', e);
-    } finally {
-      setLoading(false);
-    }
-  }, [authFetch, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, addToast, logout, dashboardCopy.toasts.sessionExpired, dashboardCopy.toasts.weeklyStatusError]);
-
-  useEffect(() => {
-    if (!isAuthenticated) {
-      autoFetchKeyRef.current = '';
-      setLoading(false);
-      return;
-    }
-
-    const autoFetchKey = `${selectedChannelId || 'none'}:${fallbackIso.isoYear}:${fallbackIso.isoWeek}`;
-    if (autoFetchKeyRef.current === autoFetchKey) {
-      return;
-    }
-    autoFetchKeyRef.current = autoFetchKey;
-
-    const controller = new AbortController();
-    fetchChannels(controller.signal);
-    fetchData(controller.signal);
-    return () => controller.abort();
-  }, [isAuthenticated, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, fetchChannels, fetchData]);
+  const { fetchData } = useDashboardDataLoader({
+    isAuthenticated,
+    authFetch,
+    selectedChannelId,
+    setSelectedChannelId,
+    searchParamsKey,
+    router,
+    fallbackIso,
+    logout,
+    addToast,
+    toasts: {
+      sessionExpired: dashboardCopy.toasts.sessionExpired,
+      weeklyStatusError: dashboardCopy.toasts.weeklyStatusError,
+    },
+    setChannels,
+    setProductions,
+    setPipelineStats,
+    setIdeas,
+    setRuns,
+    setWeeklyStatus,
+    setWeeklyActions,
+    setWeeklyError,
+    setWeeklyGoal,
+    setDisciplineWeekly,
+    setReconcileWeekly,
+    setReconcileError,
+    setLoading,
+    autoFetchKeyRef,
+  });
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -611,126 +205,57 @@ export function DashboardContent() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [showModal, publishTarget]);
 
-  const handleCreate = async () => {
-    if (!newTitle.trim()) return;
-    try {
-      const res = await authFetch('/api/productions', {
-        method: 'POST',
-        body: JSON.stringify({ title: newTitle }),
-      });
-      if (res.ok) {
-        setNewTitle('');
-        setShowModal(false);
-        fetchData();
-      addToast(dashboardCopy.toasts.created, 'success');
-      } else {
-      addToast(dashboardCopy.toasts.createFailed, 'error');
-      }
-    } catch (e) {
-      addToast(dashboardCopy.toasts.createError, 'error');
-      console.error('[dashboard] update failed', e);
-    }
-  };
+  const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
+  const publishMissing = publishChecklist
+    ? [
+        !publishChecklist.scriptReady ? dashboardCopy.cards.scriptReady : null,
+        !publishChecklist.seoReady ? dashboardCopy.cards.seoApproved : null,
+        !publishChecklist.thumbnailReady ? dashboardCopy.cards.thumbnailApproved : null,
+      ].filter(Boolean)
+    : [];
 
-  const handlePublish = async () => {
-    if (!publishTarget) return;
-    if (publishMissing.length > 0) {
-      addToast(`Completa: ${publishMissing.join(', ')}`, 'error');
-      return;
-    }
-    setPublishSubmitting(true);
-    try {
-      const response = await authFetch('/api/productions/publish', {
-        method: 'POST',
-        body: JSON.stringify({
-          productionId: publishTarget.id,
-          publishedUrl: publishUrl.trim() || null,
-          platformId: publishPlatformId.trim() || null,
-        }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.publishMarkError);
-      }
-      setPublishTarget(null);
-      setPublishUrl('');
-      setPublishPlatformId('');
-      setPublishPlatformTouched(false);
-      fetchData();
-      addToast(dashboardCopy.toasts.publishMarked, 'success');
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.publishMarkError, 'error');
-    } finally {
-      setPublishSubmitting(false);
-    }
-  };
-
-  const extractYouTubeId = (value: string) => {
-    if (!value) return '';
-    try {
-      const url = new URL(value);
-      const id = url.searchParams.get('v');
-      if (id) return id;
-      if (url.hostname.includes('youtu.be')) {
-        return url.pathname.replace('/', '').trim();
-      }
-      return '';
-    } catch {
-      return '';
-    }
-  };
-
-  const handleGeneratePlan = async () => {
-    if (!selectedChannelId) {
-      addToast(dashboardCopy.toasts.selectChannelFirst, 'error');
-      return;
-    }
-    setPlanSubmitting(true);
-    try {
-      const isoYear = weeklyStatus?.week.isoYear ?? fallbackIso.isoYear;
-      const isoWeek = weeklyStatus?.week.isoWeek ?? fallbackIso.isoWeek;
-      const params = new URLSearchParams({
-        channelId: selectedChannelId,
-        isoYear: String(isoYear),
-        isoWeek: String(isoWeek),
-      });
-      const response = await authFetch(`/api/weekly-plan/generate?${params.toString()}`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.generatePlanError);
-      }
-      addToast(dashboardCopy.toasts.planGenerated, 'success');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.generatePlanError, 'error');
-    } finally {
-      setPlanSubmitting(false);
-    }
-  };
-
-  const handleChannelChange = (value: string) => {
-    setSelectedChannelId(value);
-    if (typeof window !== 'undefined') {
-      if (value) {
-        window.localStorage.setItem('cronostudio.channelId', value);
-      } else {
-        window.localStorage.removeItem('cronostudio.channelId');
-      }
-    }
-    const params = new URLSearchParams(searchParams?.toString() ?? '');
-    if (value) {
-      params.set('channelId', value);
-    } else {
-      params.delete('channelId');
-    }
-    const query = params.toString();
-    router.replace(query ? `/?${query}` : '/');
-  };
+  const {
+    handleCreate,
+    handlePublish,
+    handleGeneratePlan,
+    handleChannelChange,
+    handleQuickPublish,
+    handleRegisterFromYoutube,
+    handleSchedule,
+    handleUnschedule,
+  } = useDashboardActions({
+    authFetch,
+    addToast,
+    dashboardCopy,
+    fetchData: () => fetchData(),
+    selectedChannelId,
+    weeklyStatus,
+    fallbackIso,
+    reconcileWeekly,
+    searchParamsKey,
+    searchParams,
+    router,
+    newTitle,
+    publishTarget,
+    publishMissing,
+    publishUrl,
+    publishPlatformId,
+    setSelectedChannelId,
+    setNewTitle,
+    setShowModal,
+    setPublishTarget,
+    setPublishUrl,
+    setPublishPlatformId,
+    setPublishPlatformTouched,
+    setPublishSubmitting,
+    setPlanSubmitting,
+    setQuickPublishSubmitting,
+    setReconcileSubmitting,
+    setScheduleProductionId,
+    setScheduleDate,
+  });
 
   const resolveStageLabel = (status: string) => stageLabels[status as keyof PipelineStats] ?? status;
-  const weeklyStyle = weeklyStatus ? WEEKLY_STATUS_STYLES[weeklyStatus.status] : WEEKLY_STATUS_STYLES.OK;
   const nextConditionText = weeklyStatus?.nextCondition?.label ?? dashboardCopy.weeklyStatus.noNext;
   const nextConditionDue = weeklyStatus?.nextCondition?.dueAt
     ? formatDateTime(weeklyStatus.nextCondition.dueAt)
@@ -859,57 +384,6 @@ export function DashboardContent() {
     return `/ai?${search.toString()}`;
   };
 
-  const handleQuickPublish = async (targetDay: 'tuesday' | 'friday') => {
-    if (!selectedChannelId) {
-      addToast(dashboardCopy.toasts.selectChannelFirst, 'error');
-      return;
-    }
-    setQuickPublishSubmitting(true);
-    try {
-      const response = await authFetch('/api/discipline/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelId: selectedChannelId, targetDay }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.registerPublishError);
-      }
-      addToast(dashboardCopy.toasts.scheduled, 'success');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.registerPublishError, 'error');
-    } finally {
-      setQuickPublishSubmitting(false);
-    }
-  };
-
-  const handleRegisterFromYoutube = async (slot: 'tue' | 'fri') => {
-    if (!selectedChannelId || !reconcileWeekly) {
-      addToast(dashboardCopy.toasts.selectChannelFirst, 'error');
-      return;
-    }
-    const action = reconcileWeekly.suggestedActions.find((item) => item.slot === slot);
-    if (!action) return;
-    setReconcileSubmitting(true);
-    try {
-      const response = await authFetch('/api/discipline/publish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(action.payload),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.registerPublishError);
-      }
-      addToast(dashboardCopy.toasts.registerFromYoutubeSuccess, 'success');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.registerPublishError, 'error');
-    } finally {
-      setReconcileSubmitting(false);
-    }
-  };
 
   const openDrawerForSlot = (slot: 'tue' | 'fri') => {
     setDrawerSlot(slot);
@@ -1087,14 +561,6 @@ export function DashboardContent() {
   };
 
   const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions, dashboardCopy);
-  const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
-  const publishMissing = publishChecklist
-    ? [
-        !publishChecklist.scriptReady ? dashboardCopy.cards.scriptReady : null,
-        !publishChecklist.seoReady ? dashboardCopy.cards.seoApproved : null,
-        !publishChecklist.thumbnailReady ? dashboardCopy.cards.thumbnailApproved : null,
-      ].filter(Boolean)
-    : [];
   const filteredProductions = activeStage
     ? activeProductions.filter((production) => production.status === activeStage)
     : activeProductions;
@@ -1154,42 +620,7 @@ export function DashboardContent() {
     });
   }, [selectedDate]);
 
-  const handleSchedule = async () => {
-    if (!scheduleProductionId || !scheduleDate) return;
-    try {
-      const response = await authFetch(`/api/productions?id=${scheduleProductionId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ targetDate: scheduleDate }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.scheduleError);
-      }
-      addToast(dashboardCopy.toasts.scheduled, 'success');
-      setScheduleProductionId('');
-      setScheduleDate('');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.scheduleError, 'error');
-    }
-  };
-
-  const handleUnschedule = async (productionId: string) => {
-    try {
-      const response = await authFetch(`/api/productions?id=${productionId}`, {
-        method: 'PUT',
-        body: JSON.stringify({ targetDate: null }),
-      });
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || dashboardCopy.toasts.cancelError);
-      }
-      addToast(dashboardCopy.toasts.canceled, 'success');
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : dashboardCopy.toasts.cancelError, 'error');
-    }
-  };
+  const handleScheduleSubmit = () => handleSchedule(scheduleProductionId, scheduleDate);
 
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden">
@@ -1201,128 +632,26 @@ export function DashboardContent() {
                 <option key={option.id} value={option.title} />
               ))}
             </datalist>
-            {/* Context bar */}
-            <motion.div
-              className="surface-card glow-hover p-4 sm:p-5 mb-6"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-col gap-2">
-                  <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
-                    {dashboardCopy.context.title}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                    <span className="rounded-full border border-gray-800 px-3 py-1 text-slate-200">
-                      {dashboardCopy.context.isoWeek}: {weekLabel}
-                    </span>
-                    {goalData && (
-                      <span className="rounded-full border border-gray-800 px-3 py-1 text-slate-200">
-                        {dashboardCopy.context.goal}: {weeklyTarget} {dashboardCopy.context.videos} · {goalDays} · {goalData.horaCorte}
-                      </span>
-                    )}
-                    {weeklyTarget > 0 && (
-                      <span className="rounded-full border border-gray-800 px-3 py-1 text-slate-200">
-                        {dashboardCopy.context.published}: {publishedCount}/{weeklyTarget}
-                      </span>
-                    )}
-                  </div>
-                  {weeklyError && (
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-red-300">
-                      <span>{dashboardCopy.messages.weekEvaluationFailed}</span>
-                      <button
-                        type="button"
-                        onClick={() => fetchData()}
-                        className="text-yellow-300 hover:text-yellow-200 underline"
-                      >
-                        {dashboardCopy.common.retry}
-                      </button>
-                    </div>
-                  )}
-                  {reconcileMessage && (
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-amber-300">
-                      <span>{reconcileMessage.message}</span>
-                      {reconcileMessage.actionLabel && reconcileMessage.actionHref && (
-                        <Link
-                          href={reconcileMessage.actionHref}
-                          className="text-yellow-300 hover:text-yellow-200 underline"
-                        >
-                          {reconcileMessage.actionLabel}
-                        </Link>
-                      )}
-                    </div>
-                  )}
-                  {isDefaultChannel && channelName && (
-                    <p className="text-xs text-amber-200">
-                      {dashboardCopy.context.defaultChannel}: {channelName}
-                    </p>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">
-                    {dashboardCopy.context.channel}
-                  </label>
-                  <select
-                    value={selectedChannelId}
-                    onChange={(event) => handleChannelChange(event.target.value)}
-                    className="w-full min-w-[220px] rounded-lg border border-gray-700 bg-gray-900/60 px-3 py-2 text-sm text-white"
-                    disabled={channels.length === 0}
-                  >
-                    <option value="">{channels.length === 0 ? dashboardCopy.context.noChannels : dashboardCopy.context.selectChannel}</option>
-                    {channels.map((channel) => (
-                      <option key={channel.id} value={channel.id}>
-                        {channel.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </motion.div>
-            {(weeklyStatus?.planGenerated === false || weeklyError) && (
-              <motion.div
-                className="surface-card glow-hover p-5 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <div>
-                  <p className="text-sm text-slate-300">{dashboardCopy.cards.weeklyAutoPlanTitle}</p>
-                  <p className="text-xs text-slate-400">{dashboardCopy.cards.weeklyAutoPlanSubtitle}</p>
-                </div>
-                <motion.button
-                  type="button"
-                  onClick={handleGeneratePlan}
-                  className="px-5 py-3 rounded-lg bg-yellow-400 text-black font-semibold hover:bg-yellow-300"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={planSubmitting}
-                >
-                  {planSubmitting ? dashboardCopy.cards.weeklyAutoPlanGenerating : dashboardCopy.cards.weeklyAutoPlanGenerate}
-                </motion.button>
-              </motion.div>
-            )}
-
-            {showStartCard && (
-              <motion.div
-                className="surface-card glow-hover p-5 mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <div>
-                  <p className="text-sm text-slate-300">{dashboardCopy.cards.firstStepsTitle}</p>
-                  <p className="text-xs text-slate-400">{dashboardCopy.messages.startCardHint}</p>
-                </div>
-                <Link
-                  href="/start"
-                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-yellow-400 px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black"
-                >
-                  {dashboardCopy.cards.viewGuide}
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-              </motion.div>
-            )}
+            <DashboardContextCards
+              dashboardCopy={dashboardCopy}
+              weekLabel={weekLabel}
+              goalData={goalData}
+              weeklyTarget={weeklyTarget}
+              goalDays={goalDays}
+              publishedCount={publishedCount}
+              weeklyError={weeklyError}
+              reconcileMessage={reconcileMessage}
+              isDefaultChannel={isDefaultChannel}
+              channelName={channelName}
+              selectedChannelId={selectedChannelId}
+              channels={channels}
+              onChannelChange={handleChannelChange}
+              onRetryWeeklyStatus={() => fetchData()}
+              shouldShowAutoPlanCard={weeklyStatus?.planGenerated === false || Boolean(weeklyError)}
+              onGeneratePlan={handleGeneratePlan}
+              planSubmitting={planSubmitting}
+              showStartCard={showStartCard}
+            />
 
             <motion.div
               className="surface-card glow-hover p-5 mb-6"
@@ -1477,243 +806,44 @@ export function DashboardContent() {
                     : 'lg:grid-cols-2 2xl:grid-cols-3'
                 }`}>
                   <div className={`space-y-5 ${activeTab === 'production' || activeTab === 'backlog' ? '' : 'hidden'}`} data-tour="backlog">
-                    <motion.div
-                      className="surface-card glow-hover p-4 sm:p-5"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-3 text-center sm:text-left">
-                        {dashboardCopy.weeklyStreak.title}
-                      </div>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-center sm:text-left">
-                        <div>
-                          <p className="text-xs text-slate-400">{dashboardCopy.weeklyStreak.current}</p>
-                          <p className="text-lg font-semibold text-white">🔥 {streakCurrent} {dashboardCopy.cards.impactWeeks}</p>
-                        </div>
-                        <div className="text-center sm:text-right">
-                          <p className="text-xs text-slate-400">{dashboardCopy.weeklyStreak.best}</p>
-                          <p className="text-lg font-semibold text-white">🏆 {streakBest} {dashboardCopy.cards.impactWeeks}</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 flex items-center gap-2">
-                        {(last4Weeks.length > 0 ? last4Weeks : fallbackWeeks)
-                          .slice(0, 4)
-                          .map((week, index) => (
-                            <span
-                              key={`${week.status}-${index}`}
-                              className={`h-3 w-3 rounded-full ${WEEKLY_STATUS_STYLES[week.status]?.dot || 'bg-gray-700'}`}
-                              title={week.status}
-                            />
-                          ))}
-                      </div>
-                    </motion.div>
+                    <DashboardWeekDisciplineCard
+                      dashboardCopy={dashboardCopy}
+                      reduceMotion={reduceMotion}
+                      last4Weeks={last4Weeks}
+                      fallbackWeeks={fallbackWeeks}
+                      streakCurrent={streakCurrent}
+                      streakBest={streakBest}
+                      disciplineWeekly={disciplineWeekly}
+                      weekLabel={weekLabel}
+                      disciplineTarget={disciplineTarget}
+                      disciplineStyle={disciplineStyle}
+                      disciplineStatus={disciplineStatus}
+                      disciplineCount={disciplineCount}
+                      disciplineMissing={disciplineMissing}
+                      disciplineStreakCurrent={disciplineStreakCurrent}
+                      disciplineStreakBest={disciplineStreakBest}
+                      slotConfig={slotConfig}
+                      slotStatus={slotStatus}
+                      openDrawerForSlot={openDrawerForSlot}
+                      focusOpen={focusOpen}
+                      setFocusOpen={setFocusOpen}
+                      focusSearch={focusSearch}
+                      handleFocusSearch={handleFocusSearch}
+                      focusProduction={focusProduction}
+                      resolveStageLabel={resolveStageLabel}
+                      nextAction={nextAction}
+                      nextSlot={nextSlot}
+                      plannedDays={plannedDays}
+                      handleDockPlan={handleDockPlan}
+                      setActiveTab={setActiveTab}
+                    />
 
-                    <motion.div
-                      className="surface-card glow-hover p-4 sm:p-5"
-                      initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: reduceMotion ? 0 : 0.3, delay: reduceMotion ? 0 : 0.05 }}
-                      data-tour="week-stepper"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
-                            {dashboardCopy.cards.thisWeek}
-                          </div>
-                          <p className="text-xs text-slate-400 mt-1">{dashboardCopy.cards.weekLabelPrefix} {disciplineWeekly?.week.weekKey ?? weekLabel} · {disciplineTarget} {dashboardCopy.cards.publications}</p>
-                        </div>
-                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${disciplineStyle.badge}`}>
-                          <span className={`h-2 w-2 rounded-full ${disciplineStyle.dot}`} />
-                          {disciplineStatus}
-                        </span>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between rounded-xl border border-gray-800 bg-gray-900/40 p-3">
-                        <div>
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.progress}</p>
-                          <p className="mt-1 text-2xl font-semibold text-white">
-                            {disciplineCount}/{disciplineTarget}
-                          </p>
-                          <p className="text-xs text-slate-400">{dashboardCopy.cards.missing} {disciplineMissing}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.streak}</p>
-                          <p className="mt-1 text-lg font-semibold text-white">🔥 {disciplineStreakCurrent}</p>
-                          <p className="text-xs text-slate-400">{dashboardCopy.cards.best}: {disciplineStreakBest}</p>
-                        </div>
-                      </div>
-                      <div className="mt-4 grid grid-cols-2 gap-2">
-                        {slotConfig.map((slot) => {
-                          const status = slotStatus(slot.key);
-                          return (
-                            <button
-                              key={slot.key}
-                              type="button"
-                              onClick={() => openDrawerForSlot(slot.key)}
-                              className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] ${status.tone}`}
-                              title={dashboardCopy.cards.viewDetail}
-                            >
-                              <span className="flex items-center gap-2">
-                                <span className={`h-2 w-2 rounded-full ${status.dot}`} />
-                                {slot.label}
-                              </span>
-                              <span>{status.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-4 lg:hidden">
-                        <button
-                          type="button"
-                          onClick={() => setFocusOpen((current) => !current)}
-                          className="w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300"
-                        >
-                          {focusOpen ? dashboardCopy.cards.hideFocus : dashboardCopy.cards.showFocus}
-                        </button>
-                        {focusOpen && (
-                          <div className="mt-3 space-y-3 rounded-xl border border-gray-800 bg-gray-900/40 p-3">
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.searchProduction}</label>
-                              <div className="relative mt-2">
-                                <input
-                                  value={focusSearch}
-                                  onChange={(event) => handleFocusSearch(event.target.value)}
-                                  list="focus-productions"
-                                  placeholder={dashboardCopy.cards.typeTitle}
-                                  className="w-full rounded-lg border border-gray-800 bg-gray-900/70 px-3 py-2 pr-8 text-xs text-slate-200"
-                                />
-                                {focusSearch && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleFocusSearch('')}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                    aria-label={dashboardCopy.cards.clearSearch}
-                                  >
-                                    ×
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.nextStep}</div>
-                              {focusProduction && (
-                                <div className="mt-1 text-xs text-slate-400">
-                                  <p className="truncate">{focusProduction.title}</p>
-                                  <p className="mt-1 flex flex-wrap items-center gap-2">
-                                    <span>{focusProduction.channel_name ?? dashboardCopy.labels.noChannel}</span>
-                                    <span className="text-slate-600">•</span>
-                                    <span>{resolveStageLabel(focusProduction.status)}</span>
-                                  </p>
-                                </div>
-                              )}
-                              {!focusProduction && (
-                                <p className="mt-2 text-xs text-slate-400">{dashboardCopy.cards.noActiveProductionsYet}</p>
-                              )}
-                              <p className="mt-1 text-sm text-slate-200">{nextAction.label}</p>
-                              <button
-                                type="button"
-                                onClick={nextAction.onClick}
-                                className="mt-3 w-full rounded-lg bg-yellow-400 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black"
-                              >
-                                {nextAction.action}
-                              </button>
-                            </div>
-                            <div>
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.labels.verifiedByYoutube}</div>
-                              <div className="mt-2 flex items-center justify-between text-xs text-slate-300">
-                                 <span>{dashboardCopy.labels.tuesdayShort}</span>
-                                <span>{slotStatus('tue').label}</span>
-                              </div>
-                              <div className="mt-1 flex items-center justify-between text-xs text-slate-300">
-                                 <span>{dashboardCopy.labels.fridayShort}</span>
-                                <span>{slotStatus('fri').label}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => openDrawerForSlot(nextSlot)}
-                                className="mt-2 w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
-                              >
-                                 {dashboardCopy.cards.openDetail}
-                              </button>
-                            </div>
-                            <div>
-                              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">{dashboardCopy.cards.weeklyPlan}</div>
-                              <div className="mt-2 flex items-center justify-between text-xs text-slate-300">
-                                 <span>{dashboardCopy.labels.tuesdayShort}</span>
-                                <span>{plannedDays.tue}</span>
-                              </div>
-                              <div className="mt-1 flex items-center justify-between text-xs text-slate-300">
-                                 <span>{dashboardCopy.labels.fridayShort}</span>
-                                <span>{plannedDays.fri}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={handleDockPlan}
-                                className="mt-2 w-full rounded-lg border border-gray-800 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
-                              >
-                                 {dashboardCopy.cards.goToCalendar}
-                              </button>
-                            </div>
-                            <div className="grid grid-cols-3 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setActiveTab('calendar')}
-                                className="rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
-                              >
-                                {dashboardCopy.tabs.calendar}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setActiveTab('backlog')}
-                                className="rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
-                              >
-                                {dashboardCopy.tabs.backlog}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setActiveTab('integrations')}
-                                className="rounded-lg border border-gray-800 px-2 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300"
-                              >
-                                {dashboardCopy.labels.integrations}
-                              </button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-
-                    <motion.div
-                      className="surface-card glow-hover p-4 sm:p-5"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="text-center sm:text-left">
-                          <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em]">
-                            {dashboardCopy.weeklyStatus.title}
-                          </div>
-                          {weeklyStatus?.channel && (
-                            <p className="text-xs text-slate-400 mt-1">
-                                 {dashboardCopy.weeklyStatus.channel}: {weeklyStatus.channel.name}
-                            </p>
-                          )}
-                        </div>
-                        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${weeklyStyle.badge} self-center sm:self-auto`}>
-                          <span className={`h-2 w-2 rounded-full ${weeklyStyle.dot}`} />
-                          {weeklyStatus?.status ?? 'OK'}
-                        </span>
-                      </div>
-                      <div className="mt-4 space-y-2">
-                        <div className="text-xs font-semibold text-slate-300 uppercase tracking-[0.2em]">
-                          {dashboardCopy.weeklyStatus.next}
-                        </div>
-                        <p className={`text-sm ${weeklyStyle.text}`}>{nextConditionText}</p>
-                        {nextConditionDue && (
-                          <p className="text-xs text-slate-400">{nextConditionDue}</p>
-                        )}
-                      </div>
-                    </motion.div>
+                    <DashboardWeeklyStatusCard
+                      dashboardCopy={dashboardCopy}
+                      weeklyStatus={weeklyStatus}
+                      nextConditionText={nextConditionText}
+                      nextConditionDue={nextConditionDue}
+                    />
 
                     <PriorityActions
                       actions={priorityActions}
@@ -2155,7 +1285,7 @@ export function DashboardContent() {
                         <div className="flex flex-col gap-2 sm:flex-row">
                           <button
                             type="button"
-                            onClick={handleSchedule}
+                            onClick={handleScheduleSubmit}
                             className="w-full rounded-lg bg-yellow-400 px-3 py-2 text-sm font-semibold text-black hover:bg-yellow-300"
                           >
                             {dashboardCopy.calendar.scheduleAction}
@@ -2247,40 +1377,7 @@ export function DashboardContent() {
 
                   </div>
 
-                  <motion.div className={`space-y-4 ${activeTab === 'integrations' ? '' : 'hidden'}`} data-tour="integrations">
-                    <motion.div
-                      className="surface-card glow-hover p-4 sm:p-6"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      <div className="text-xs font-semibold text-yellow-400/90 uppercase tracking-[0.2em] mb-4 text-center sm:text-left">{dashboardCopy.social.title}</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3">
-                        {dashboardCopy.social.items.map((item) => {
-                          const iconMap: Record<string, ReactNode> = {
-                            Instagram: <Instagram className="w-4 h-4" />,
-                            TikTok: <Music2 className="w-4 h-4" />,
-                            LinkedIn: <Linkedin className="w-4 h-4" />,
-                            X: <Twitter className="w-4 h-4" />,
-                          };
-                          return (
-                            <div key={item.name} className="flex flex-col gap-3 rounded-lg border border-gray-800 bg-gray-900/60 px-3 sm:px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                              <div className="flex items-center gap-3">
-                                <span className="w-9 h-9 rounded-full bg-gray-900/60 border border-gray-800 flex items-center justify-center text-yellow-400">
-                                  {iconMap[item.name]}
-                                </span>
-                                <div>
-                                  <p className="text-sm font-semibold text-white">{item.name}</p>
-                                  <p className="text-xs text-slate-400">{item.description}</p>
-                                </div>
-                              </div>
-                              <button className="w-full text-xs font-semibold text-yellow-400 hover:text-yellow-300 sm:w-auto">{dashboardCopy.social.connect}</button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </motion.div>
-                  </motion.div>
+                  <DashboardIntegrationsPanel dashboardCopy={dashboardCopy} activeTab={activeTab} />
                 </div>
               </div>
             )}
@@ -2357,81 +1454,21 @@ export function DashboardContent() {
         </div>
       </div>
 
-      {drawerOpen && (
-        <div className="fixed inset-0 z-50">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setDrawerOpen(false)} />
-          <div
-            className={`absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-gray-800 bg-gray-950 p-6 lg:inset-y-0 lg:left-auto lg:right-0 lg:h-full lg:max-h-none lg:w-[min(92vw,420px)] lg:rounded-none lg:border-l ${
-              reduceMotion ? '' : 'transition-transform duration-300'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-yellow-400/90">{dashboardCopy.drawer.weeklyDetail}</div>
-                <h3 className="mt-2 text-lg font-semibold text-white">{drawerLabel}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                className="text-xs text-slate-400"
-              >
-                {dashboardCopy.drawer.close}
-              </button>
-            </div>
-            <div className="mt-6 space-y-4">
-              <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">{dashboardCopy.drawer.youtube}</div>
-                {drawerEvidence?.matched ? (
-                  <div className="mt-2 space-y-1 text-sm text-white">
-                    <p className="font-medium">{drawerEvidence.video?.title}</p>
-                    <p className="text-xs text-slate-400">{drawerEvidence.video?.publishedAt}</p>
-                    <a
-                      href={drawerEvidence.video?.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-yellow-300"
-                    >
-                      {dashboardCopy.drawer.openInYoutube}
-                    </a>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-xs text-slate-400">{dashboardCopy.drawer.noEvidence}</p>
-                )}
-              </div>
-              <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">{dashboardCopy.drawer.publishEvent}</div>
-                {drawerPublish?.matched ? (
-                  <p className="mt-2 text-sm text-white">{dashboardCopy.drawer.registered} · {drawerPublish.publishedAt}</p>
-                ) : (
-                  <p className="mt-2 text-xs text-slate-400">{dashboardCopy.drawer.noInternalRecord}</p>
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                {drawerHasAction && (
-                  <button
-                    type="button"
-                    onClick={() => drawerSlot && handleRegisterFromYoutube(drawerSlot)}
-                    disabled={reconcileSubmitting}
-                    className="rounded-lg bg-amber-400 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-black"
-                  >
-                    {dashboardCopy.drawer.registerOneClick}
-                  </button>
-                )}
-                {drawerSlot && (
-                  <button
-                    type="button"
-                    onClick={() => handleQuickPublish(drawerSlot === 'tue' ? 'tuesday' : 'friday')}
-                    disabled={quickPublishSubmitting}
-                    className="rounded-lg border border-gray-800 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-200"
-                  >
-                    {dashboardCopy.drawer.registerManual}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <DashboardReconcileDrawer
+        open={drawerOpen}
+        reduceMotion={Boolean(reduceMotion)}
+        dashboardCopy={dashboardCopy}
+        drawerLabel={drawerLabel}
+        drawerEvidence={drawerEvidence}
+        drawerPublish={drawerPublish}
+        drawerHasAction={drawerHasAction}
+        drawerSlot={drawerSlot}
+        reconcileSubmitting={reconcileSubmitting}
+        quickPublishSubmitting={quickPublishSubmitting}
+        onClose={() => setDrawerOpen(false)}
+        onRegisterFromYoutube={handleRegisterFromYoutube}
+        onQuickPublish={handleQuickPublish}
+      />
 
       <OnboardingTour
         open={tourOpen}
@@ -2445,145 +1482,43 @@ export function DashboardContent() {
       />
       <Footer />
 
-      {/* Modal */}
-      {showModal && (
-        <motion.div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={() => setShowModal(false)}
-        >
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="dashboard-modal-title"
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg max-h-[85dvh] overflow-y-auto"
-            ref={modalRef}
-            tabIndex={-1}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="dashboard-modal-title" className="text-2xl font-semibold text-white mb-5">{dashboardCopy.modal.title}</h3>
-            <input
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              placeholder={dashboardCopy.modal.placeholder}
-              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-5 py-4 text-lg text-white placeholder-gray-500 focus:border-yellow-500 focus:outline-none mb-5"
-              autoFocus
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-            />
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <motion.button
-                onClick={() => setShowModal(false)}
-                className="flex-1 px-5 py-3 text-base border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {dashboardCopy.modal.cancel}
-              </motion.button>
-              <motion.button
-                onClick={handleCreate}
-                className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {dashboardCopy.modal.create}
-              </motion.button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      <CreateProductionModal
+        open={showModal}
+        dashboardCopy={dashboardCopy}
+        newTitle={newTitle}
+        modalRef={modalRef}
+        onClose={() => setShowModal(false)}
+        onChangeTitle={setNewTitle}
+        onCreate={handleCreate}
+      />
 
-      {publishTarget && (
-        <motion.div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          onClick={() => setPublishTarget(null)}
-        >
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="publish-modal-title"
-            className="bg-gray-900 border border-gray-700 rounded-xl p-6 sm:p-8 w-full max-w-lg"
-            ref={publishRef}
-            tabIndex={-1}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 id="publish-modal-title" className="text-2xl font-semibold text-white mb-3">{dashboardCopy.publishModal.title}</h3>
-            <p className="text-sm text-slate-300 mb-5">{publishTarget.title}</p>
-            <div className="mb-4 rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs text-yellow-200">
-              {dashboardCopy.publishModal.helper}
-            </div>
-            {publishMissing.length > 0 && (
-              <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-200">
-                {dashboardCopy.publishModal.missingSteps}: {publishMissing.join(', ')}
-              </div>
-            )}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">{dashboardCopy.publishModal.publishedUrlLabel}</label>
-                  <input
-                    type="url"
-                    value={publishUrl}
-                    onChange={(event) => {
-                      const next = event.target.value;
-                      setPublishUrl(next);
-                      if (!publishPlatformTouched) {
-                        const extracted = extractYouTubeId(next);
-                        setPublishPlatformId(extracted);
-                      }
-                    }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
-                    placeholder={dashboardCopy.publishModal.publishedUrlPlaceholder}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">{dashboardCopy.publishModal.platformIdLabel}</label>
-                  <input
-                    type="text"
-                    value={publishPlatformId}
-                    onChange={(event) => {
-                      setPublishPlatformId(event.target.value);
-                      setPublishPlatformTouched(true);
-                    }}
-                    onBlur={() => {
-                      if (!publishUrl && publishPlatformId.trim()) {
-                        setPublishUrl(`https://www.youtube.com/watch?v=${publishPlatformId.trim()}`);
-                      }
-                    }}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:border-yellow-500 focus:outline-none"
-                    placeholder="YouTube videoId"
-                  />
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <motion.button
-                  onClick={() => setPublishTarget(null)}
-                  className="flex-1 px-5 py-3 text-base border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 font-medium"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={publishSubmitting}
-                >
-                  {dashboardCopy.publishModal.cancel}
-                </motion.button>
-                <motion.button
-                  onClick={handlePublish}
-                  className="flex-1 px-5 py-3 text-base bg-yellow-400 text-black font-semibold rounded-lg hover:bg-yellow-300"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  disabled={publishSubmitting || publishMissing.length > 0}
-                >
-                  {publishSubmitting ? dashboardCopy.labels.saving : dashboardCopy.publishModal.confirm}
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      <PublishProductionModal
+        publishTarget={publishTarget}
+        dashboardCopy={dashboardCopy}
+        publishRef={publishRef}
+        publishMissing={publishMissing}
+        publishUrl={publishUrl}
+        publishPlatformId={publishPlatformId}
+        publishSubmitting={publishSubmitting}
+        onClose={() => setPublishTarget(null)}
+        onPublish={handlePublish}
+        onChangeUrl={(next) => {
+          setPublishUrl(next);
+          if (!publishPlatformTouched) {
+            const extracted = extractYouTubeId(next);
+            setPublishPlatformId(extracted);
+          }
+        }}
+        onChangePlatformId={(next) => {
+          setPublishPlatformId(next);
+          setPublishPlatformTouched(true);
+        }}
+        onPlatformIdBlur={() => {
+          if (!publishUrl && publishPlatformId.trim()) {
+            setPublishUrl(`https://www.youtube.com/watch?v=${publishPlatformId.trim()}`);
+          }
+        }}
+      />
     </div>
   );
 }

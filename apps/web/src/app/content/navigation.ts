@@ -17,17 +17,39 @@ export const NAV_LABEL_KEYS = {
   login: 'navigation.login',
   register: 'navigation.register',
   account: 'navigation.account',
+  admin: 'navigation.admin',
+  content: 'navigation.content',
+  channel: 'navigation.channel',
 } as const;
 
-export const NAV_ITEMS = [
+export const NAV_GROUPS = [
+  {
+    titleKey: NAV_LABEL_KEYS.content,
+    items: [
+      { href: '/ideas', labelKey: NAV_LABEL_KEYS.ideas, icon: Lightbulb },
+      { href: '/scripts', labelKey: NAV_LABEL_KEYS.scripts, icon: FileText },
+      { href: '/thumbnails', labelKey: NAV_LABEL_KEYS.thumbnails, icon: ImageIcon },
+      { href: '/seo', labelKey: NAV_LABEL_KEYS.seo, icon: Search },
+    ],
+  },
+  {
+    titleKey: NAV_LABEL_KEYS.channel,
+    items: [
+      { href: '/channels', labelKey: NAV_LABEL_KEYS.channels, icon: Tv },
+      { href: '/analytics', labelKey: NAV_LABEL_KEYS.analytics, icon: BarChart3 },
+    ],
+  },
+] as const;
+
+export const NAV_PRIMARY_ITEMS = [
   { href: '/dashboard', labelKey: NAV_LABEL_KEYS.dashboard, icon: LayoutDashboard },
-  { href: '/ideas', labelKey: NAV_LABEL_KEYS.ideas, icon: Lightbulb },
-  { href: '/scripts', labelKey: NAV_LABEL_KEYS.scripts, icon: FileText },
-  { href: '/thumbnails', labelKey: NAV_LABEL_KEYS.thumbnails, icon: ImageIcon },
-  { href: '/seo', labelKey: NAV_LABEL_KEYS.seo, icon: Search },
-  { href: '/channels', labelKey: NAV_LABEL_KEYS.channels, icon: Tv },
-  { href: '/analytics', labelKey: NAV_LABEL_KEYS.analytics, icon: BarChart3 },
   { href: '/ai', labelKey: NAV_LABEL_KEYS.crono, icon: Sparkles },
+  { href: '/configuracion', labelKey: NAV_LABEL_KEYS.settings, icon: Settings },
+] as const;
+
+export const NAV_ITEMS = [
+  ...NAV_PRIMARY_ITEMS,
+  ...NAV_GROUPS.flatMap((group) => group.items),
 ];
 
 export const QUICK_LINKS = [
