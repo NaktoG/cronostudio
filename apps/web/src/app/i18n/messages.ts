@@ -34,6 +34,8 @@ export const messages: Record<Locale, Messages> = {
       startToday: 'Empieza hoy',
       startTodayDescription: 'Organiza tu producción y conecta YouTube.',
       createAccount: 'Crear cuenta',
+      content: 'Contenido',
+      channel: 'Canal',
     },
     header: {
       creativeStudio: 'Estudio creativo',
@@ -51,6 +53,8 @@ export const messages: Record<Locale, Messages> = {
       remind30m: 'Avisar 30m antes',
       publishHourUtc: 'Hora objetivo UTC',
       timezone: 'Zona horaria',
+      openMenu: 'Abrir menu',
+      closeMenu: 'Cerrar menu',
     },
     shortcuts: {
       title: 'Atajos',
@@ -98,6 +102,8 @@ export const messages: Record<Locale, Messages> = {
       startToday: 'Start today',
       startTodayDescription: 'Organize your production and connect YouTube.',
       createAccount: 'Create account',
+      content: 'Content',
+      channel: 'Channel',
     },
     header: {
       creativeStudio: 'Creative studio',
@@ -115,6 +121,8 @@ export const messages: Record<Locale, Messages> = {
       remind30m: 'Notify 30m before',
       publishHourUtc: 'Target hour UTC',
       timezone: 'Timezone',
+      openMenu: 'Open menu',
+      closeMenu: 'Close menu',
     },
     shortcuts: {
       title: 'Shortcuts',
