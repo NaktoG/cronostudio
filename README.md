@@ -157,6 +157,11 @@ Ver [SECURITY.md](docs/SECURITY.md).
    cd apps/web && npm install && npm run dev
    ```
 
+4. **Verificar API del assistant (opcional)**
+   ```bash
+   make verify-assistant
+   ```
+
 ---
 
 ## 📚 Documentación
