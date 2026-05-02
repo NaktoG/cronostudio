@@ -205,6 +205,15 @@ export function DashboardContent() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [showModal, publishTarget]);
 
+  const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
+  const publishMissing = publishChecklist
+    ? [
+        !publishChecklist.scriptReady ? dashboardCopy.cards.scriptReady : null,
+        !publishChecklist.seoReady ? dashboardCopy.cards.seoApproved : null,
+        !publishChecklist.thumbnailReady ? dashboardCopy.cards.thumbnailApproved : null,
+      ].filter(Boolean)
+    : [];
+
   const {
     handleCreate,
     handlePublish,
@@ -552,14 +561,6 @@ export function DashboardContent() {
   };
 
   const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions, dashboardCopy);
-  const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
-  const publishMissing = publishChecklist
-    ? [
-        !publishChecklist.scriptReady ? dashboardCopy.cards.scriptReady : null,
-        !publishChecklist.seoReady ? dashboardCopy.cards.seoApproved : null,
-        !publishChecklist.thumbnailReady ? dashboardCopy.cards.thumbnailApproved : null,
-      ].filter(Boolean)
-    : [];
   const filteredProductions = activeStage
     ? activeProductions.filter((production) => production.status === activeStage)
     : activeProductions;
