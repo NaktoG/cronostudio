@@ -586,12 +586,20 @@ export function DashboardContent() {
   }, [isAuthenticated, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, fetchChannels, fetchData]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || loading) return;
     const hasChannel = channels.length > 0;
     const hasIdeas = ideas.length > 0;
+    const hasProductions = productions.length > 0;
+    if (!hasChannel && !hasProductions) {
+      const dismissed = typeof window !== 'undefined' && window.sessionStorage.getItem('cronostudio.onboarding.dismissed');
+      if (!dismissed) {
+        router.replace('/start');
+        return;
+      }
+    }
     const shouldShow = !hasChannel || !hasIdeas;
     setShowStartCard(shouldShow);
-  }, [isAuthenticated, channels.length, ideas.length]);
+  }, [isAuthenticated, loading, channels.length, ideas.length, productions.length, router]);
 
   useEffect(() => {
     if (shouldOpenNewModal) {
