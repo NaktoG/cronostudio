@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { Suspense, useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { CheckCircle2, ChevronRight, Instagram, Linkedin, Music2, Plus, Sparkles, Twitter, Wand2, XCircle, Youtube, Zap } from 'lucide-react';
@@ -10,7 +11,6 @@ import { formatDate, formatDateTime, formatMonthYear, getIsoWeekInfo } from '@/l
 import Header from './components/Header';
 import Footer from './components/Footer';
 import { PageTransition } from './components/Animations';
-import PriorityActions from './components/PriorityActions';
 import ProductionPipeline from './components/ProductionPipeline';
 import ProductionsList, { Production } from './components/ProductionsList';
 import AutomationRuns, { AutomationRun } from './components/AutomationRuns';
@@ -23,16 +23,35 @@ import { getLandingCopy } from './content/landing';
 import { WEEKLY_STATUS_STYLES, RECONCILE_SLOT_STYLES } from '@/app/content/status/weekly';
 import { SEO_SCORE_MIN_READY } from '@/app/content/status/productions';
 import useDialogFocus from './hooks/useDialogFocus';
+import { usePriorityActions } from '@/app/hooks/usePriorityActions';
+import { useImpactMetrics } from '@/app/hooks/useImpactMetrics';
+import { useProductionsPanel } from '@/app/hooks/useProductionsPanel';
+import type { PipelineStats } from '@/app/components/DashboardStats';
+const DashboardStats = dynamic(() => import('./components/DashboardStats'), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
+});
 
-interface PipelineStats {
-  idea: number;
-  scripting: number;
-  recording: number;
-  editing: number;
-  shorts: number;
-  publishing: number;
-  published: number;
-}
+const PriorityActionsPanel = dynamic(() => import('./components/PriorityActionsPanel'), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
+});
+
+const ImpactPanel = dynamic(() => import('./components/ImpactPanel'), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
+});
+
+const ProductionsPanel = dynamic(() => import('./components/ProductionsPanel'), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
+});
+
+const AutomationRunsPanel = dynamic(() => import('./components/AutomationRunsPanel'), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-400">Cargando...</p>,
+});
+
 
 interface PriorityAction {
   id: string;
@@ -98,25 +117,6 @@ interface Channel {
   name: string;
 }
 
-function generatePriorityActions(productions: Production[], dashboardCopy: ReturnType<typeof getDashboardCopy>): PriorityAction[] {
-  const actions: PriorityAction[] = [];
-  for (const prod of productions) {
-    if (prod.status === 'scripting' && (!prod.script_status || prod.script_status === 'draft')) {
-      actions.push({ id: prod.id, type: 'script', title: dashboardCopy.priorityActions.script, productionTitle: prod.title, productionId: prod.id, urgency: 'high' });
-    }
-    if ((prod.status === 'editing' || prod.status === 'shorts') && (!prod.thumbnail_status || prod.thumbnail_status === 'pending')) {
-      actions.push({ id: `${prod.id}-thumb`, type: 'thumbnail', title: dashboardCopy.priorityActions.thumbnail, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
-    }
-    if ((prod.status === 'editing' || prod.status === 'publishing') && (!prod.seo_score || prod.seo_score < SEO_SCORE_MIN_READY)) {
-      actions.push({ id: `${prod.id}-seo`, type: 'seo', title: dashboardCopy.priorityActions.seo, productionTitle: prod.title, productionId: prod.id, urgency: 'medium' });
-    }
-    if (prod.status === 'shorts' && prod.shorts_count === 0) {
-      actions.push({ id: `${prod.id}-short`, type: 'short', title: dashboardCopy.priorityActions.shorts, productionTitle: prod.title, productionId: prod.id, urgency: 'low' });
-    }
-  }
-  const urgencyOrder = { high: 0, medium: 1, low: 2 };
-  return actions.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]).slice(0, 5);
-}
 
 function getChecklistStatus(production: Production) {
   const scriptReady = production.script_status && production.script_status !== 'draft';
@@ -586,12 +586,20 @@ export function DashboardContent() {
   }, [isAuthenticated, selectedChannelId, fallbackIso.isoYear, fallbackIso.isoWeek, fetchChannels, fetchData]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || loading) return;
     const hasChannel = channels.length > 0;
     const hasIdeas = ideas.length > 0;
+    const hasProductions = productions.length > 0;
+    if (!hasChannel && !hasProductions) {
+      const dismissed = typeof window !== 'undefined' && window.sessionStorage.getItem('cronostudio.onboarding.dismissed');
+      if (!dismissed) {
+        router.replace('/start');
+        return;
+      }
+    }
     const shouldShow = !hasChannel || !hasIdeas;
     setShowStartCard(shouldShow);
-  }, [isAuthenticated, channels.length, ideas.length]);
+  }, [isAuthenticated, loading, channels.length, ideas.length, productions.length, router]);
 
   useEffect(() => {
     if (shouldOpenNewModal) {
@@ -777,6 +785,11 @@ export function DashboardContent() {
   const disciplineStreakBest = disciplineWeekly?.streak.best ?? 0;
   const publishedTotal = pipelineStats.published || 0;
   const estimatedHoursSaved = publishedTotal * IMPACT_METRICS.hoursSavedPerVideo;
+  const { impactCards } = useImpactMetrics({
+    publishedTotal,
+    streakCurrent: weeklyStatus?.currentStreak ?? 0,
+    streakBest: weeklyStatus?.bestStreak ?? 0,
+  });
   const ideaToScriptRate = pipelineStats.idea > 0
     ? Math.round((pipelineStats.scripting / pipelineStats.idea) * 100)
     : 0;
@@ -1086,7 +1099,7 @@ export function DashboardContent() {
     setTourStep((step) => Math.max(step - 1, 0));
   };
 
-  const priorityActions = weeklyStatus ? weeklyActions : generatePriorityActions(productions, dashboardCopy);
+  const { priorityActions } = usePriorityActions(productions, dashboardCopy);
   const publishChecklist = publishTarget ? getChecklistStatus(publishTarget) : null;
   const publishMissing = publishChecklist
     ? [
@@ -1715,9 +1728,8 @@ export function DashboardContent() {
                       </div>
                     </motion.div>
 
-                    <PriorityActions
+                    <PriorityActionsPanel
                       actions={priorityActions}
-                      showCreateButton={false}
                     />
 
                     {activeStage === 'idea' ? (
@@ -1778,25 +1790,26 @@ export function DashboardContent() {
                       </div>
                     </motion.div>
                   ) : (
-                    <ProductionsList
-                      productions={filteredProductions}
-                      selectedProductionId={focusedProductionId}
-                      onProductionClick={(production) => setFocusedProductionId(production.id)}
-                      onMarkPublished={(production) => setPublishTarget(production)}
-                      onCreateNew={() => setShowModal(true)}
+                    <ProductionsPanel
+                      activeStage={activeStage}
                       filterLabel={activeStage ? stageLabels[activeStage] : null}
                       onClearFilter={() => setActiveStage(null)}
                       title={activeStage ? dashboardCopy.pipeline.inStage : dashboardCopy.pipeline.active}
-                      showCreateButton={false}
-                      emptyActions={[
-                         { label: dashboardCopy.cards.createProduction, onClick: () => setShowModal(true) },
-                        { label: 'Crono', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
-                      ]}
+                      productions={filteredProductions}
                       selectedIds={selectedProductionIds}
                       onToggleSelection={toggleProductionSelection}
                       onClearSelection={clearProductionSelection}
                       onBulkStatus={bulkUpdateProductions}
                       onBulkTargetDate={bulkUpdateTargetDate}
+                      onProductionClick={(production) => setFocusedProductionId(production.id)}
+                      onMarkPublished={(production) => setPublishTarget(production)}
+                      onCreateNew={() => setShowModal(true)}
+                      showCreateButton={false}
+                      emptyActions={[
+                         { label: dashboardCopy.cards.createProduction, onClick: () => setShowModal(true) },
+                        { label: 'Crono', onClick: () => router.push(`/ai${selectedChannelId ? `?channelId=${selectedChannelId}` : ''}`), tone: 'ghost' },
+                      ]}
+                      activeTab={activeTab}
                     />
                   )}
                   </div>

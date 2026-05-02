@@ -2,14 +2,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { BookOpen, CheckCircle2, ChevronRight, Sparkles, Target, Wand2, Youtube, Zap } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckCircle2, ChevronRight, Sparkles, Target, Wand2, Youtube, Zap } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import ProtectedRoute from '../components/ProtectedRoute';
 import { useAuth, useAuthFetch } from '../contexts/AuthContext';
-import { ONBOARDING_GOALS, ONBOARDING_STORAGE_KEYS } from '@/app/content/onboarding';
-import { ONBOARDING_STEPS, OnboardingCounts } from '@/app/content/onboardingSteps';
+import { useLocale } from '../contexts/LocaleContext';
+import { getOnboardingCopy, getOnboardingGoals, ONBOARDING_STORAGE_KEYS } from '@/app/content/onboarding';
+import { getOnboardingSteps, type OnboardingCounts } from '@/app/content/onboardingSteps';
 
 type OnboardingStep = {
   id: string;
@@ -23,10 +25,15 @@ type OnboardingStep = {
 
 export default function StartPage() {
   const { isAuthenticated } = useAuth();
+  const { locale } = useLocale();
   const authFetch = useAuthFetch();
+  const router = useRouter();
+  const copy = useMemo(() => getOnboardingCopy(locale), [locale]);
+  const goals = useMemo(() => getOnboardingGoals(locale), [locale]);
+  const stepDefinitions = useMemo(() => getOnboardingSteps(locale), [locale]);
   const [activeChannelId, setActiveChannelId] = useState('');
   const [loading, setLoading] = useState(true);
-  const [goalKey, setGoalKey] = useState<keyof typeof ONBOARDING_GOALS>('first_publish');
+  const [goalKey] = useState<'first_publish'>('first_publish');
   const [counts, setCounts] = useState<OnboardingCounts>({
     channels: 0,
     ideas: 0,
@@ -43,11 +50,9 @@ export default function StartPage() {
     const storedChannel = window.localStorage.getItem(ONBOARDING_STORAGE_KEYS.channelId) || '';
     setActiveChannelId(storedChannel);
     const storedGoal = window.localStorage.getItem(ONBOARDING_STORAGE_KEYS.goalKey);
-    if (storedGoal === 'first_publish') {
-      setGoalKey('first_publish');
-      return;
+    if (!storedGoal) {
+      window.localStorage.setItem(ONBOARDING_STORAGE_KEYS.goalKey, 'first_publish');
     }
-    window.localStorage.setItem(ONBOARDING_STORAGE_KEYS.goalKey, 'first_publish');
   }, []);
 
   useEffect(() => {
@@ -58,42 +63,39 @@ export default function StartPage() {
       try {
         const channelParam = activeChannelId ? `?channelId=${activeChannelId}` : '';
         const publishedParam = activeChannelId
-          ? `?status=published&channelId=${activeChannelId}`
+          ? `?channelId=${activeChannelId}&status=published`
           : '?status=published';
-        const [channelsRes, ideasRes, scriptsRes, seoRes, thumbnailsRes, publishedRes] = await Promise.all([
+        const [chRes, ideasRes, scriptsRes, seoRes, thumbsRes, prodsRes] = await Promise.all([
           authFetch('/api/channels', { signal: controller.signal }),
           authFetch(`/api/ideas${channelParam}`, { signal: controller.signal }),
           authFetch(`/api/scripts${channelParam}`, { signal: controller.signal }),
           authFetch(`/api/seo${channelParam}`, { signal: controller.signal }),
-          authFetch(`/api/thumbnails?status=approved${activeChannelId ? `&channelId=${activeChannelId}` : ''}`, { signal: controller.signal }),
+          authFetch(`/api/thumbnails${channelParam}`, { signal: controller.signal }),
           authFetch(`/api/productions${publishedParam}`, { signal: controller.signal }),
         ]);
-
-        const channels = channelsRes.ok ? await channelsRes.json() : [];
-        const ideas = ideasRes.ok ? await ideasRes.json() : [];
-        const scripts = scriptsRes.ok ? await scriptsRes.json() : [];
-        const seo = seoRes.ok ? await seoRes.json() : [];
-        const thumbnails = thumbnailsRes.ok ? await thumbnailsRes.json() : [];
-        const published = publishedRes.ok ? await publishedRes.json() : [];
-
-        if (controller.signal.aborted) return;
-
-        const ideasApproved = Array.isArray(ideas)
-          ? ideas.filter((idea) => idea.status === 'approved').length
-          : 0;
-        const scriptsReady = Array.isArray(scripts)
-          ? scripts.filter((script) => script.status === 'approved' || script.status === 'recorded').length
-          : 0;
-
+        const [chData, ideasData, scriptsData, seoData, thumbsData, prodsData] = await Promise.all([
+          chRes.ok ? chRes.json() : [],
+          ideasRes.ok ? ideasRes.json() : [],
+          scriptsRes.ok ? scriptsRes.json() : [],
+          seoRes.ok ? seoRes.json() : [],
+          thumbsRes.ok ? thumbsRes.json() : [],
+          prodsRes.ok ? prodsRes.json() : [],
+        ]);
+        const channelsList = Array.isArray(chData) ? chData : [];
+        const ideasList = Array.isArray(ideasData) ? ideasData : [];
+        const scriptsList = Array.isArray(scriptsData) ? scriptsData : [];
+        const seoList = Array.isArray(seoData) ? seoData : [];
+        const thumbsList = Array.isArray(thumbsData) ? thumbsData : [];
+        const prodsList = Array.isArray(prodsData) ? prodsData : [];
         setCounts({
-          channels: Array.isArray(channels) ? channels.length : 0,
-          ideas: Array.isArray(ideas) ? ideas.length : 0,
-          ideasApproved,
-          scripts: Array.isArray(scripts) ? scripts.length : 0,
-          scriptsReady,
-          seo: Array.isArray(seo) ? seo.length : 0,
-          thumbnailsApproved: Array.isArray(thumbnails) ? thumbnails.length : 0,
-          published: Array.isArray(published) ? published.length : 0,
+          channels: channelsList.length,
+          ideas: ideasList.length,
+          ideasApproved: ideasList.filter((i: { status?: string }) => i.status === 'approved').length,
+          scripts: scriptsList.length,
+          scriptsReady: scriptsList.filter((s: { quality_score?: number }) => (s.quality_score ?? 0) >= 80).length,
+          seo: seoList.length,
+          thumbnailsApproved: thumbsList.filter((t: { status?: string }) => t.status === 'approved').length,
+          published: prodsList.length,
         });
       } catch {
         if (controller.signal.aborted) return;
@@ -108,16 +110,23 @@ export default function StartPage() {
   }, [isAuthenticated, authFetch, activeChannelId]);
 
   const steps: OnboardingStep[] = useMemo(() => {
-    return ONBOARDING_STEPS.map((step) => ({
+    return stepDefinitions.map((step) => ({
       ...step,
       done: step.isDone(counts),
     }));
-  }, [counts]);
+  }, [stepDefinitions, counts]);
 
   const completed = steps.filter((step) => step.done).length;
   const progress = steps.length > 0 ? Math.round((completed / steps.length) * 100) : 0;
   const nextStep = steps.find((step) => !step.done) ?? steps[steps.length - 1];
-  const goal = ONBOARDING_GOALS[goalKey];
+  const goal = goals[goalKey];
+
+  const handleGoToDashboard = () => {
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem('cronostudio.onboarding.dismissed', '1');
+    }
+    router.push('/dashboard');
+  };
 
   return (
     <ProtectedRoute>
@@ -134,15 +143,24 @@ export default function StartPage() {
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-yellow-300 mb-5">
-              <Sparkles className="w-4 h-4" />
-              Onboarding creativo
+            <div className="flex items-center justify-between mb-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-xs uppercase tracking-[0.3em] text-yellow-300">
+                <Sparkles className="w-4 h-4" />
+                {copy.badge}
+              </div>
+              <button
+                onClick={handleGoToDashboard}
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800/60 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-gray-700/60 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                {copy.goToDashboard}
+              </button>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-white mb-3">
-              Guia viva para producir contenido sin perder el ritmo
+              {copy.title}
             </h1>
             <p className="text-sm sm:text-base text-slate-300 max-w-2xl">
-              Usa esta ruta para conectar tu canal, planificar entregables y automatizar la medicion semanal.
+              {copy.subtitle}
             </p>
           </motion.div>
 
@@ -150,7 +168,7 @@ export default function StartPage() {
             <div className="space-y-4">
               {steps.map((step, index) => (
                 <motion.div
-                  key={step.title}
+                  key={step.id}
                   className="surface-panel glow-hover p-5 sm:p-6"
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -159,7 +177,7 @@ export default function StartPage() {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-[10px] uppercase tracking-[0.2em] text-yellow-400/90">
-                        Paso {index + 1}
+                        {copy.stepPrefix} {index + 1}
                       </div>
                       <h3 className="mt-2 text-lg font-semibold text-white">{step.title}</h3>
                       <p className="mt-2 text-sm text-slate-400">{step.description}</p>
@@ -183,12 +201,12 @@ export default function StartPage() {
               <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white">
                   <Target className="h-5 w-5 text-yellow-300" />
-                  Objetivo actual
+                  {copy.goalLabel}
                 </div>
                 <p className="mt-2 text-sm text-slate-300">{goal.title}</p>
                 <p className="mt-2 text-xs text-slate-500">{goal.subtitle}</p>
                 <div className="mt-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Progreso</div>
+                  <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{copy.progressLabel}</div>
                   <div className="mt-2 h-2 w-full rounded-full bg-gray-800">
                     <div
                       className="h-2 rounded-full bg-yellow-400"
@@ -196,12 +214,12 @@ export default function StartPage() {
                     />
                   </div>
                   <p className="mt-2 text-xs text-slate-400">
-                    {loading ? 'Calculando...' : `${completed} / ${steps.length} completados`}
+                    {loading ? copy.calculating : copy.completedOf(completed, steps.length)}
                   </p>
                 </div>
                 {nextStep && (
                   <div className="mt-4 rounded-lg border border-gray-800 bg-gray-900/40 p-3">
-                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Siguiente paso</div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{copy.nextStepLabel}</div>
                     <p className="mt-2 text-sm text-slate-200">{nextStep.title}</p>
                     <Link
                       href={nextStep.href}
@@ -216,36 +234,36 @@ export default function StartPage() {
               <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5 space-y-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-white">
                   <BookOpen className="h-5 w-5 text-yellow-300" />
-                  Para que sirve
+                  {copy.purposeTitle}
                 </div>
                 <div className="text-sm text-slate-400">
-                  CronoStudio organiza la produccion y automatiza el seguimiento para que puedas publicar con foco creativo.
+                  {copy.purposeDescription}
                 </div>
                 <div className="grid gap-3">
                   <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
                     <Wand2 className="h-4 w-4 text-yellow-300 inline-block mr-2" />
-                    Claridad de pipeline y entregables por semana.
+                    {copy.purposePipeline}
                   </div>
                   <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
                     <Youtube className="h-4 w-4 text-red-400 inline-block mr-2" />
-                    Conexiones y sincronizacion directa con YouTube.
+                    {copy.purposeYoutube}
                   </div>
                   <div className="rounded-lg border border-gray-800 bg-gray-900/50 p-3 text-sm text-slate-300">
                     <Zap className="h-4 w-4 text-yellow-300 inline-block mr-2" />
-                    Alertas de disciplina y metrica semanal.
+                    {copy.purposeAlerts}
                   </div>
                 </div>
               </div>
               <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Atajo</div>
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{copy.shortcutTitle}</div>
                 <p className="mt-2 text-sm text-slate-300">
-                  Podes volver a esta guia desde el menu principal.
+                  {copy.shortcutHint}
                 </p>
                 <Link
                   href="/ai"
                   className="mt-4 inline-flex items-center gap-2 text-xs font-semibold text-yellow-300"
                 >
-                  Ir directo a AI Studio
+                  {copy.goToAiStudio}
                   <ChevronRight className="h-4 w-4" />
                 </Link>
               </div>

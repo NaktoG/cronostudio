@@ -17,6 +17,7 @@ export const NAV_LABEL_KEYS = {
   login: 'navigation.login',
   register: 'navigation.register',
   account: 'navigation.account',
+  admin: 'navigation.admin',
 } as const;
 
 export const NAV_ITEMS = [
